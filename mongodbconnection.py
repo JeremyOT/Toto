@@ -59,7 +59,7 @@ class MongoDBConnection():
     if not session_data:
       raise SimpleAPIError(ERROR_INVALID_SESSION_ID, "Invalid session ID")
     session = MongoDBSession(self.db, session_data)
-    if not hmac_data or hmac_data != hmac.new(str(session_data['user_id']), data, hashlib.sha1).hexdigest():
+    if not hmac_data or hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise SimpleAPIError(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session

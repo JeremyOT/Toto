@@ -9,6 +9,7 @@ import simpleapi
 from simpleapi.exceptions import *
 from time import time
 from tornado.options import define, options
+import base64
 
 class SimpleAPIHandler(RequestHandler):
 
@@ -50,7 +51,7 @@ class SimpleAPIHandler(RequestHandler):
     if response is not None:
       response_body = json.dumps(response)
       if self.session:
-        self.set_header('x-hmac', hmac.new(str(self.session.user_id), response_body, hashlib.sha1).hexdigest())
+        self.set_header('x-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous') or not method.async:
       self.finish()
