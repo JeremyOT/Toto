@@ -51,45 +51,45 @@ It is important to remember that [Tornado][tornado] requires that all calls to `
 `flush()` and `finish()` are performed on the main thread. You can schedule a function to
 run on the main thread with `IOLoop.instance().add_callback(callback)`.
 
-__Note: Any data returned from a call to `method.invoke()` will be sent to the client as
+_Note: Any data returned from a call to `method.invoke()` will be sent to the client as
 JSON data and be used to generate the x-hmac header for verification. This may cause
 issues with asynchronous methods. If `method.invoke()` returns `None`, a response will not
-automatically be sent to the client and no x-hmac header will be generated.__
+automatically be sent to the client and no x-hmac header will be generated._
 
 Requests
 -----------
 Non-authenticated methods:
-1. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`
-2. Parse response JSON
+1. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`.
+2. Parse response JSON.
 
 Account Creation:
-1. Call `account.create` method with `{"user_id": <user_id>, "password": <password>}`
-2. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac`
+1. Call `account.create` method with `{"user_id": <user_id>, "password": <password>}`.
+2. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac` 
 header in the response.
-3. Parse response JSON
-4. Read and store `session_id` from the response object
+3. Parse response JSON.
+4. Read and store `session_id` from the response object.
 
 Login:
-1. Call `account.login` method with `{"user_id": <user_id>, "password": <password>}`
+1. Call `account.login` method with `{"user_id": <user_id>, "password": <password>}`.
 2. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac`
 header in the response.
-3. Parse response JSON
-4. Read and store `session_id` from the response object
+3. Parse response JSON.
+4. Read and store `session_id` from the response object.
 
 Authenticated methods:
-1. Login (see-above)
+1. Login (see-above).
 2. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`
 with the `x-session-id` header set to the session ID returned from login and the `x-hmac` header
 set to the SHA1 HMAC generated with `<user_id>` as the key and the JSON request string as
 the message.
 3. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac`
 header in the response.
-4. Parse response JSON
+4. Parse response JSON.
 
-__Note: These instructions assume that `method.invoke()` returns an object to be serialized
+_Note: These instructions assume that `method.invoke()` returns an object to be serialized
 and sent to the client. Methods that return None can be used the send any data and must be
-handled accordingly.__
+handled accordingly._
 
-[tornado]:www.tornadoweb.org
+[tornado]:http://www.tornadoweb.org
 [mysql]:http://www.mysql.com
 [mongodb]:http://www.mongodb.org
