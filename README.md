@@ -16,7 +16,7 @@ Configuration
 -------------
 SimpleAPIServer is comes configured to run on port 8888 and connect to a MongoDB server
 running on localhost. Configuration can be through server.conf or command line parameters
-(--option='string value' --option=1234) or a combination thereof - useful when launching
+(`--option='string value' --option=1234`) or a combination thereof - useful when launching
 multiple instances on different ports. Run `python server.py --help` for a full list of
 available parameters.
 
@@ -25,7 +25,7 @@ Customization
 Methods are referenced by name in each request. `a.b.c` maps to `a/b/c.py`. To add new
 methods, add modules and packages to the simpleapi package (see the account package for
 reference) and ensure that each callable module defines `invoke(handler, parameters)`
-where `handler` is the SimpleAPIHandler (subclass of tornado.web.RequestHandler) handling
+where `handler` is the `SimpleAPIHandler` (subclass of `tornado.web.RequestHandler`) handling
 the current request.
 
 `handler.connection.db` provides direct access to the database used by the sessions and
