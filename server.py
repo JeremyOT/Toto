@@ -27,7 +27,7 @@ class SimpleAPIHandler(RequestHandler):
       method = getattr(method, method_path.pop(0))
     return method
 
-  @web.asynchronous
+  @asynchronous
   def post(self):
     self.session = None
     self.__method = None
@@ -78,7 +78,7 @@ if options.database == "mongodb":
   connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database)
 elif options.database == "mysql":
   from mysqldbconnection import MySQLdbConnection
-  connection = MySQLdbConnection(options.mysql_host, mysql_database, mysql_user, mysql_password)
+  connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
 
 application = Application([
   (r"/", SimpleAPIHandler, {'connection': connection}),

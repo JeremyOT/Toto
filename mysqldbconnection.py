@@ -21,7 +21,7 @@ class MySQLdbSession():
     self.user_id = str(session_data['user_id'])
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
-    self.state = session_data['state'] and session_data['state'] and pickle.loads(session_data['state']) or {}
+    self.state = 'state' in session_data and session_data['state'] and pickle.loads(session_data['state']) or {}
 
   def save_state(self):
     if not self._verified:
