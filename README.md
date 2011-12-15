@@ -8,7 +8,7 @@ Features
 --------
 * Uses JSON for easy consumption by clients on any platform
 * Easy to add new methods
-* Simple authentication built in with HMAC verification for authenticated requests
+* Simple authentication built in with HMAC-SHA1 verification for authenticated requests
 * Session state persistence for authenticated requests
 * Sessions stored in database to simplify scaling across servers
 
