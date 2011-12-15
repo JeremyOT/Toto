@@ -35,8 +35,8 @@ class SimpleAPIHandler(RequestHandler):
     headers = self.request.headers
     response = {}
     try:
-      if 'x-session-id' in headers:
-        self.session = self.connection.retrieve_session(headers['x-session-id'], 'x-hmac' in headers and headers['x-hmac'] or None, self.request.body)
+      if 'x-simple-session-id' in headers:
+        self.session = self.connection.retrieve_session(headers['x-simple-session-id'], 'x-simple-hmac' in headers and headers['x-simple-hmac'] or None, self.request.body)
       body = json.loads(self.request.body)
       if 'method' not in body:
         raise SimpleAPIError(ERROR_MISSING_METHOD, 'Missing method.')
@@ -51,7 +51,7 @@ class SimpleAPIHandler(RequestHandler):
     if response is not None:
       response_body = json.dumps(response)
       if self.session:
-        self.set_header('x-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
+        self.set_header('x-simple-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous') or not method.async:
       self.finish()
