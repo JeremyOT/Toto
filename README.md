@@ -59,10 +59,12 @@ automatically be sent to the client and no x-hmac header will be generated._
 Requests
 -----------
 Non-authenticated methods:
+
 1. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`.
 2. Parse response JSON.
 
 Account Creation:
+
 1. Call `account.create` method with `{"user_id": <user_id>, "password": <password>}`.
 2. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac` 
 header in the response.
@@ -70,6 +72,7 @@ header in the response.
 4. Read and store `session_id` from the response object.
 
 Login:
+
 1. Call `account.login` method with `{"user_id": <user_id>, "password": <password>}`.
 2. Verify that the HMAC of the response body with `<user_id>` as the key matches the `x-hmac`
 header in the response.
@@ -77,6 +80,7 @@ header in the response.
 4. Read and store `session_id` from the response object.
 
 Authenticated methods:
+
 1. Login (see-above).
 2. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`
 with the `x-session-id` header set to the session ID returned from login and the `x-hmac` header
