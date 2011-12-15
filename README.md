@@ -60,7 +60,7 @@ Requests
 -----------
 Non-authenticated methods:
 
-1. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`.
+1. Call service with JSON object in the form: `{"method": "a.b.c", "parameters": <parameters>}`.
 2. Parse response JSON.
 
 Account Creation:
@@ -82,7 +82,7 @@ header in the response.
 Authenticated methods:
 
 1. Login (see-above).
-2. Call service with JSON object in the form: `{"method": "a.b.c", 'parameters': <parameters>}`
+2. Call service with JSON object in the form: `{"method": "a.b.c", "parameters": <parameters>}`
 with the `x-session-id` header set to the session ID returned from login and the `x-hmac` header
 set to the SHA1 HMAC generated with `<user_id>` as the key and the JSON request string as
 the message.
