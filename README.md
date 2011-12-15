@@ -33,6 +33,7 @@ accounts framework.
 
 `handler.session` provides access to the current session or `None` if not authenticated.
 Available properties:
+
 * `session.user_id` - the current user ID
 * `session.expires` - the unix timestamp when the session will expire
 * `session.session_id` - the current session ID
