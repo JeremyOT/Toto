@@ -27,8 +27,10 @@ class SimpleAPIHandler(RequestHandler):
       method = getattr(method, method_path.pop(0))
     return method
 
+  @web.asynchronous
   def post(self):
     self.session = None
+    self.__method = None
     headers = self.request.headers
     response = {}
     try:
@@ -39,16 +41,23 @@ class SimpleAPIHandler(RequestHandler):
         raise SimpleAPIError(ERROR_MISSING_METHOD, 'Missing method.')
       if 'parameters' not in body:
         raise SimpleAPIError(ERROR_MISSING_PARAMS, 'Missing parameters.')
-      method = self.__get_method(body['method'])
-      response['result'] = method.invoke(self, body['parameters'])
+      self.__method = self.__get_method(body['method'])
+      response['result'] = self.__method.invoke(self, body['parameters'])
     except SimpleAPIError as e:
       response['error'] = e.__dict__
     except Exception as e:
       response['error'] = SimpleAPIError(ERROR_SERVER, str(e)).__dict__
-    response_body = json.dumps(response)
-    if self.session:
-      self.set_header('x-hmac', hmac.new(str(self.session.user_id), response_body, hashlib.sha1).hexdigest())
-    self.write(response_body)
+    if response is not None:
+      response_body = json.dumps(response)
+      if self.session:
+        self.set_header('x-hmac', hmac.new(str(self.session.user_id), response_body, hashlib.sha1).hexdigest())
+      self.write(response_body)
+    if not hasattr(self.__method, 'asynchronous') or not method.async:
+      self.finish()
+
+  def on_connection_close(self):
+    if hasattr(self.__method, 'on_connection_close'):
+      self.__method.on_connection_close();
 
 define("database", default="mongodb", help="'mongodb' or 'mysql' (default 'mongodb')")
 define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
