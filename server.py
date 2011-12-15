@@ -9,15 +9,17 @@ import simpleapi
 from simpleapi.exceptions import *
 from time import time
 from tornado.options import define, options
-#from mysqldbconnection import MySQLdbConnection
 
-class RPCHandler(RequestHandler):
+class SimpleAPIHandler(RequestHandler):
 
   SUPPORTED_METHODS = ["POST",]
 
   def initialize(self, connection):
     self.connection = connection
 
+  """
+    Lookup method by name: a.b.c loads api/a/b/c.py
+  """
   def __get_method(self, method_name):
     method_path = method_name.split('.')
     method = simpleapi
@@ -34,15 +36,15 @@ class RPCHandler(RequestHandler):
         self.session = self.connection.retrieve_session(headers['x-session-id'], 'x-hmac' in headers and headers['x-hmac'] or None, self.request.body)
       body = json.loads(self.request.body)
       if 'method' not in body:
-        raise RPCError(ERROR_MISSING_METHOD, 'Missing method.')
+        raise SimpleAPIError(ERROR_MISSING_METHOD, 'Missing method.')
       if 'parameters' not in body:
-        raise RPCError(ERROR_MISSING_PARAMS, 'Missing parameters.')
+        raise SimpleAPIError(ERROR_MISSING_PARAMS, 'Missing parameters.')
       method = self.__get_method(body['method'])
       response['result'] = method.invoke(self, body['parameters'])
-    except RPCError as e:
+    except SimpleAPIError as e:
       response['error'] = e.__dict__
-#    except Exception as e:
-#      response['error'] = RPCError(ERROR_SERVER, str(e)).__dict__
+    except Exception as e:
+      response['error'] = SimpleAPIError(ERROR_SERVER, str(e)).__dict__
     response_body = json.dumps(response)
     if self.session:
       self.set_header('x-hmac', hmac.new(str(self.session.user_id), response_body, hashlib.sha1).hexdigest())
@@ -70,7 +72,7 @@ elif options.database == "mysql":
   connection = MySQLdbConnection(options.mysql_host, mysql_database, mysql_user, mysql_password)
 
 application = Application([
-  (r"/", RPCHandler, {'connection': connection}),
+  (r"/", SimpleAPIHandler, {'connection': connection}),
 ])
 
 if __name__ == "__main__":

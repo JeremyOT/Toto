@@ -1,4 +1,3 @@
-from simpleapi.exceptions import *
 import login
 
 def invoke(handler, params):

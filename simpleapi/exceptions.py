@@ -7,7 +7,7 @@ ERROR_USER_ID_EXISTS = 1006
 ERROR_INVALID_SESSION_ID = 1007
 ERROR_INVALID_HMAC = 1008
 
-class RPCError(Exception):
+class SimpleAPIError(Exception):
   def __init__(self, code, value):
     self.value = value
     self.code = code

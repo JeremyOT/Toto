@@ -1,7 +1,3 @@
-import time
-import datetime
-from simpleapi.exceptions import *
-import uuid
 
 def invoke(handler, params):
   handler.session = handler.connection.create_session(params['user_id'], params['password'])
