@@ -59,11 +59,11 @@ class SimpleAPIHandler(RequestHandler):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close();
 
-define("database", default="mongodb", help="'mongodb' or 'mysql' (default 'mongodb')")
+define("database", metavar='mysql|mongodb', default="mongodb", help="the database driver to use (default 'mongodb')")
 define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
-define("mysql_database", help="Main MySQL schema name")
-define("mysql_user", help="Main MySQL user")
-define("mysql_password", help="Main MySQL user password")
+define("mysql_database", type=str, help="Main MySQL schema name")
+define("mysql_user", type=str, help="Main MySQL user")
+define("mysql_password", type=str, help="Main MySQL user password")
 define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
 define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
 define("mongodb_database", default="simple_api_server", help="MongoDB database (default 'simple_api_server')")
