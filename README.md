@@ -53,9 +53,9 @@ It is important to remember that [Tornado][tornado] requires that all calls to `
 run on the main thread with `IOLoop.instance().add_callback(callback)`.
 
 _Note: Any data returned from a call to `method.invoke()` will be sent to the client as
-JSON data and be used to generate the x-simple-hmac header for verification. This may cause
+JSON data and be used to generate the `x-simple-hmac` header for verification. This may cause
 issues with asynchronous methods. If `method.invoke()` returns `None`, a response will not
-automatically be sent to the client and no x-simple-hmac header will be generated._
+automatically be sent to the client and no `x-simple-hmac` header will be generated._
 
 Requests
 -----------
