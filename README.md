@@ -13,11 +13,11 @@ Features
 * Sessions stored in database to simplify scaling across servers
 
 Configuration
--------------
+-------------toto
 TotoServer is comes configured to run on port 8888 and connect to a MongoDB server
 running on localhost. Configuration can be through server.conf or command line parameters
 (`--option='string value' --option=1234`) or a combination thereof - useful when launching
-multiple instances on different ports. Run `python server.py --help` for a full list of
+multiple instances on different ports. Run `python toto.py --help` for a full list of
 available parameters.
 
 Customization
