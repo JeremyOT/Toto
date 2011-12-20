@@ -1,4 +1,4 @@
-TotoServer
+Toto
 ===============
 TotoServer is a small framework intended to accelerate API server development. It is
 built on top of [Tornado][tornado] and can currently use either [MySQL][mysql] or [MongoDB][mongodb] as a
