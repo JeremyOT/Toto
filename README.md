@@ -1,6 +1,6 @@
-SimpleAPIServer
+TotoServer
 ===============
-SimpleAPIServer is a small framework intended to accelerate API server development. It is
+TotoServer is a small framework intended to accelerate API server development. It is
 built on top of [Tornado][tornado] and can currently use either [MySQL][mysql] or [MongoDB][mongodb] as a
 backing database.
 
@@ -14,7 +14,7 @@ Features
 
 Configuration
 -------------
-SimpleAPIServer is comes configured to run on port 8888 and connect to a MongoDB server
+TotoServer is comes configured to run on port 8888 and connect to a MongoDB server
 running on localhost. Configuration can be through server.conf or command line parameters
 (`--option='string value' --option=1234`) or a combination thereof - useful when launching
 multiple instances on different ports. Run `python server.py --help` for a full list of
@@ -23,9 +23,9 @@ available parameters.
 Customization
 -------------
 Methods are referenced by name in each request. `a.b.c` maps to `a/b/c.py`. To add new
-methods, add modules and packages to the simpleapi package (see the account package for
+methods, add modules and packages to the `toto` package (see the account package for
 reference) and ensure that each callable module defines `invoke(handler, parameters)`
-where `handler` is the `SimpleAPIHandler` (subclass of `tornado.web.RequestHandler`) handling
+where `handler` is the `TotoHandler` (subclass of `tornado.web.RequestHandler`) handling
 the current request.
 
 `handler.connection.db` provides direct access to the database used by the sessions and
@@ -53,9 +53,9 @@ It is important to remember that [Tornado][tornado] requires that all calls to `
 run on the main thread with `IOLoop.instance().add_callback(callback)`.
 
 _Note: Any data returned from a call to `method.invoke()` will be sent to the client as
-JSON data and be used to generate the `x-simple-hmac` header for verification. This may cause
+JSON data and be used to generate the `x-toto-hmac` header for verification. This may cause
 issues with asynchronous methods. If `method.invoke()` returns `None`, a response will not
-automatically be sent to the client and no `x-simple-hmac` header will be generated._
+automatically be sent to the client and no `x-toto-hmac` header will be generated._
 
 Requests
 -----------
@@ -67,7 +67,7 @@ Non-authenticated methods:
 Account Creation:
 
 1. Call `account.create` method with `{"user_id": <user_id>, "password": <password>}`.
-2. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-simple-hmac` 
+2. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-toto-hmac` 
 header in the response.
 3. Parse response JSON.
 4. Read and store `session_id` from the response object.
@@ -75,7 +75,7 @@ header in the response.
 Login:
 
 1. Call `account.login` method with `{"user_id": <user_id>, "password": <password>}`.
-2. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-simple-hmac` 
+2. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-toto-hmac` 
 header in the response.
 3. Parse response JSON.
 4. Read and store `session_id` from the response object.
@@ -84,10 +84,10 @@ Authenticated methods:
 
 1. Login (see-above).
 2. Call service with JSON object in the form: `{"method": "a.b.c", "parameters": <parameters>}`
-with the `x-simple-session-id` header set to the session ID returned from login and the `x-simple-hmac` header
+with the `x-toto-session-id` header set to the session ID returned from login and the `x-toto-hmac` header
 set to the base64 encoded HMAC-SHA1 generated with `<user_id>` as the key and the JSON request string as
 the message.
-3. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-simple-hmac` 
+3. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-toto-hmac` 
 header in the response.
 4. Parse response JSON.
 

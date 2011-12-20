@@ -5,13 +5,13 @@ from tornado.ioloop import *
 import json
 import hashlib
 import hmac
-import simpleapi
-from simpleapi.exceptions import *
+import toto
+from toto.exceptions import *
 from time import time
 from tornado.options import define, options
 import base64
 
-class SimpleAPIHandler(RequestHandler):
+class TotoHandler(RequestHandler):
 
   SUPPORTED_METHODS = ["POST",]
 
@@ -23,7 +23,7 @@ class SimpleAPIHandler(RequestHandler):
   """
   def __get_method(self, method_name):
     method_path = method_name.split('.')
-    method = simpleapi
+    method = toto
     while method_path:
       method = getattr(method, method_path.pop(0))
     return method
@@ -35,23 +35,23 @@ class SimpleAPIHandler(RequestHandler):
     headers = self.request.headers
     response = {}
     try:
-      if 'x-simple-session-id' in headers:
-        self.session = self.connection.retrieve_session(headers['x-simple-session-id'], 'x-simple-hmac' in headers and headers['x-simple-hmac'] or None, self.request.body)
+      if 'x-toto-session-id' in headers:
+        self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
       body = json.loads(self.request.body)
       if 'method' not in body:
-        raise SimpleAPIError(ERROR_MISSING_METHOD, 'Missing method.')
+        raise TotoError(ERROR_MISSING_METHOD, 'Missing method.')
       if 'parameters' not in body:
-        raise SimpleAPIError(ERROR_MISSING_PARAMS, 'Missing parameters.')
+        raise TotoError(ERROR_MISSING_PARAMS, 'Missing parameters.')
       self.__method = self.__get_method(body['method'])
       response['result'] = self.__method.invoke(self, body['parameters'])
-    except SimpleAPIError as e:
+    except TotoError as e:
       response['error'] = e.__dict__
     except Exception as e:
-      response['error'] = SimpleAPIError(ERROR_SERVER, str(e)).__dict__
+      response['error'] = TotoError(ERROR_SERVER, str(e)).__dict__
     if response is not None:
       response_body = json.dumps(response)
       if self.session:
-        self.set_header('x-simple-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
+        self.set_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous') or not method.async:
       self.finish()
@@ -67,10 +67,10 @@ define("mysql_user", type=str, help="Main MySQL user")
 define("mysql_password", type=str, help="Main MySQL user password")
 define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
 define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
-define("mongodb_database", default="simple_api_server", help="MongoDB database (default 'simple_api_server')")
+define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
 define("port", default=8888, help="The port to run this server on (default 8888)")
 
-tornado.options.parse_config_file("server.conf")
+tornado.options.parse_config_file("toto.conf")
 tornado.options.parse_command_line()
 
 connection = None
@@ -82,7 +82,7 @@ elif options.database == "mysql":
   connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
 
 application = Application([
-  (r"/", SimpleAPIHandler, {'connection': connection}),
+  (r"/", TotoHandler, {'connection': connection}),
 ])
 
 if __name__ == "__main__":
