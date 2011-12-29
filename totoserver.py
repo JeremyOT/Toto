@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import toto
 from toto.exceptions import *
+from toto.invocation import *
 from time import time
 from tornado.options import define, options
 import base64
@@ -26,7 +27,7 @@ class TotoHandler(RequestHandler):
     method = toto
     while method_path:
       method = getattr(method, method_path.pop(0))
-    return method
+    return method.invoke
 
   @asynchronous
   def post(self):
@@ -39,21 +40,23 @@ class TotoHandler(RequestHandler):
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
       body = json.loads(self.request.body)
       if 'method' not in body:
-        raise TotoError(ERROR_MISSING_METHOD, 'Missing method.')
-      if 'parameters' not in body:
-        raise TotoError(ERROR_MISSING_PARAMS, 'Missing parameters.')
+        raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       self.__method = self.__get_method(body['method'])
-      response['result'] = self.__method.invoke(self, body['parameters'])
-    except TotoError as e:
+      if not 'parameters' in body:
+        raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
+      if not self.session and hasattr(self.__method, 'authenticated'):
+        raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
+      response['result'] = self.__method(self, body['parameters'])
+    except TotoException as e:
       response['error'] = e.__dict__
     except Exception as e:
-      response['error'] = TotoError(ERROR_SERVER, str(e)).__dict__
+      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
     if response is not None:
       response_body = json.dumps(response)
       if self.session:
         self.set_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
-    if not hasattr(self.__method, 'asynchronous') or not method.async:
+    if not hasattr(self.__method, 'asynchronous'):
       self.finish()
 
   def on_connection_close(self):

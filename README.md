@@ -40,8 +40,12 @@ Available properties:
 * `session.state` - a python dict containing the current state, you must call
 `session.save_state()` to persist any changes
 
-Method modules can take advantage of [Tornado's][tornado] non-blocking features by setting
-the optional module attribute `asynchronous = True`. When the asynchronous operation is
+To enforce authentication for any method, decorate the `invoke()` function with
+`@toto.invocation.authenticated`. Unauthorized attempts to call authenticated methods
+will return a not authorized error.
+
+Method modules can take advantage of [Tornado's][tornado] non-blocking features by decorating
+an `invoke()` function with `@toto.invocation.asynchronous`. When the asynchronous operation is
 complete you must call `handler.finish()` in order to finish the request. Data can be sent
 to the client with `handler.write()` and `handler.flush()`. Optionally, modules can
 implement `on_connection_close()` to clean up any resources if the client closes the

@@ -8,9 +8,10 @@ ERROR_INVALID_SESSION_ID = 1007
 ERROR_INVALID_HMAC = 1008
 ERROR_INVALID_RESPONSE_HMAC = 1009
 
-class TotoError(Exception):
+class TotoException(Exception):
   def __init__(self, code, value):
     self.value = value
     self.code = code
   def __str__(self):
     return json.dumps(self.__dict__)
+
