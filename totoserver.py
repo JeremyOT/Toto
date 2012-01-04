@@ -12,6 +12,23 @@ from time import time
 from tornado.options import define, options
 import base64
 
+define("database", metavar='mysql|mongodb', default="mongodb", help="the database driver to use (default 'mongodb')")
+define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
+define("mysql_database", type=str, help="Main MySQL schema name")
+define("mysql_user", type=str, help="Main MySQL user")
+define("mysql_password", type=str, help="Main MySQL user password")
+define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
+define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
+define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
+define("port", default=8888, help="The port to run this server on (default 8888)")
+define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
+
+tornado.options.parse_config_file("toto.conf")
+tornado.options.parse_command_line()
+
+if options.bson_enabled:
+  from bson import BSON as bson
+
 class TotoHandler(RequestHandler):
 
   SUPPORTED_METHODS = ["POST",]
@@ -38,7 +55,11 @@ class TotoHandler(RequestHandler):
     try:
       if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
-      body = json.loads(self.request.body)
+      use_bson = options.bson_enabled and 'content-type' in headers and headers['content-type'] == 'application/bson'
+      if use_bson:
+        body = bson(self.request.body).decode()
+      else:
+        body = json.loads(self.request.body)
       if 'method' not in body:
         raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       self.__method = self.__get_method(body['method'])
@@ -52,9 +73,14 @@ class TotoHandler(RequestHandler):
     except Exception as e:
       response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
     if response is not None:
-      response_body = json.dumps(response)
+      if use_bson:
+        self.add_header('content-type', 'application/bson')
+        response_body = str(bson.encode(response))
+      else:
+        self.add_header('content-type', 'application/json')
+        response_body = json.dumps(response)
       if self.session:
-        self.set_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
+        self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous'):
       self.finish()
@@ -62,19 +88,6 @@ class TotoHandler(RequestHandler):
   def on_connection_close(self):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close();
-
-define("database", metavar='mysql|mongodb', default="mongodb", help="the database driver to use (default 'mongodb')")
-define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
-define("mysql_database", type=str, help="Main MySQL schema name")
-define("mysql_user", type=str, help="Main MySQL user")
-define("mysql_password", type=str, help="Main MySQL user password")
-define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
-define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
-define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
-define("port", default=8888, help="The port to run this server on (default 8888)")
-
-tornado.options.parse_config_file("toto.conf")
-tornado.options.parse_command_line()
 
 connection = None
 if options.database == "mongodb":
