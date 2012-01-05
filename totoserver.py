@@ -65,8 +65,6 @@ class TotoHandler(RequestHandler):
       self.__method = self.__get_method(body['method'])
       if not 'parameters' in body:
         raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
-      if not self.session and hasattr(self.__method, 'authenticated'):
-        raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
       response['result'] = self.__method(self, body['parameters'])
     except TotoException as e:
       response['error'] = e.__dict__
