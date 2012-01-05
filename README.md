@@ -44,6 +44,9 @@ To enforce authentication for any method, decorate the `invoke()` function with
 `@toto.invocation.authenticated`. Unauthorized attempts to call authenticated methods
 will return a not authorized error.
 
+Required parameters can be specified by decorating an `invoke()` function with
+`@toto.invocation.requires(param1, param2,...)`.
+
 Method modules can take advantage of [Tornado's][tornado] non-blocking features by decorating
 an `invoke()` function with `@toto.invocation.asynchronous`. When the asynchronous operation is
 complete you must call `handler.finish()` in order to finish the request. Data can be sent
