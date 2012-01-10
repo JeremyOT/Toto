@@ -13,7 +13,7 @@ Features
 * Sessions stored in database to simplify scaling across servers
 
 Configuration
--------------toto
+-------------
 TotoServer is comes configured to run on port 8888 and connect to a MongoDB server
 running on localhost. Configuration can be through server.conf or command line parameters
 (`--option='string value' --option=1234`) or a combination thereof - useful when launching
@@ -101,6 +101,15 @@ header in the response.
 _Note: These instructions assume that `method.invoke()` returns an object to be serialized
 and sent to the client. Methods that return None can be used the send any data and must be
 handled accordingly._
+
+Daemonization
+=============
+The Toto server can be run as a daemon by passing the argument `--daemon=start`. To stop any running processes pass
+`--daemon=stop`. This will stop any processes that share the specified pid file format (default `toto.pid`). The
+`--processes=<n>` option may be used to specify the number of server instances to run. Multiple instances will be run
+on sequential ports starting at the port specified by `--port`. If `0` is used as the argument to `--processes`, Toto
+will run one process per cpu as detected by Python's `multiprocessing` module. Additional daemonization options can
+be viewed from `--help`.
 
 [tornado]:http://www.tornadoweb.org
 [mysql]:http://www.mysql.com
