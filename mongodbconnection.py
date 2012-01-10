@@ -74,3 +74,12 @@ class MongoDBConnection():
     self.db.accounts.update({'user_id': user_id, 'password': self.password_hash(user_id, password)}, {'$set': {'password': self.password_hash(user_id, new_password)}})
     self.clear_sessions(user_id)
 
+  def generate_password(self, user_id):
+    account = self.db.accounts.find_one({'user_id': user_id})
+    if not account:
+      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
+    pass_chars = string.ascii_letters + string.digits 
+    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
+    self.db.accounts.update({'user_id': user_id, {'$set': {'password': self.password_hash(user_id, new_password)}})
+    self.clear_sessions(user_id)
+    return new_password

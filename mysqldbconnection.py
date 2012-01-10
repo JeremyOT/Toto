@@ -7,6 +7,8 @@ import uuid
 import cPickle as pickle
 import hmac
 import hashlib
+import random
+import string
 
 class MySQLdbSession():
   _verified = False
@@ -74,3 +76,12 @@ class MySQLdbConnection():
     self.db.execute("update account set password = %s where account_id = %s", self.password_hash(user_id, new_password), account['account_id'])
     self.clear_sessions(user_id)
 
+  def generate_password(self, user_id):
+    account = self.db.get("select account_id, user_id from account where user_id = %s", user_id)
+    if not account:
+      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
+    pass_chars = string.ascii_letters + string.digits
+    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
+    self.db.execute("update account set password = %s where account_id = %s", self.password_hash(user_id, new_password), account['account_id'])
+    self.clear_sessions(user_id)
+    return new_password
