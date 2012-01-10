@@ -20,8 +20,11 @@ define("mysql_password", type=str, help="Main MySQL user password")
 define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
 define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
 define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
-define("port", default=8888, help="The port to run this server on (default 8888)")
+define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port. (default 8888)")
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
+define("daemon", metavar='start|stop', help="Start or stop this script as a daemon process. Requires the multiprocessing module.")
+define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
+define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 
 tornado.options.parse_config_file("toto.conf")
 tornado.options.parse_command_line()
@@ -95,12 +98,52 @@ elif options.database == "mysql":
   from mysqldbconnection import MySQLdbConnection
   connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
 
-application = Application([
-  (r"/", TotoHandler, {'connection': connection}),
-])
+def run_server(port):
+  application = Application([
+    (r"/", TotoHandler, {'connection': connection}),
+  ])
 
-if __name__ == "__main__":
-  application.listen(options.port)
-  print "Starting server on port %s." % options.port
+  application.listen(port)
+  print "Starting server on port %s" % port
   IOLoop.instance().start()
 
+if __name__ == "__main__":
+  if options.daemon:
+    import multiprocessing, os
+    count = options.processes or multiprocessing.cpu_count()
+    pidformat = (options.pidfile.endswith('.pid') and options.pidfile[:-4] or options.pidfile) + ".%d.pid"
+    if not pidformat.startswith('/'):
+      pidformat = os.path.join(os.getcwd(), pidformat)
+    if options.daemon == 'stop':
+      import signal, re
+      pattern = pidformat.replace(".","\\.").replace("%d","\d+")
+      piddir = os.path.dirname(pattern)
+      for fn in os.listdir(os.path.dirname(pattern)):
+        pidfile = os.path.join(piddir, fn)
+        if re.match(pattern, pidfile):
+          with open(pidfile, 'r') as f:
+            pid = int(f.read())
+            os.kill(pid, signal.SIGTERM)
+            print "Stopped server %s" % pid 
+          os.remove(pidfile)
+
+    elif options.daemon == 'start':
+      def run_daemon_server(port, pidfile):
+        pid = os.fork()
+        if pid:
+          with open(pidfile, 'w') as f:
+            f.write(str(pid))
+        else:
+          run_server(port)
+
+      for i in xrange(count):
+        pidfile = pidformat % i
+        if os.path.exists(pidfile):
+          print "Skipping %d, pidfile exists at %s" % (i, pidfile)
+          continue
+        p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
+        p.start()
+    else:
+      print "Invalid daemon option: " + options.daemon
+  else:
+    run_server(options.port)
