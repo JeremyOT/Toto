@@ -40,10 +40,14 @@ class MySQLdbConnection():
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
-  def create_account(self, user_id, password):
+  def create_account(self, user_id, password, additional_values={}):
     if self.db.get("select account_id from account where user_id = %s", user_id):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-    self.db.execute("insert into account (user_id, password) values (%s, %s)", user_id, self.password_hash(user_id, password))
+    values = {}
+    values.update(additional_values)
+    values['user_id'] = user_id
+    values['password'] = self.password_hash(user_id, password)
+    self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", [values[k] for k in values])
 
   def create_session(self, user_id, password, ttl=0):
     expires = time() + (ttl or self.default_session_ttl)

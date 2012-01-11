@@ -38,10 +38,14 @@ class MongoDBConnection():
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
-  def create_account(self, user_id, password):
+  def create_account(self, user_id, password, additional_values={}):
     if self.db.accounts.find_one({'user_id': user_id}):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-    self.db.accounts.insert({'user_id': user_id, 'password': self.password_hash(user_id, password)})
+      values = {}
+      values.update(additional_values)
+      values['user_id'] = user_id
+      values['password'] = self.password_hash(user_id, password)
+    self.db.accounts.insert(values)
 
   def create_session(self, user_id, password, ttl=0):
     expires = time() + (ttl or self.default_session_ttl)
@@ -80,6 +84,6 @@ class MongoDBConnection():
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     pass_chars = string.ascii_letters + string.digits 
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.accounts.update({'user_id': user_id, {'$set': {'password': self.password_hash(user_id, new_password)}})
+    self.db.accounts.update({'user_id': user_id}, {'$set': {'password': self.password_hash(user_id, new_password)}})
     self.clear_sessions(user_id)
     return new_password
