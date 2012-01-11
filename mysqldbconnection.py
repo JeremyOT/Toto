@@ -47,7 +47,7 @@ class MySQLdbConnection():
     values.update(additional_values)
     values['user_id'] = user_id
     values['password'] = self.password_hash(user_id, password)
-    self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", [values[k] for k in values])
+    self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
   def create_session(self, user_id, password, ttl=0):
     expires = time() + (ttl or self.default_session_ttl)
