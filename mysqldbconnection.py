@@ -41,7 +41,7 @@ class MySQLdbConnection():
     def safe_execute(*args, **kargs):
       try:
         return o_execute(*args, **kargs)
-      except OpterationError:
+      except OperationalError:
         self.reconnect()
         return o_execute(*args, **kargs)
     self.db._execute = safe_execute
