@@ -90,15 +90,15 @@ class TotoHandler(RequestHandler):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close();
 
-connection = None
-if options.database == "mongodb":
-  from mongodbconnection import MongoDBConnection
-  connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database)
-elif options.database == "mysql":
-  from mysqldbconnection import MySQLdbConnection
-  connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
-
 def run_server(port):
+  connection = None
+  if options.database == "mongodb":
+    from mongodbconnection import MongoDBConnection
+    connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database)
+  elif options.database == "mysql":
+    from mysqldbconnection import MySQLdbConnection
+    connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
+
   application = Application([
     (r"/", TotoHandler, {'connection': connection}),
   ])
