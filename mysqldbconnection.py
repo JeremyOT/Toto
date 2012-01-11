@@ -36,6 +36,15 @@ class MySQLdbConnection():
 
   def __init__(self, host, database, username, password):
     self.db = Connection(host, database, username, password)
+    #hack to automatically reconnect
+    o_execute = self.db._execute
+    def safe_execute(*args, **kargs):
+      try:
+        return o_execute(*args, **kargs)
+      except OpterationError:
+        self.reconnect()
+        return o_execute(*args, **kargs)
+    self.db._execute = safe_execute
 
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
