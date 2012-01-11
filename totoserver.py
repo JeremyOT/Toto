@@ -55,10 +55,10 @@ class TotoHandler(RequestHandler):
     self.__method = None
     headers = self.request.headers
     response = {}
+    use_bson = options.bson_enabled and 'content-type' in headers and headers['content-type'] == 'application/bson'
     try:
       if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
-      use_bson = options.bson_enabled and 'content-type' in headers and headers['content-type'] == 'application/bson'
       if use_bson:
         body = bson(self.request.body).decode()
       else:
@@ -107,16 +107,23 @@ def run_server(port):
   print "Starting server on port %s" % port
   IOLoop.instance().start()
 
+
 if __name__ == "__main__":
   if options.daemon:
     import multiprocessing, os
-    count = options.processes or multiprocessing.cpu_count()
-    pidformat = (options.pidfile.endswith('.pid') and options.pidfile[:-4] or options.pidfile) + ".%d.pid"
-    if not pidformat.startswith('/'):
-      pidformat = os.path.join(os.getcwd(), pidformat)
+    #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
+    def path_with_id(p, i):
+      (d, f) = os.path.split(os.path.abspath(p))
+      components = f.rsplit('.', 1)
+      f = '%s.%s' % (components[0], i)
+      if len(components) > 1:
+        f += "." + components[1]
+      return os.path.join(d, f)
+
+    count = options.processes > 0 and options.processes or multiprocessing.cpu_count()
     if options.daemon == 'stop':
       import signal, re
-      pattern = pidformat.replace(".","\\.").replace("%d","\d+")
+      pattern = path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
       piddir = os.path.dirname(pattern)
       for fn in os.listdir(os.path.dirname(pattern)):
         pidfile = os.path.join(piddir, fn)
@@ -128,16 +135,22 @@ if __name__ == "__main__":
           os.remove(pidfile)
 
     elif options.daemon == 'start':
+      import sys
       def run_daemon_server(port, pidfile):
-        pid = os.fork()
-        if pid:
-          with open(pidfile, 'w') as f:
-            f.write(str(pid))
-        else:
-          run_server(port)
+        #fork and only continue on child process
+        if not os.fork():
+          #detach from controlling terminal
+          os.setsid()
+          #fork again and write pid to pidfile from parent, run server on child
+          pid = os.fork()
+          if pid:
+            with open(pidfile, 'w') as f:
+              f.write(str(pid))
+          else:
+            run_server(port)
 
       for i in xrange(count):
-        pidfile = pidformat % i
+        pidfile = path_with_id(options.pidfile, i)
         if os.path.exists(pidfile):
           print "Skipping %d, pidfile exists at %s" % (i, pidfile)
           continue
