@@ -22,7 +22,7 @@ define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
 define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
 define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port. (default 8888)")
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
-define("daemon", metavar='start|stop', help="Start or stop this script as a daemon process. Requires the multiprocessing module.")
+define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Requires the multiprocessing module.")
 define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
       return os.path.join(d, f)
 
     count = options.processes > 0 and options.processes or multiprocessing.cpu_count()
-    if options.daemon == 'stop':
+    if options.daemon == 'stop' or options.daemon == 'restart':
       import signal, re
       pattern = path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
       piddir = os.path.dirname(pattern)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
             print "Stopped server %s" % pid 
           os.remove(pidfile)
 
-    elif options.daemon == 'start':
+    if options.daemon == 'start' or options.daemon == 'restart':
       import sys
       def run_daemon_server(port, pidfile):
         #fork and only continue on child process
@@ -156,7 +156,7 @@ if __name__ == "__main__":
           continue
         p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
         p.start()
-    else:
+    if options.daemon not in ('start', 'stop', 'restart'):
       print "Invalid daemon option: " + options.daemon
   else:
     run_server(options.port)
