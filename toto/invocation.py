@@ -4,7 +4,7 @@ from exceptions import *
 This is a list of all attributes that may be added by a decorator,
 it is used to allow decorators to be order agnostic.
 """
-invocation_attributes = ["asynchronous",]
+invocation_attributes = ["asynchronous", "authenticated"]
 
 def __copy_attributes(fn, wrapper):
   for a in invocation_attributes:
@@ -21,6 +21,7 @@ def authenticated(fn):
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     return fn(handler, parameters)
   __copy_attributes(fn, wrapper)
+  wrapper.authenticated = True
   return wrapper
 
 def requires(*args):
