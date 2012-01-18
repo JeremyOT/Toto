@@ -41,10 +41,10 @@ class MongoDBConnection():
   def create_account(self, user_id, password, additional_values={}):
     if self.db.accounts.find_one({'user_id': user_id}):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-      values = {}
-      values.update(additional_values)
-      values['user_id'] = user_id
-      values['password'] = self.password_hash(user_id, password)
+    values = {}
+    values.update(additional_values)
+    values['user_id'] = user_id
+    values['password'] = self.password_hash(user_id, password)
     self.db.accounts.insert(values)
 
   def create_session(self, user_id, password, ttl=0):
