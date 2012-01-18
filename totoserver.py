@@ -34,7 +34,8 @@ if options.bson_enabled:
 
 class TotoHandler(RequestHandler):
 
-  SUPPORTED_METHODS = ["POST",]
+  SUPPORTED_METHODS = ["POST", "OPTIONS"]
+  ACCESS_CONTROL_ALLOW_ORIGIN = "*"
 
   def initialize(self, connection):
     self.connection = connection
@@ -49,6 +50,17 @@ class TotoHandler(RequestHandler):
       method = getattr(method, method_path.pop(0))
     return method.invoke
 
+  def options(self):
+    allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
+    if 'access-control-request-headers' in self.request.headers:
+      allowed_headers = allowed_headers.union(self.request.headers['access-control-request-headers'].lower().replace(' ','').split(','))
+    self.add_header('access-control-allow-headers', ','.join(allowed_headers))
+    if 'access-control-request-method' in self.request.headers and self.request.headers['access-control-request-method'] not in self.SUPPORTED_METHODS:
+      raise HTTPError(405, 'Method not supported')
+    self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
+    self.add_header('access-control-allow-methods', ','.join(self.SUPPORTED_METHODS))
+    self.add_header('access-control-expose-headers', 'x-toto-hmac')
+
   @asynchronous
   def post(self):
     self.session = None
@@ -56,6 +68,8 @@ class TotoHandler(RequestHandler):
     headers = self.request.headers
     response = {}
     use_bson = options.bson_enabled and 'content-type' in headers and headers['content-type'] == 'application/bson'
+    self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
+    self.add_header('access-control-expose-headers', 'x-toto-hmac')
     try:
       if use_bson:
         body = bson(self.request.body).decode()
@@ -71,8 +85,8 @@ class TotoHandler(RequestHandler):
       response['result'] = self.__method(self, body['parameters'])
     except TotoException as e:
       response['error'] = e.__dict__
-    except Exception as e:
-      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
+#    except Exception as e:
+#      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
     if response is not None:
       if use_bson:
         self.add_header('content-type', 'application/bson')
