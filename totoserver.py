@@ -78,15 +78,15 @@ class TotoHandler(RequestHandler):
       if 'method' not in body:
         raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       self.__method = self.__get_method(body['method'])
-      if 'x-toto-session-id' in headers and hasattr(self.__method, 'authenticated'):
+      if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
       if not 'parameters' in body:
         raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
       response['result'] = self.__method(self, body['parameters'])
     except TotoException as e:
       response['error'] = e.__dict__
-#    except Exception as e:
-#      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
+    except Exception as e:
+      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
     if response is not None:
       if use_bson:
         self.add_header('content-type', 'application/bson')

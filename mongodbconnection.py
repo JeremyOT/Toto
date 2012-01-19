@@ -61,7 +61,7 @@ class MongoDBConnection():
   def retrieve_session(self, session_id, hmac_data, data):
     session_data = self.db.sessions.find_one({'session_id': session_id, 'expires': {'$gt': time()}})
     if not session_data:
-      raise TotoException(ERROR_INVALID_SESSION_ID, "Invalid session ID")
+      return None
     session = MongoDBSession(self.db, session_data)
     if not hmac_data or hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")

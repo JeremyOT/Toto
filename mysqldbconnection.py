@@ -63,7 +63,7 @@ class MySQLdbConnection():
   def retrieve_session(self, session_id, hmac_data, data):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > UTC_TIMESTAMP", session_id)
     if not session_data:
-      raise TotoException(ERROR_INVALID_SESSION_ID, "Invalid session ID")
+      return None
     session = MySQLdbSession(self, session_data)
     if not hmac_data or hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
