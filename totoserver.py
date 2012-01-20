@@ -25,6 +25,7 @@ define("bson_enabled", default=False, help="Allows requests to use BSON with con
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Requires the multiprocessing module.")
 define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
+define("root", default="/", help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
 
 tornado.options.parse_config_file("toto.conf")
 tornado.options.parse_command_line()
@@ -114,7 +115,7 @@ def run_server(port):
     connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
 
   application = Application([
-    (r"/", TotoHandler, {'connection': connection}),
+    (options.root, TotoHandler, {'connection': connection}),
   ])
 
   application.listen(port)
