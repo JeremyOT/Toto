@@ -26,6 +26,7 @@ define("daemon", metavar='start|stop|restart', help="Start, stop or restart this
 define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 define("root", default="/", help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
+define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
 
 tornado.options.parse_config_file("toto.conf")
 tornado.options.parse_command_line()
@@ -36,7 +37,7 @@ if options.bson_enabled:
 class TotoHandler(RequestHandler):
 
   SUPPORTED_METHODS = ["POST", "OPTIONS"]
-  ACCESS_CONTROL_ALLOW_ORIGIN = "*"
+  ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
   def initialize(self, connection):
     self.connection = connection
@@ -105,7 +106,7 @@ class TotoHandler(RequestHandler):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close();
 
-def run_server(port):
+def __run_server(port):
   connection = None
   if options.database == "mongodb":
     from mongodbconnection import MongoDBConnection
