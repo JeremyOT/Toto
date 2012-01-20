@@ -1,6 +1,6 @@
 Toto
 ===============
-TotoServer is a small framework intended to accelerate API server development. It is
+Toto is a small framework intended to accelerate API server development. It is
 built on top of [Tornado][tornado] and can currently use either [MySQL][mysql] or [MongoDB][mongodb] as a
 backing database.
 
@@ -12,16 +12,30 @@ Features
 * Session state persistence for authenticated requests
 * Sessions stored in database to simplify scaling across servers
 
+Usage
+-----
+
+Getting started with Toto is easy, all you need to do is make a new instance of `toto.TotoServer`
+and call `run()`. Toto needs a root module to use for method lookup. By default, a `TotoServer`
+will look for a module called `methods`. The `method_module` parameter can be used to specify
+another module by name.
+
 Configuration
 -------------
-TotoServer is comes configured to run on port 8888 and connect to a MongoDB server
-running on localhost. Configuration can be through server.conf or command line parameters
-(`--option='string value' --option=1234`) or a combination thereof - useful when launching
-multiple instances on different ports. Run `python totoserver.py --help` for a full list of
-available parameters.
+By default, Toto is configured to run on port 8888 and connect to a MongoDB server
+running on localhost. Configuration can be performed in three ways with each overriding the last:
 
-Customization
--------------
+1. By passing options as named parameters to the `TotoServer` constructor.
+2. Through a configuration file by passing the path to the config file as the first parameter to
+   the `TotoServer` constructor.
+3. With command line parameters (`--option='string value' --option=1234`)
+
+Combining the configuration methods can be useful when debugging. Run your script with `--help`
+to see a full list of available parameters.
+
+Methods
+-------
+
 Methods are referenced by name in each request. `a.b.c` maps to `a/b/c.py`. To add new
 methods, add modules and packages to the `toto` package (see the account package for
 reference) and ensure that each callable module defines `invoke(handler, parameters)`

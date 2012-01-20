@@ -1,4 +1,0 @@
-pymongo
-tornado
-MySQL-python
-

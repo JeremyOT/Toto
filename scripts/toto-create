@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+import os
+from shutil import copytree
+from sys import argv
+
+if __name__ == '__main__':
+
+  template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
+  if len(argv) < 2:
+    print """
+  Usage:
+
+    The command `toto-create myproject` creates a basic toto server in 'myproject'.
+
+    A third parameter can be passed to specify a template to use when creating the
+    new Toto project (e.g.: `toto-create myproject simple` - uses the "simple"
+    template). If no template is specified, the "simple" template is used.
+
+  Available Templates:
+
+    %s
+    """ % '\n    '.join(os.listdir(template_path))
+
+  else:
+    template_name = len(argv) > 2 and argv[2] or 'simple'
+    deploy_path = os.path.abspath(argv[1])
+
+    print 'Generating new project in %s using "%s"...' % (deploy_path, template_name)
+    copytree(os.path.join(template_path, template_name), deploy_path)
+    print 'Ready to use.'
