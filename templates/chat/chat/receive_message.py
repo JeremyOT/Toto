@@ -5,10 +5,7 @@ from tornado.ioloop import IOLoop
 
 @asynchronous
 def invoke(handler, params):
-
   def receive_message(message):
-    def write_message():
-      handler.write(message)
-      handler.finish()
-    IOLoop.instance().add_callback(write_message)
+    handler.write(message)
+    handler.finish()
   EventManager.instance().register_handler("message", receive_message)

@@ -3,6 +3,7 @@ from urllib2 import Request, urlopen
 from threading import Thread
 from collections import deque
 from tornado.web import *
+from tornado.ioloop import IOLoop
 
 _private_event_key = ''
 _server_routes = []
@@ -39,10 +40,10 @@ class EventManager():
   def __init__(self):
     self.__handlers = {}
 
-  def register_handler(self, event_name, handler):
+  def register_handler(self, event_name, handler, run_on_main_loop=False):
     if not event_name in self.__handlers:
       self.__handlers[event_name] = deque()
-    self.__handlers[event_name].append(handler)
+    self.__handlers[event_name].append((handler, run_on_main_loop))
 
   def receive(self, event):
     event_name = event['name']
@@ -50,7 +51,13 @@ class EventManager():
     def event_thread():
       handlers = self.__handlers[event_name]
       for i in xrange(len(handlers)):
-        handlers.popleft()(event_args)
+        handler = handlers.popleft()
+        if handler[1]:
+          handler[0](event_args)
+        else:
+          def run():
+            handler[0](event_args)
+          IOLoop.instance().add_callback(run)
     if event_name in self.__handlers:
       Thread(target=event_thread).start()
   
