@@ -19,6 +19,7 @@ class TotoHandler(RequestHandler):
     self.__method_root = method_root
     self.connection = connection
     self.bson = options.bson_enabled and __import__('bson').BSON
+    self.bson_response = False
 
   """
     Lookup method by name: a.b.c loads api/a/b/c.py
@@ -47,9 +48,11 @@ class TotoHandler(RequestHandler):
     self.__method = None
     headers = self.request.headers
     response = {}
-    use_bson = self.bson and 'content-type' in headers and headers['content-type'] == 'application/bson'
+    self.bson_response = use_bson = self.bson and 'content-type' in headers and headers['content-type'] == 'application/bson'
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
+    result = None
+    error = None
     try:
       if use_bson:
         body = self.bson(self.request.body).decode()
@@ -62,22 +65,32 @@ class TotoHandler(RequestHandler):
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
       if not 'parameters' in body:
         raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
-      response['result'] = self.__method(self, body['parameters'])
+      result = self.__method(self, body['parameters'])
     except TotoException as e:
-      response['error'] = e.__dict__
+      error = e.__dict__
     except Exception as e:
-      response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
-    if response['result'] is not None or 'error' in response:
-      if use_bson:
-        self.add_header('content-type', 'application/bson')
-        response_body = str(self.bson.encode(response))
-      else:
-        self.add_header('content-type', 'application/json')
-        response_body = json.dumps(response)
-      if self.session:
-        self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
-      self.write(response_body)
-    if not hasattr(self.__method, 'asynchronous'):
+      error = TotoException(ERROR_SERVER, str(e)).__dict__
+    if result or errror:
+      self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
+    elif not hasattr(self.__method, 'asynchronous'):
+     self.finish()
+
+  def respond(result=None, error=None, finish=True):
+    response = {}
+    if result:
+      response['result'] = result
+    if error:
+      response['error'] = error
+    if self.bson_response:
+      self.add_header('content-type', 'application/bson')
+      response_body = str(self.bson.encode(response))
+    else:
+      self.add_header('content-type', 'application/json')
+      response_body = json.dumps(response)
+    if self.session:
+      self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
+    self.write(response_body)
+    if finish:
       self.finish()
 
   def on_connection_close(self):
