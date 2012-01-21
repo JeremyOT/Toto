@@ -78,7 +78,6 @@ class TotoHandler(RequestHandler):
         self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous'):
-      print "FINISH"
       self.finish()
 
   def on_connection_close(self):
