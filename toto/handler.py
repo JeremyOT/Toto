@@ -75,7 +75,7 @@ class TotoHandler(RequestHandler):
     elif not hasattr(self.__method, 'asynchronous'):
      self.finish()
 
-  def respond(result=None, error=None, finish=True):
+  def respond(self, result=None, error=None, finish=True):
     response = {}
     if result:
       response['result'] = result
