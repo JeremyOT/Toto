@@ -9,6 +9,7 @@ import base64
 
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
+define("debug",default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 
 class TotoHandler(RequestHandler):
 
@@ -69,13 +70,17 @@ class TotoHandler(RequestHandler):
     except TotoException as e:
       error = e.__dict__
     except Exception as e:
+      if options.debug:
+        raise e
       error = TotoException(ERROR_SERVER, str(e)).__dict__
     if result or error:
       self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
     elif not hasattr(self.__method, 'asynchronous'):
-     self.finish()
+      self.finish()
 
   def respond(self, result=None, error=None, finish=True):
+    if self._finished:
+      return
     response = {}
     if result:
       response['result'] = result
@@ -95,5 +100,5 @@ class TotoHandler(RequestHandler):
 
   def on_connection_close(self):
     if hasattr(self.__method, 'on_connection_close'):
-      self.__method.on_connection_close();
+      self.__method.on_connection_close(self);
 
