@@ -70,7 +70,7 @@ class TotoHandler(RequestHandler):
       error = e.__dict__
     except Exception as e:
       error = TotoException(ERROR_SERVER, str(e)).__dict__
-    if result or errror:
+    if result or error:
       self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
     elif not hasattr(self.__method, 'asynchronous'):
      self.finish()
