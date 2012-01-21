@@ -36,8 +36,8 @@ to see a full list of available parameters.
 Methods
 -------
 
-Methods are referenced by name in each request. `a.b.c` maps to `a/b/c.py`. To add new
-methods, add modules and packages to the `toto` package (see the account package for
+Methods are referenced by name in each request. `a.b.c` maps to `methods.a.b.c`. To add new
+methods, add modules and packages to the `methods` (or specified) package (see the account package for
 reference) and ensure that each callable module defines `invoke(handler, parameters)`
 where `handler` is the `TotoHandler` (subclass of `tornado.web.RequestHandler`) handling
 the current request.
@@ -115,6 +115,21 @@ header in the response.
 _Note: These instructions assume that `method.invoke()` returns an object to be serialized
 and sent to the client. Methods that return None can be used the send any data and must be
 handled accordingly._
+
+Events
+======
+Sometimes you may need to send events from one request to another. Toto's `toto.events.EventManager` makes this easy.
+
+To send an event use `EventManager.instance().send('eventname', args)`. EventManager uses python's `cPickle` module
+for serialization so you can pass anything cPickle can handle as `args`.
+
+To receive an event, you must register a handler with `EventManager.instance().register_handler('eventname', handler)`.
+`handler` is a function that takes one parameters and will be called with `args` when the `EventManager` sends an event
+with 'eventname'. Toto's events were primarily designed to be combined with tornado's support for non-blocking requests.
+See the "chat" template for an example.
+
+_Toto's event system supports sending events across multiple instances both on the same machine and in a distributed
+system. Run your server with --help for more configuration options_
 
 Daemonization
 =============

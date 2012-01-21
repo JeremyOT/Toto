@@ -1,3 +1,5 @@
+import events
+import os
 from tornado.web import *
 from tornado.ioloop import *
 from tornado.options import define, options
@@ -17,6 +19,8 @@ define("processes", default=1, help="The number of daemon processes to run, pass
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
 define("method_module", default='methods', help="The root module to use for method lookup (default method)")
+define("event_key", type=str, help="The string to use for the x-toto-event-key header when sending events to the event manager. By default this is auto generated on launch, but a value can be passed to facilitate sending events from external processes")
+define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
 
 class TotoServer():
 
@@ -42,6 +46,7 @@ class TotoServer():
 
     application = Application([
       (options.root, TotoHandler, {'method_root': self.__method, 'connection': connection}),
+      (os.path.join(options.root, 'event'), events.EventHandler)   
     ])
 
     application.listen(port)
@@ -49,8 +54,12 @@ class TotoServer():
     IOLoop.instance().start()
 
   def run(self): 
+    events.set_key(options.event_key)
+    if options.remote_instances:
+      for route in options.remote_instances.split(','):
+        events.add_route(os.path.append(route, 'event'))
     if options.daemon:
-      import multiprocessing, os
+      import multiprocessing
       #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
       def path_with_id(p, i):
         (d, f) = os.path.split(os.path.abspath(p))
@@ -90,13 +99,22 @@ class TotoServer():
               self.__run_server(port)
 
         for i in xrange(count):
+          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), 'event'))
+
+        for i in xrange(count):
           pidfile = path_with_id(options.pidfile, i)
           if os.path.exists(pidfile):
             print "Skipping %d, pidfile exists at %s" % (i, pidfile)
             continue
+
+          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), 'event'))
           p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
           p.start()
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
+
     else:
+      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), 'event')
+      events.add_route(event_route)
+      events.set_local_route(event_route)
       self.__run_server(options.port)

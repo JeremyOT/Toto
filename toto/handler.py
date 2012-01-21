@@ -41,7 +41,7 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-allow-methods', ','.join(self.SUPPORTED_METHODS))
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
 
-  @asynchronous
+  @tornado.web.asynchronous
   def post(self):
     self.session = None
     self.__method = None
@@ -67,7 +67,7 @@ class TotoHandler(RequestHandler):
       response['error'] = e.__dict__
     except Exception as e:
       response['error'] = TotoException(ERROR_SERVER, str(e)).__dict__
-    if response is not None:
+    if response['result'] is not None or 'error' in response:
       if use_bson:
         self.add_header('content-type', 'application/bson')
         response_body = str(self.bson.encode(response))
@@ -78,6 +78,7 @@ class TotoHandler(RequestHandler):
         self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
       self.write(response_body)
     if not hasattr(self.__method, 'asynchronous'):
+      print "FINISH"
       self.finish()
 
   def on_connection_close(self):
