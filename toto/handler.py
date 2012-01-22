@@ -73,7 +73,7 @@ class TotoHandler(RequestHandler):
       if options.debug:
         raise e
       error = TotoException(ERROR_SERVER, str(e)).__dict__
-    if result or error:
+    if result is not None or error:
       self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
     elif not hasattr(self.__method, 'asynchronous'):
       self.finish()
@@ -82,7 +82,7 @@ class TotoHandler(RequestHandler):
     if self._finished:
       return
     response = {}
-    if result:
+    if result is not None:
       response['result'] = result
     if error:
       response['error'] = error
