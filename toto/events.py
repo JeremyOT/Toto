@@ -39,11 +39,11 @@ class EventManager():
 
   def __init__(self):
     self.__handlers = {}
-
-  def register_handler(self, event_name, handler, run_on_main_loop=False):
+  
+  def register_handler(self, event_name, handler, run_on_main_loop=False, request_handler=None):
     if not event_name in self.__handlers:
       self.__handlers[event_name] = deque()
-    self.__handlers[event_name].append((handler, run_on_main_loop))
+    self.__handlers[event_name].append((handler, run_on_main_loop, request_handler))
 
   def receive(self, event):
     event_name = event['name']
@@ -52,6 +52,8 @@ class EventManager():
       handlers = self.__handlers[event_name]
       for i in xrange(len(handlers)):
         handler = handlers.popleft()
+        if handler[2] and handler[2]._finished:
+          continue
         if handler[1]:
           handler[0](event_args)
         else:
