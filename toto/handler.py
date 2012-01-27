@@ -6,6 +6,7 @@ from invocation import *
 from exceptions import *
 from tornado.options import define, options
 import base64
+from events import EventManager
 
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -101,4 +102,7 @@ class TotoHandler(RequestHandler):
   def on_connection_close(self):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close(self);
+
+  def register_event_handler(self, event_name, handler, run_on_main_loop=True):
+    EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
 
