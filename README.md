@@ -12,6 +12,11 @@ Features
 * Session state persistence for authenticated requests
 * Sessions stored in database to simplify scaling across servers
 
+Installation
+------------
+The simplest way to install Toto is with pip. Simply run `pip install -e git+git://github.com/JeremyOT/Toto.git#egg=Toto`
+to install the latest version of the Toto module on your machine.
+
 Usage
 -----
 
