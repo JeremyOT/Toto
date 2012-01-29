@@ -10,28 +10,56 @@ from events import EventManager
 
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
-define("debug",default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
+define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
+define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
 
 class TotoHandler(RequestHandler):
 
-  SUPPORTED_METHODS = ["POST", "OPTIONS"]
+  SUPPORTED_METHODS = ["POST", "OPTIONS", "GET"]
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
   def initialize(self, method_root, connection):
     self.__method_root = method_root
     self.connection = connection
     self.bson = options.bson_enabled and __import__('bson').BSON
-    self.bson_response = False
+    self.response_type = 'application/json'
 
+  @classmethod
+  def configure(cls):
+    if options.method_select == 'url':
+      def get_method_path(self, path, body):
+        if path:
+          self.method_path = path.split('/')
+        else:
+          raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
+      cls.__get_method_path = get_method_path
+    elif options.method_select == 'parameter':
+      def get_method_path(self, path, body):
+        if 'method' in body:
+          self.method_path = body['method'].split('.')
+        else:
+          raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
+      cls.__get_method_path = get_method_path
+    
   """
-    Lookup method by name: a.b.c loads api/a/b/c.py
+    The default method_select "both" (or any unsupported value) will
+    call this method. The class method configure() will update this
+    to a more efficient method according to the tornado.options
   """
-  def __get_method(self, method_name):
-    method_path = method_name.split('.')
+  def __get_method_path(self, path, body):
+    print "BOTH: %s ---- %s" % (path, body)
+    if path:
+      self.method_path = path.split('/')
+    elif 'method' in body:
+      self.method_path = body['method'].split('.')
+    else:
+      raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
+
+  def __get_method(self):
     method = self.__method_root
-    while method_path:
-      method = getattr(method, method_path.pop(0))
-    return method.invoke
+    for i in self.method_path:
+      method = getattr(method, i)
+    self.__method = method.invoke
 
   def options(self):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
@@ -43,31 +71,39 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-allow-methods', ','.join(self.SUPPORTED_METHODS))
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
+  
+  @tornado.web.asynchronous
+  def get(self, path=None):
+    self.body = {'parameters': None}
+    self.process_request(path)
 
   @tornado.web.asynchronous
-  def post(self):
+  def post(self, path=None):
+    if self.bson and 'content-type' in headers and headers['content-type'] == 'application/bson':
+      self.response_type = 'application/bson'
+      self.body = self.bson(self.request.body).decode()
+    else:
+      self.body = json.loads(self.request.body)
+    self.process_request(path)
+
+  def process_request(self, path=None):
     self.session = None
     self.__method = None
     headers = self.request.headers
     response = {}
-    self.bson_response = use_bson = self.bson and 'content-type' in headers and headers['content-type'] == 'application/bson'
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
     result = None
     error = None
     try:
-      if use_bson:
-        body = self.bson(self.request.body).decode()
-      else:
-        body = json.loads(self.request.body)
-      if 'method' not in body:
-        raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
-      self.__method = self.__get_method(body['method'])
+      self.__get_method_path(path, self.body)
+      print "Method Path: %s" % self.method_path
+      self.__get_method()
       if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
-      if not 'parameters' in body:
+      if not 'parameters' in self.body:
         raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
-      result = self.__method(self, body['parameters'])
+      result = self.__method(self, self.body['parameters'])
     except TotoException as e:
       error = e.__dict__
     except Exception as e:
@@ -80,6 +116,8 @@ class TotoHandler(RequestHandler):
       self.finish()
 
   def respond(self, result=None, error=None, finish=True):
+    print "Result: %s Error: %s Finish: %s" % (result, error, finish)
+    print "Finished: %s" % self._finished
     if self._finished:
       return
     response = {}
@@ -87,11 +125,10 @@ class TotoHandler(RequestHandler):
       response['result'] = result
     if error:
       response['error'] = error
-    if self.bson_response:
-      self.add_header('content-type', 'application/bson')
+    self.add_header('content-type', self.response_type)
+    if self.response_type == 'application/bson':
       response_body = str(self.bson.encode(response))
     else:
-      self.add_header('content-type', 'application/json')
       response_body = json.dumps(response)
     if self.session:
       self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))

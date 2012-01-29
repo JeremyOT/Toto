@@ -31,6 +31,7 @@ class TotoServer():
       tornado.options.parse_config_file(conf_file)
     tornado.options.parse_command_line()
     self.__method = __import__(options.method_module)
+    TotoHandler.configure()
 
   def __run_server(self, port):
     connection = None
@@ -45,8 +46,8 @@ class TotoServer():
       connection = FakeConnection()
 
     application = Application([
-      (options.root, TotoHandler, {'method_root': self.__method, 'connection': connection}),
-      (os.path.join(options.root, 'event'), events.EventHandler)   
+      (os.path.join(options.root, 'event'), events.EventHandler),
+      (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
     ])
 
     application.listen(port)
