@@ -36,7 +36,7 @@ to see a full list of available parameters.
 Methods
 -------
 
-Methods are referenced by name in each request. `a.b.c` maps to `methods.a.b.c`. To add new
+Methods are referenced by name in each request. `a.b.c` (or `a/b/c`) maps to `methods.a.b.c`. To add new
 methods, add modules and packages to the `methods` (or specified) package (see the account package for
 reference) and ensure that each callable module defines `invoke(handler, parameters)`
 where `handler` is the `TotoHandler` (subclass of `tornado.web.RequestHandler`) handling
@@ -82,7 +82,9 @@ Requests
 -----------
 Non-authenticated methods:
 
-1. Call service with JSON object in the form: `{"method": "a.b.c", "parameters": <parameters>}`.
+1. Call service with JSON object in the form: `{"method": "a.b.c", "parameters": <parameters>}`. Instead of passing
+the "method" argument in the request body, it is also possible to call methods by URL. The URL equivalent to the
+above call is `http://service.com/service/a/b/c`.
 2. Parse response JSON.
 
 Account Creation:
