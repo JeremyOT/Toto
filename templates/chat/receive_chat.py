@@ -16,8 +16,8 @@ def listen_url(port):
 
 p1 = multiprocessing.Process(target=listen, args=(8888,))
 p2 = multiprocessing.Process(target=listen, args=(8889,))
-p3 = multiprocessing.Process(target=listen_url, args=(8890,))
-p4 = multiprocessing.Process(target=listen_url, args=(8891,))
+p3 = multiprocessing.Process(target=listen_url, args=(8888,))
+p4 = multiprocessing.Process(target=listen_url, args=(8889,))
 p1.start()
 p2.start()
 p3.start()

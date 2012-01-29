@@ -57,9 +57,7 @@ class EventManager():
         if handler[1]:
           handler[0](event_args)
         else:
-          def run():
-            handler[0](event_args)
-          IOLoop.instance().add_callback(run)
+          IOLoop.instance().add_callback(lambda: handler[0](event_args))
     if event_name in self.__handlers:
       Thread(target=event_thread).start()
   
