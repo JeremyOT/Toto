@@ -47,7 +47,6 @@ class TotoHandler(RequestHandler):
     to a more efficient method according to the tornado.options
   """
   def __get_method_path(self, path, body):
-    print "BOTH: %s ---- %s" % (path, body)
     if path:
       self.method_path = path.split('/')
     elif 'method' in body:
@@ -97,7 +96,6 @@ class TotoHandler(RequestHandler):
     error = None
     try:
       self.__get_method_path(path, self.body)
-      print "Method Path: %s" % self.method_path
       self.__get_method()
       if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
@@ -116,8 +114,6 @@ class TotoHandler(RequestHandler):
       self.finish()
 
   def respond(self, result=None, error=None, finish=True):
-    print "Result: %s Error: %s Finish: %s" % (result, error, finish)
-    print "Finished: %s" % self._finished
     if self._finished:
       return
     response = {}
