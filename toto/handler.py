@@ -60,7 +60,7 @@ class TotoHandler(RequestHandler):
       method = getattr(method, i)
     self.__method = method.invoke
 
-  def options(self):
+  def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
     if 'access-control-request-headers' in self.request.headers:
       allowed_headers = allowed_headers.union(self.request.headers['access-control-request-headers'].lower().replace(' ','').split(','))
