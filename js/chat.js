@@ -4,7 +4,7 @@ $(function() {
     toto.request('receive_message', {}, function(response) {
       output.append($(document.createElement('p')).addClass('message').text(response.message));
       output.animate({
-        scrollTop : output.children().last().height()
+        scrollTop : output.children().last().position().top
       }, 250);
       poll_server();
     }, function(error) {
