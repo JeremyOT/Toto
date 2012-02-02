@@ -31,11 +31,11 @@ class MySQLdbSession():
     self.__connection.db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)
 
 class MySQLdbConnection():
-  password_salt = "toto" 
-  default_session_ttl = 24 * 60 * 60
 
-  def __init__(self, host, database, username, password):
+  def __init__(self, host, database, username, password, password_salt='toto', default_session_ttl=24*60*60*365):
     self.db = Connection(host, database, username, password)
+    self.password_salt = "toto"
+    self.default_session_ttl = default_session_ttl
 
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()

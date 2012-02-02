@@ -21,6 +21,8 @@ define("root", default='/', help="The path to run the server on. This can be hel
 define("method_module", default='methods', help="The root module to use for method lookup (default method)")
 define("event_key", type=str, help="The string to use for the x-toto-event-key header when sending events to the event manager. By default this is auto generated on launch, but a value can be passed to facilitate sending events from external processes")
 define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
+define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire (default 1 year)")
+define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
 
 class TotoServer():
 
@@ -37,10 +39,10 @@ class TotoServer():
     connection = None
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
-      connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database)
+      connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database, options.password_salt, options.session_ttl)
     elif options.database == "mysql":
       from mysqldbconnection import MySQLdbConnection
-      connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
+      connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl)
     else:
       from fakeconnection import FakeConnection
       connection = FakeConnection()

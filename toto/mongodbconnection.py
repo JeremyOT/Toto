@@ -29,11 +29,11 @@ class MongoDBSession():
     self.__db.sessions.update({'session_id': session_id}, {'$set': {'state': pickle.dumps(self.state)}})
 
 class MongoDBConnection():
-  password_salt = "toto"
-  default_session_ttl = 24 * 60 * 60
 
-  def __init__(self, host, port, database):
+  def __init__(self, host, port, database, password_salt='toto', default_session_ttl=24*60*60*365):
     self.db = pymongo.Connection(host, port)[database]
+    self.password_salt = password_salt
+    self.default_session_ttl = default_session_ttl
 
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
