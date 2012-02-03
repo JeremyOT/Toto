@@ -147,6 +147,11 @@ on sequential ports starting at the port specified by `--port`. If `0` is used a
 will run one process per cpu as detected by Python's `multiprocessing` module. Additional daemonization options can
 be viewed from `--help`.
 
+Clients
+=======
+To help you get started, JavaScript and iOS client libraries are in development at [https://github.com/JeremyOT/TotoClient-JS](https://github.com/JeremyOT/TotoClient-JS)
+and [https://github.com/JeremyOT/TotoClient-iOS](https://github.com/JeremyOT/TotoClient-iOS) respectively.
+
 [tornado]:http://www.tornadoweb.org
 [mysql]:http://www.mysql.com
 [mongodb]:http://www.mongodb.org
