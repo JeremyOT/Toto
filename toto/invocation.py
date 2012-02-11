@@ -17,6 +17,7 @@ def asynchronous(fn):
 
 def authenticated(fn):
   def wrapper(handler, parameters):
+    handler.retrieve_session()
     if not handler.session:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     return fn(handler, parameters)

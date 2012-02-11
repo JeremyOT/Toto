@@ -23,6 +23,8 @@ define("event_key", type=str, help="The string to use for the x-toto-event-key h
 define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
 define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire (default 1 year)")
 define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
+define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
+define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
 
 class TotoServer():
 
@@ -46,11 +48,17 @@ class TotoServer():
     else:
       from fakeconnection import FakeConnection
       connection = FakeConnection()
+  
+    application_settings = {}
+    if options.cookie_secret:
+      application_settings['cookie_secret'] = options.cookie_secret
+    if options.autoreload:
+      application_settings['debug'] = True
 
     application = Application([
       (os.path.join(options.root, 'event'), events.EventHandler),
       (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
-    ])
+    ], **application_settings)
 
     application.listen(port)
     print "Starting server on port %s" % port

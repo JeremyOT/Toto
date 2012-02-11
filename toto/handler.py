@@ -12,6 +12,7 @@ define("bson_enabled", default=False, help="Allows requests to use BSON with con
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
+define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option (default False)")
 
 class TotoHandler(RequestHandler):
 
@@ -23,7 +24,11 @@ class TotoHandler(RequestHandler):
     self.connection = connection
     self.bson = options.bson_enabled and __import__('bson').BSON
     self.response_type = 'application/json'
+    self.body = None
 
+  """
+    Runtime method configuration
+  """
   @classmethod
   def configure(cls):
     #Method configuration
@@ -42,6 +47,20 @@ class TotoHandler(RequestHandler):
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
     
+    if options.use_cookies:
+      import math
+      def create_session(self, user_id, password, ttl=0):
+        session = self.connection.create_session(user_id, password, ttl)
+        self.set_secure_cookie('toto-session-id', session.session_id, math.ceil(session.expires / (24.0 * 60.0 * 60.0)))
+        return session
+      cls.create_session = create_session
+      def retrieve_session(self):
+        headers = self.request.headers
+        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or self.get_secure_cookie('toto-session-id')
+        if session_id:
+          self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+      cls.retrieve_session = retrieve_session
+      
   """
     The default method_select "both" (or any unsupported value) will
     call this method. The class method configure() will update this
@@ -61,6 +80,10 @@ class TotoHandler(RequestHandler):
       method = getattr(method, i)
     self.__method = method.invoke
 
+  """
+    Request handlers
+  """
+
   def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
     if 'access-control-request-headers' in self.request.headers:
@@ -74,7 +97,6 @@ class TotoHandler(RequestHandler):
   
   @tornado.web.asynchronous
   def get(self, path=None):
-    self.body = None
     self.parameters = self.request.arguments
     self.process_request(path)
 
@@ -91,7 +113,6 @@ class TotoHandler(RequestHandler):
   def process_request(self, path=None):
     self.session = None
     self.__method = None
-    headers = self.request.headers
     response = {}
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
@@ -100,8 +121,6 @@ class TotoHandler(RequestHandler):
     try:
       self.__get_method_path(path, self.body)
       self.__get_method()
-      if 'x-toto-session-id' in headers:
-        self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
       result = self.__method(self, self.parameters)
     except TotoException as e:
       error = e.__dict__
@@ -113,6 +132,10 @@ class TotoHandler(RequestHandler):
       self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
     elif not hasattr(self.__method, 'asynchronous'):
       self.finish()
+
+  """
+    End request handlers
+  """
 
   def respond(self, result=None, error=None, finish=True):
     if self._finished:
@@ -139,4 +162,14 @@ class TotoHandler(RequestHandler):
 
   def register_event_handler(self, event_name, handler, run_on_main_loop=True):
     EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
+
+  def create_session(self, user_id, password, ttl=0):
+    self.session = self.connection.create_session(user_id, password, ttl)
+    return self.session
+
+  def retrieve_session(self):
+    headers = self.request.headers
+    if 'x-toto-session-id' in headers:
+      self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+    
 
