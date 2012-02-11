@@ -26,6 +26,7 @@ class TotoHandler(RequestHandler):
 
   @classmethod
   def configure(cls):
+    #Method configuration
     if options.method_select == 'url':
       def get_method_path(self, path, body):
         if path:
@@ -73,7 +74,8 @@ class TotoHandler(RequestHandler):
   
   @tornado.web.asynchronous
   def get(self, path=None):
-    self.body = {'parameters': None}
+    self.body = None
+    self.parameters = self.request.arguments
     self.process_request(path)
 
   @tornado.web.asynchronous
@@ -83,6 +85,7 @@ class TotoHandler(RequestHandler):
       self.body = self.bson(self.request.body).decode()
     else:
       self.body = json.loads(self.request.body)
+    self.parameters = 'parameters' in self.body and self.body['parameters'] or None
     self.process_request(path)
 
   def process_request(self, path=None):
@@ -99,9 +102,7 @@ class TotoHandler(RequestHandler):
       self.__get_method()
       if 'x-toto-session-id' in headers:
         self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
-      if not 'parameters' in self.body:
-        raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters.")
-      result = self.__method(self, self.body['parameters'])
+      result = self.__method(self, self.parameters)
     except TotoException as e:
       error = e.__dict__
     except Exception as e:
