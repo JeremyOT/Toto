@@ -10,7 +10,11 @@ import hashlib
 import cPickle as pickle
 
 class MongoDBSession(TotoSession):
-
+  
+  def refresh(self):
+    session_data = self._db.sessions.findone({'session_id': self.session_id})
+    self.__init__(self._db, session_data)
+  
   def save_state(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")

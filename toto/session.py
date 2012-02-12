@@ -34,5 +34,8 @@ class TotoSession():
   def __contains__(self, key):
     return key in self.state
 
+  def refresh(self):
+    raise Exception("Unimplemented operation: reload_state")
+
   def save_state(self):
     raise Exception("Unimplemented operation: save_state")

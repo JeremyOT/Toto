@@ -12,6 +12,10 @@ import string
 import cPickle as pickle
 
 class MySQLdbSession(TotoSession):
+  
+  def refresh(self):
+    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
+    self.__init__(session_data)
 
   def save_state(self):
     if not self._verified:
