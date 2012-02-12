@@ -50,16 +50,29 @@ class TotoHandler(RequestHandler):
     if options.use_cookies:
       import math
       def create_session(self, user_id, password, ttl=0):
-        session = self.connection.create_session(user_id, password, ttl)
-        self.set_secure_cookie('toto-session-id', session.session_id, math.ceil(session.expires / (24.0 * 60.0 * 60.0)))
-        return session
+        self.session = self.connection.create_session(user_id, password, ttl)
+        self.set_secure_cookie('toto-session-id', self.session.session_id, math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)))
+        return self.session
       cls.create_session = create_session
       def retrieve_session(self):
         headers = self.request.headers
         session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or self.get_secure_cookie('toto-session-id')
         if session_id:
           self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+        return self.session
       cls.retrieve_session = retrieve_session
+    if options.debug:
+      def invoke_method(self, path):
+        result = None
+        error = None
+        try:
+          self.__get_method_path(path, self.body)
+          self.__get_method()
+          result = self.__method(self, self.parameters)
+        except TotoException as e:
+          error = e.__dict__
+        return result, error
+      cls.invoke_method = invoke_method
       
   """
     The default method_select "both" (or any unsupported value) will
@@ -80,6 +93,19 @@ class TotoHandler(RequestHandler):
       method = getattr(method, i)
     self.__method = method.invoke
 
+  def invoke_method(self, path):
+    result = None
+    error = None
+    try:
+      self.__get_method_path(path, self.body)
+      self.__get_method()
+      result = self.__method(self, self.parameters)
+    except TotoException as e:
+      error = e.__dict__
+    except Exception as e:
+      error = TotoException(ERROR_SERVER, str(e)).__dict__
+    return result, error
+
   """
     Request handlers
   """
@@ -97,7 +123,13 @@ class TotoHandler(RequestHandler):
   
   @tornado.web.asynchronous
   def get(self, path=None):
-    self.parameters = self.request.arguments
+    self.parameters = {}
+    # Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1
+    for k, v in self.request.arguments.items():
+      if len(v) == 1:
+        self.parameters[k] = v[0]
+      else:
+        self.parameters[k] = v
     self.process_request(path)
 
   @tornado.web.asynchronous
@@ -113,24 +145,12 @@ class TotoHandler(RequestHandler):
   def process_request(self, path=None):
     self.session = None
     self.__method = None
-    response = {}
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-    result = None
-    error = None
-    try:
-      self.__get_method_path(path, self.body)
-      self.__get_method()
-      result = self.__method(self, self.parameters)
-    except TotoException as e:
-      error = e.__dict__
-    except Exception as e:
-      if options.debug:
-        raise e
-      error = TotoException(ERROR_SERVER, str(e)).__dict__
+    (result, error) = self.invoke_method(path)
     if result is not None or error:
       self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
-    elif not hasattr(self.__method, 'asynchronous'):
+    elif not self._finished and hasattr(self.__method, 'asynchronous'):
       self.finish()
 
   """
@@ -171,5 +191,6 @@ class TotoHandler(RequestHandler):
     headers = self.request.headers
     if 'x-toto-session-id' in headers:
       self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+    return self.session
     
 

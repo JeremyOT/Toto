@@ -1,34 +1,22 @@
 from tornado.database import *
 from toto.exceptions import *
+from toto.session import *
 from time import time
 from datetime import datetime
 import base64
 import uuid
-import cPickle as pickle
 import hmac
 import hashlib
 import random
 import string
+import cPickle as pickle
 
-class MySQLdbSession():
-  _verified = False
-  user_id = None
-  session_id = None
-  expires = 0
-  state = {}
-  __connection = None
-  
-  def __init__(self, connection, session_data):
-    self.__connection = connection
-    self.user_id = str(session_data['user_id'])
-    self.expires = session_data['expires']
-    self.session_id = session_data['session_id']
-    self.state = 'state' in session_data and session_data['state'] and pickle.loads(session_data['state']) or {}
+class MySQLdbSession(TotoSession):
 
   def save_state(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self.__connection.db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)
+    self._db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)
 
 class MySQLdbConnection():
 
@@ -65,7 +53,7 @@ class MySQLdbConnection():
     if not session_data:
       return None
     session = MySQLdbSession(self, session_data)
-    if data and not hmac_data or hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session

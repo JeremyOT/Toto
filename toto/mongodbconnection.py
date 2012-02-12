@@ -1,5 +1,6 @@
 import pymongo
 from toto.exceptions import *
+from toto.session import *
 from time import time
 from datetime import datetime
 import base64
@@ -8,25 +9,12 @@ import hmac
 import hashlib
 import cPickle as pickle
 
-class MongoDBSession():
-  _verified = False
-  user_id = None
-  session_id = None
-  expires = 0
-  state = {}
-  __db = None
-  
-  def __init__(self, db, session_data):
-    self.__db = db
-    self.user_id = session_data['user_id']
-    self.expires = session_data['expires']
-    self.session_id = session_data['session_id']
-    self.state = 'state' in session_data and session_data['state'] and pickle.loads(session_data['state']) or {}
+class MongoDBSession(TotoSession):
 
   def save_state(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self.__db.sessions.update({'session_id': session_id}, {'$set': {'state': pickle.dumps(self.state)}})
+    self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': pickle.dumps(self.state)}})
 
 class MongoDBConnection():
 
@@ -63,7 +51,7 @@ class MongoDBConnection():
     if not session_data:
       return None
     session = MongoDBSession(self.db, session_data)
-    if data and not hmac_data or hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session
