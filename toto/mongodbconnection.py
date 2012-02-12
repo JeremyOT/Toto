@@ -15,7 +15,7 @@ class MongoDBSession(TotoSession):
     session_data = self._db.sessions.findone({'session_id': self.session_id})
     self.__init__(self._db, session_data)
   
-  def save_state(self):
+  def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': pickle.dumps(self.state)}})

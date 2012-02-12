@@ -17,7 +17,7 @@ class MySQLdbSession(TotoSession):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
     self.__init__(session_data)
 
-  def save_state(self):
+  def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)

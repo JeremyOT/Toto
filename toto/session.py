@@ -35,7 +35,7 @@ class TotoSession():
     return key in self.state
 
   def refresh(self):
-    raise Exception("Unimplemented operation: reload_state")
+    raise Exception("Unimplemented operation: refresh")
 
-  def save_state(self):
-    raise Exception("Unimplemented operation: save_state")
+  def save(self):
+    raise Exception("Unimplemented operation: save")
