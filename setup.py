@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
   name='Toto',
-  version='0.2',
+  version='0.6',
   author='JeremyOT',
   url='https://github.com/JeremyOT/Toto',
   packages=['toto',],
