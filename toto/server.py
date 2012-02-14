@@ -28,19 +28,27 @@ define("autoreload", default=False, help="This option autoreloads modules as cha
 
 class TotoServer():
 
-  def __init__(self, conf_file=None, **kargs):
-    for k in kargs:
-      options[k].set(kargs[k])
+  def __load_options(self, conf_file=None, **kwargs):
+    for k in kwargs:
+      options[k].set(kwargs[k])
     if conf_file:
       tornado.options.parse_config_file(conf_file)
-    original_argv = sys.argv
-    sys.argv = [i for i in sys.argv if i.startswith('--method_module=')]
     tornado.options.parse_command_line()
+    
+
+  def __init__(self, conf_file=None, **kwargs):
+    original_argv, sys.argv = sys.argv, [i for i in sys.argv if i.startswith('--method_module=')]
+    self.__load_options(conf_file, **('method_module' in kwargs and {'method_module': kwargs['method_module']} or {}))
     self.__method = __import__(options.method_module)
-    if conf_file:
-      tornado.options.parse_config_file(conf_file)
     sys.argv = original_argv
-    tornado.options.parse_command_line()
+    self.__load_options(conf_file, **kwargs)
+    #clear method_module references so we can fully reload with new options
+    for i in (m for m in sys.modules.keys() if m.startswith(options.method_module)):
+      del sys.modules[i]
+    #prevent the reloaded module from re-defining options
+    define, tornado.options.define = tornado.options.define, lambda *args, **kwargs: None
+    self.__method = __import__(options.method_module)
+    tornado.options.define = define
     TotoHandler.configure()
 
   def __run_server(self, port):
