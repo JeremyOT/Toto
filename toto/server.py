@@ -37,6 +37,8 @@ class TotoServer():
     sys.argv = [i for i in sys.argv if i.startswith('--method_module=')]
     tornado.options.parse_command_line()
     self.__method = __import__(options.method_module)
+    if conf_file:
+      tornado.options.parse_config_file(conf_file)
     sys.argv = original_argv
     tornado.options.parse_command_line()
     TotoHandler.configure()
