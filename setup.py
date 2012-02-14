@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
+from distutils.command.install import INSTALL_SCHEMES
 import os
+
+for scheme in INSTALL_SCHEMES.values():
+  scheme['data'] = scheme['purelib']
 
 template_files = []
 for (path, dirs, files) in os.walk('templates'):
   template_files.append((path, [os.path.join(path, f) for f in files]))
+
 setup(
   name='Toto',
   version='0.6',
