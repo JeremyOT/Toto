@@ -35,3 +35,36 @@ def requires(*args):
     __copy_attributes(fn, wrapper)
     return wrapper
   return decorator
+
+"""
+  @error_redirect must be the outermost decorator if you want it to handle
+  errors raised by other decorators.
+"""
+def error_redirect(redirect_map, default=None):
+  def decorator(fn):
+    def wrapper(handler, parameters):
+      try:
+        return fn(handler, parameters)
+      raise Exception as e:
+        if hasattr(e, 'code') and str(e.code) in redirect_map:
+          handler.redirect(redirect_map[str(e.code)])
+        elif hasattr(e, 'status_code') and str(e.status_code) in redirect_map:
+          handler.redirect(redirect_map[str(e.status_code)])
+        elif default:
+          handler.redirect(default)
+        else:
+          raise
+    __copy_attributes(fn, wrapper)
+    return wrapper
+  return decorator
+
+def default_parameters(defaults):
+  def decorator(fn):
+    def wrapper(handler, parameters):
+      for p in defaults:
+        if p not in parameters:
+          parameters[p] = defaults[p]
+      return fn(handler, parameters)
+    __copy_attributes(fn, wrapper)
+    return wrapper
+  return decorator
