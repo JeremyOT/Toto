@@ -45,7 +45,7 @@ def error_redirect(redirect_map, default=None):
     def wrapper(handler, parameters):
       try:
         return fn(handler, parameters)
-      raise Exception as e:
+      except Exception as e:
         if hasattr(e, 'code') and str(e.code) in redirect_map:
           handler.redirect(redirect_map[str(e.code)])
         elif hasattr(e, 'status_code') and str(e.status_code) in redirect_map:
