@@ -12,6 +12,23 @@ import string
 import cPickle as pickle
 
 class MySQLdbSession(TotoSession):
+  _account = None
+
+  class MySQLdbAccount(TotoAccount):
+
+    def _load_property(self, *args):
+      query = 'select ' + ', '.join(args) + ' from account where user_id = %s'
+      return self._session.db.get(query, self._session.user_id)
+
+    def _save_property(self, *args):
+      query = 'update account set ' + ', '.join(['%s = %%s' % k for k in args]) + ' where user_id = %s'
+      args.append(self._session.user_id)
+      self._session.db.execute(query, *args)
+
+  def get_account(self):
+    if not self._account:
+      self._account = MySQLdbAccount(self)
+    return self._account
   
   def refresh(self):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)

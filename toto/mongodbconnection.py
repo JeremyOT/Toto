@@ -10,7 +10,25 @@ import hashlib
 import cPickle as pickle
 
 class MongoDBSession(TotoSession):
-  
+  _account = None
+
+  class MongoDBAccount(TotoAccount):
+    def _load_property(self, *args):
+      query = {}
+      for a in args:
+        query[a] = 1
+      return self._session.db.find_one({'user_id', self._session.user_id}, query)
+    def _save_property(self, *args):
+      update = {}
+      for k in args:
+        update[k] = self[k]
+      self._session.db.update({'user_id', self._session.user_id}, {'$set': update})
+
+  def get_account(self):
+    if not self._account:
+      self._account = MongoDBAccount(self)
+    return self._account
+
   def refresh(self):
     session_data = self._db.sessions.find_one({'session_id': self.session_id})
     self.__init__(self._db, session_data)
