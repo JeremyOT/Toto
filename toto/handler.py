@@ -12,7 +12,8 @@ define("bson_enabled", default=False, help="Allows requests to use BSON with con
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
-define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option (default False)")
+define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False (default False)")
+define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set (default True)")
 define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com' (default None)")
 
 class TotoHandler(RequestHandler):
@@ -50,14 +51,16 @@ class TotoHandler(RequestHandler):
     
     if options.use_cookies:
       import math
+      set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
+      get_cookie = options.secure_cookies and cls.get_secure_cookie or cls.get_cookie
       def create_session(self, user_id, password, ttl=0):
         self.session = self.connection.create_session(user_id, password, ttl)
-        self.set_secure_cookie('toto-session-id', self.session.session_id, math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
+        set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
       def retrieve_session(self):
         headers = self.request.headers
-        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or self.get_secure_cookie('toto-session-id')
+        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
         if session_id:
           self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
         return self.session

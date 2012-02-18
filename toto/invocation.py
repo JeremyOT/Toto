@@ -24,6 +24,16 @@ def authenticated(fn):
   __copy_attributes(fn, wrapper)
   return wrapper
 
+def authenticated_with_parameter(fn):
+  auth_fn = authenticated(fn)
+  def wrapper(handler, parameters):
+    if 'session_id' in parameters:
+      handler.request.headers['session_id'] = parameters['session_id']
+      del parameters['session_id']
+    return auth_fn(handler, parameters)
+  __copy_attributes(auth_fn, wrapper)
+  return wrapper
+
 def requires(*args):
   required_parameters = set(args)
   def decorator(fn):
@@ -46,6 +56,7 @@ def error_redirect(redirect_map, default=None):
       try:
         return fn(handler, parameters)
       except Exception as e:
+        print e.__dict__
         if hasattr(e, 'code') and str(e.code) in redirect_map:
           handler.redirect(redirect_map[str(e.code)])
         elif hasattr(e, 'status_code') and str(e.status_code) in redirect_map:
