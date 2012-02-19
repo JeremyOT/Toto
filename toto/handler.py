@@ -162,8 +162,8 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
     (result, error) = self.invoke_method(path)
     if result is not None or error:
-      self.respond(result, error, not hasattr(self.__method, 'asynchronous'))
-    elif not self._finished and hasattr(self.__method, 'asynchronous'):
+      self.respond(result, error, True)
+    elif not self._finished and not hasattr(self.__method, 'asynchronous'):
       self.finish()
 
   """
