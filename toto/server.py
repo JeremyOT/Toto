@@ -25,6 +25,7 @@ define("session_ttl", default=24*60*60*365, help="The number of seconds after cr
 define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
+define("event_handler_path", default='event', help="The path to listen for events on - primarily used for internal communication (default event)")
 
 class TotoServer():
 
@@ -70,7 +71,7 @@ class TotoServer():
       application_settings['debug'] = True
 
     application = Application([
-      (os.path.join(options.root, 'event'), events.EventHandler),
+      (os.path.join(options.root, options.event_handler_path), events.EventHandler),
       (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
     ], **application_settings)
 
@@ -82,7 +83,7 @@ class TotoServer():
     events.set_key(options.event_key)
     if options.remote_instances:
       for route in options.remote_instances.split(','):
-        events.add_route(os.path.append(route, 'event'))
+        events.add_route(os.path.append(route, options.event_handler_path))
     if options.daemon:
       import multiprocessing
       #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
@@ -124,7 +125,7 @@ class TotoServer():
               self.__run_server(port)
 
         for i in xrange(count):
-          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), 'event'))
+          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_handler_path))
 
         for i in xrange(count):
           pidfile = path_with_id(options.pidfile, i)
@@ -132,14 +133,14 @@ class TotoServer():
             print "Skipping %d, pidfile exists at %s" % (i, pidfile)
             continue
 
-          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), 'event'))
+          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_handler_path))
           p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
           p.start()
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
 
     else:
-      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), 'event')
+      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), options.event_handler_path)
       events.add_route(event_route)
       events.set_local_route(event_route)
       self.__run_server(options.port)
