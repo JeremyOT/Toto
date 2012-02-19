@@ -114,7 +114,7 @@ class TotoHandler(RequestHandler):
       logger.error("TotoException: %s Value: %s" % (e.code, e.value))
       error = e.__dict__
     except Exception as e:
-      e = TotoException(ERROR_SERVER, str(e)).__dict__
+      e = TotoException(ERROR_SERVER, str(e))
       logger.error("TotoException: %s Value: %s" % (e.code, e.value))
       error = e.__dict__
     return result, error
