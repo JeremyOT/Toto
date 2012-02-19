@@ -7,6 +7,7 @@ from exceptions import *
 from tornado.options import define, options
 import base64
 from events import EventManager
+import logger
 
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -66,6 +67,7 @@ class TotoHandler(RequestHandler):
         return self.session
       cls.retrieve_session = retrieve_session
     if options.debug:
+      import traceback
       def invoke_method(self, path):
         result = None
         error = None
@@ -74,7 +76,11 @@ class TotoHandler(RequestHandler):
           self.__get_method()
           result = self.__method(self, self.parameters)
         except TotoException as e:
+          logger.error(traceback.format_exc())
           error = e.__dict__
+        except Exception as e:
+          logger.error(traceback.format_exc())
+          error = TotoException(ERROR_SERVER, str(e)).__dict__
         return result, error
       cls.invoke_method = invoke_method
       
@@ -105,9 +111,12 @@ class TotoHandler(RequestHandler):
       self.__get_method()
       result = self.__method(self, self.parameters)
     except TotoException as e:
+      logger.error("TotoException: %s Value: %s" % (e.code, e.value))
       error = e.__dict__
     except Exception as e:
-      error = TotoException(ERROR_SERVER, str(e)).__dict__
+      e = TotoException(ERROR_SERVER, str(e)).__dict__
+      logger.error("TotoException: %s Value: %s" % (e.code, e.value))
+      error = e.__dict__
     return result, error
 
   """
