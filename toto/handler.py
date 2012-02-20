@@ -187,7 +187,7 @@ class TotoHandler(RequestHandler):
     else:
       response_body = json.dumps(response)
     if self.session:
-      self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id), response_body, hashlib.sha1).digest()))
+      self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id).lower(), response_body, hashlib.sha1).digest()))
     self.write(response_body)
     if finish:
       self.finish()

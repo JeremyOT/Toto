@@ -57,7 +57,7 @@ class MySQLdbConnection():
     if not session_data:
       return None
     session = MySQLdbSession(self, session_data)
-    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']).lower(), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session
