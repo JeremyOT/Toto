@@ -1,4 +1,7 @@
 from exceptions import *
+from tornado.options import options
+from traceback import format_exc
+import logging
 
 """
 This is a list of all attributes that may be added by a decorator,
@@ -57,6 +60,8 @@ def error_redirect(redirect_map, default=None):
       try:
         return fn(handler, parameters)
       except Exception as e:
+        if options.debug:
+          logging.error(format_exc())
         if hasattr(e, 'code') and str(e.code) in redirect_map:
           handler.redirect(redirect_map[str(e.code)])
         elif hasattr(e, 'status_code') and str(e.status_code) in redirect_map:
