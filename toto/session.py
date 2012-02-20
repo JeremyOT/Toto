@@ -10,7 +10,7 @@ class TotoAccount():
   def __getitem__(self, key):
     if key not in self._properties:
       self.load_property(key)
-    return self._properties[key]
+    return key in self._properties and self._properties[key] or None
 
   def __setitem__(self, key, value):
     self._properties[key] = value
