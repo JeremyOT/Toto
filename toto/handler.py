@@ -214,7 +214,7 @@ class TotoHandler(RequestHandler):
       self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
     return self.session
     
-  def on_finish():
+  def on_finish(self):
     if self.registered_event_handlers:
       event_manager = EventManager.instance()
       for handler in self.registered_event_handlers:
