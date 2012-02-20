@@ -60,9 +60,11 @@ class TotoHandler(RequestHandler):
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
-      def retrieve_session(self):
+      
+      def retrieve_session(self, session_id=None):
         headers = self.request.headers
-        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
+        if not session_id:
+          session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
         if session_id:
           self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
         return self.session
@@ -204,10 +206,12 @@ class TotoHandler(RequestHandler):
     self.session = self.connection.create_session(user_id, password, ttl)
     return self.session
 
-  def retrieve_session(self):
+  def retrieve_session(self, session_id=None):
     headers = self.request.headers
-    if 'x-toto-session-id' in headers:
-      self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+    if not session_id and 'x-toto-session-id' in headers:
+      session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
+    if session_id:
+      self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
     return self.session
     
   def on_finish():

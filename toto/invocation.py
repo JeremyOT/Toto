@@ -25,13 +25,14 @@ def authenticated(fn):
   return wrapper
 
 def authenticated_with_parameter(fn):
-  auth_fn = authenticated(fn)
   def wrapper(handler, parameters):
     if 'session_id' in parameters:
-      handler.request.headers['x-toto-session-id'] = parameters['session_id']
+      handler.retrieve_session(parameters['session_id'])
       del parameters['session_id']
-    return auth_fn(handler, parameters)
-  __copy_attributes(auth_fn, wrapper)
+    if not handler.session:
+      raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
+    return fn(handler, parameters)
+  __copy_attributes(fn, wrapper)
   return wrapper
 
 def requires(*args):
