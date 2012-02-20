@@ -31,6 +31,7 @@ class MongoDBConnection():
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
   def create_account(self, user_id, password, additional_values={}):
+    user_id = user_id.lower()
     if self.db.accounts.find_one({'user_id': user_id}):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values = {}
@@ -44,7 +45,7 @@ class MongoDBConnection():
     account = self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = base64.b64encode(uuid.uuid4().bytes)
+    session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
     self.db.sessions.insert({'user_id': user_id, 'expires': expires, 'session_id': session_id})
     session = MongoDBSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
@@ -55,15 +56,17 @@ class MongoDBConnection():
     if not session_data:
       return None
     session = MongoDBSession(self.db, session_data)
-    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']).lower(), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session
 
   def clear_sessions(self, user_id):
+    user_id = user_id.lower()
     self.db.sessions.remove({'user_id': user_id})
 
   def change_password(self, user_id, password, new_password):
+    user_id = user_id.lower()
     account = self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
@@ -71,6 +74,7 @@ class MongoDBConnection():
     self.clear_sessions(user_id)
 
   def generate_password(self, user_id):
+    user_id = user_id.lower()
     account = self.db.accounts.find_one({'user_id': user_id})
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")

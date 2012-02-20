@@ -33,6 +33,7 @@ class MySQLdbConnection():
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
   def create_account(self, user_id, password, additional_values={}):
+    user_id = user_id.lower()
     if self.db.get("select account_id from account where user_id = %s", user_id):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values = {}
@@ -46,7 +47,7 @@ class MySQLdbConnection():
     account = self.db.get("select * from account where user_id = %s and password = %s", user_id, self.password_hash(user_id, password))
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = base64.b64encode(uuid.uuid4().bytes)
+    session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.execute("delete from session where account_id = %s and expires <= UTC_TIMESTAMP", account['account_id'])
     self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", account['account_id'], datetime.utcfromtimestamp(expires).strftime("%Y%m%d%H%M%S"), session_id)
     session = MySQLdbSession(self, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
@@ -57,15 +58,17 @@ class MySQLdbConnection():
     if not session_data:
       return None
     session = MySQLdbSession(self, session_data)
-    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']).lower(), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session
 
   def clear_sessions(self, user_id):
+    user_id = user_id.lower()
     self.db.execute("delete from session using session join account on account.account_id = session.account_id where account.user_id = %s", user_id)
 
   def change_password(self, user_id, password, new_password):
+    user_id = user_id.lower()
     account = self.db.get("select account_id, user_id, password from account where user_id = %s and password = %s", user_id, self.password_hash(user_id, password))
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
@@ -73,6 +76,7 @@ class MySQLdbConnection():
     self.clear_sessions(user_id)
 
   def generate_password(self, user_id):
+    user_id = user_id.lower()
     account = self.db.get("select account_id, user_id from account where user_id = %s", user_id)
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
