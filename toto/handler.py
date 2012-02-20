@@ -28,6 +28,7 @@ class TotoHandler(RequestHandler):
     self.bson = options.bson_enabled and __import__('bson').BSON
     self.response_type = 'application/json'
     self.body = None
+    self.registered_event_handlers = []
 
   """
     Runtime method configuration
@@ -192,9 +193,12 @@ class TotoHandler(RequestHandler):
   def on_connection_close(self):
     if hasattr(self.__method, 'on_connection_close'):
       self.__method.on_connection_close(self);
+    self.on_finish()
 
-  def register_event_handler(self, event_name, handler, run_on_main_loop=True):
-    EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
+  def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
+    sig = EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
+    if deregister_on_finish:
+      self.registered_event_handlers.append(sig)
 
   def create_session(self, user_id, password, ttl=0):
     self.session = self.connection.create_session(user_id, password, ttl)
@@ -206,4 +210,9 @@ class TotoHandler(RequestHandler):
       self.session = self.connection.retrieve_session(headers['x-toto-session-id'], 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
     return self.session
     
+  def on_finish():
+    if self.registered_event_handlers:
+      event_manager = EventManager.instance()
+      for handler in self.registered_event_handlers:
+        event_manager.remove_handler(handler)
 

@@ -39,27 +39,41 @@ class EventManager():
 
   def __init__(self):
     self.__handlers = {}
+
+  def remove_handler(handler_sig):
+    self.__handlers[handler_sig[0]].discard(handler_sig[1])
   
-  def register_handler(self, event_name, handler, run_on_main_loop=False, request_handler=None):
+  def register_handler(self, event_name, handler, run_on_main_loop=False, request_handler=None, persist=False):
     if not event_name in self.__handlers:
-      self.__handlers[event_name] = deque()
-    self.__handlers[event_name].append((handler, run_on_main_loop, request_handler))
+      self.__handlers[event_name] = set()
+    handler_tuple = (handler, run_on_main_loop, request_handler, persist)
+    self.__handlers[event_name].add(handler_tuple)
+    return (event_name, handler_tuple)
 
   def receive(self, event):
     event_name = event['name']
     event_args = event['args']
     def event_thread():
       handlers = self.__handlers[event_name]
-      for i in xrange(len(handlers)):
-        handler = handlers.popleft()
+      persistent_handlers = set()
+      while handlers:
+        handler = handlers.pop()
         if handler[2] and handler[2]._finished:
           continue
         if handler[1]:
           handler[0](event_args)
         else:
           IOLoop.instance().add_callback(lambda: handler[0](event_args))
+        if handler[3]:
+          persistent_handlers.add(handler)
+      handlers |= persistent_handlers
     if event_name in self.__handlers:
       Thread(target=event_thread).start()
+  
+  def send_to_route(self, route, event_name, event_args):
+    event = {'name': event_name, 'args': event_args}
+    event_data = pickle.dumps(event)
+    urlopen(Request(route, event_data, {'x-toto-event-key': _private_event_key}))    
   
   def send(self, event_name, event_args):
     event = {'name': event_name, 'args': event_args}

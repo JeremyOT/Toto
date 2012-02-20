@@ -20,12 +20,14 @@ define("pidfile", default="toto.pid", help="The path to the pidfile for daemon p
 define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
 define("method_module", default='methods', help="The root module to use for method lookup (default method)")
 define("event_key", type=str, help="The string to use for the x-toto-event-key header when sending events to the event manager. By default this is auto generated on launch, but a value can be passed to facilitate sending events from external processes")
-define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
+define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) or event handlers (!http://192.168.1.2:9000/handler_path) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
 define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire (default 1 year)")
 define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
-define("event_handler_path", default='event', help="The path to listen for events on - primarily used for internal communication (default event)")
+define("event_path", default='event', help="The path to listen for events on - primarily used for internal communication (default event)")
+define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
+define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
 
 class TotoServer():
 
@@ -40,15 +42,21 @@ class TotoServer():
   def __init__(self, conf_file=None, **kwargs):
     original_argv, sys.argv = sys.argv, [i for i in sys.argv if i.startswith('--method_module=')]
     self.__load_options(conf_file, **('method_module' in kwargs and {'method_module': kwargs['method_module']} or {}))
-    self.__method = __import__(options.method_module)
+    self.__method = options.method_module and __import__(options.method_module) or None
+    self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
     sys.argv = original_argv
     self.__load_options(conf_file, **kwargs)
     #clear method_module references so we can fully reload with new options
-    for i in (m for m in sys.modules.keys() if m.startswith(options.method_module)):
-      del sys.modules[i]
+    if self.__method:
+      for i in (m for m in sys.modules.keys() if m.startswith(options.method_module)):
+        del sys.modules[i]
+    if self.__event_init:
+      for i in (m for m in sys.modules.keys() if m.startswith(options.event_init_module)):
+        del sys.modules[i]
     #prevent the reloaded module from re-defining options
     define, tornado.options.define = tornado.options.define, lambda *args, **kwargs: None
-    self.__method = __import__(options.method_module)
+    self.__method = options.method_module and __import__(options.method_module) or None
+    self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
     tornado.options.define = define
     TotoHandler.configure()
 
@@ -70,10 +78,18 @@ class TotoServer():
     if options.autoreload:
       application_settings['debug'] = True
 
-    application = Application([
-      (os.path.join(options.root, options.event_handler_path), events.EventHandler),
-      (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
-    ], **application_settings)
+    event_handler = (os.path.join(options.root, options.event_path), events.EventHandler)
+    main_handler = (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
+    handlers = []
+    if not options.event_mode == 'off':
+      handlers.append(event_handler)
+      init_module = self.__event_init
+      if init_module:
+        init_module.invoke(EventManager.instance())
+    if not options.event_mode == 'only':
+      handlers.append(main_handler)
+
+    application = Application(handlers, **application_settings)
 
     application.listen(port)
     print "Starting server on port %s" % port
@@ -83,7 +99,7 @@ class TotoServer():
     events.set_key(options.event_key)
     if options.remote_instances:
       for route in options.remote_instances.split(','):
-        events.add_route(os.path.append(route, options.event_handler_path))
+        events.add_route(route[0] == '!' and route[1:] or os.path.join(route, options.event_path))
     if options.daemon:
       import multiprocessing
       #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
@@ -125,7 +141,7 @@ class TotoServer():
               self.__run_server(port)
 
         for i in xrange(count):
-          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_handler_path))
+          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_path))
 
         for i in xrange(count):
           pidfile = path_with_id(options.pidfile, i)
@@ -133,14 +149,14 @@ class TotoServer():
             print "Skipping %d, pidfile exists at %s" % (i, pidfile)
             continue
 
-          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_handler_path))
+          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_path))
           p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
           p.start()
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
 
     else:
-      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), options.event_handler_path)
+      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), options.event_path)
       events.add_route(event_route)
       events.set_local_route(event_route)
       self.__run_server(options.port)
