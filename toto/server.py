@@ -14,7 +14,7 @@ define("mongodb_host", default="localhost", help="MongoDB host (default 'localho
 define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
 define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
 define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port. (default 8888)")
-define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Requires the multiprocessing module.")
+define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
 define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
@@ -28,6 +28,9 @@ define("autoreload", default=False, help="This option autoreloads modules as cha
 define("event_path", default='event', help="The path to listen for events on - primarily used for internal communication (default event)")
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
 define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
+define("start", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
+define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
+define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 
 class TotoServer():
 
@@ -37,6 +40,12 @@ class TotoServer():
     if conf_file:
       tornado.options.parse_config_file(conf_file)
     tornado.options.parse_command_line()
+    if options.start:
+      options['daemon'].set('start')
+    elif options.stop:
+      options['daemon'].set('stop')
+    elif options.restart:
+      options['daemon'].set('restart')
     
 
   def __init__(self, conf_file=None, **kwargs):
