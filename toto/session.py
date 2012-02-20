@@ -1,12 +1,11 @@
 import cPickle as pickle
 
 class TotoAccount():
-  _session = None
-  _modified_properties = set()
-  _properties = {}
 
   def __init__(self, session):
     self._session = session
+    self._modified_properties = set()
+    self._properties = {}
 
   def __getitem__(self, key):
     if key not in self._properties:
@@ -27,13 +26,17 @@ class TotoAccount():
     return self.__iter__()
 
   def save(self):
-    self.save_property(*self._modified_properties)
+    self._save_property(*self._modified_properties)
+    self._modified_properties.clear()
 
   def load_property(self, *args):
     loaded = self._load_property(*args)
     for k in loaded:
       self._properties[k] = loaded[k]
     return self
+
+  def __str__(self):
+    return str({'properties': self._properties, 'modified': self._modified_properties})
 
   def _load_property(self, *args):
     raise Exception("Unimplemented operation: _load_property")
@@ -42,12 +45,6 @@ class TotoAccount():
     raise Exception("Unimplemented operation: _save_property")
 
 class TotoSession():
-  _verified = False
-  user_id = None
-  session_id = None
-  expires = 0
-  state = {}
-  _db = None
   
   def __init__(self, db, session_data):
     self._db = db
@@ -55,6 +52,7 @@ class TotoSession():
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
     self.state = 'state' in session_data and session_data['state'] and pickle.loads(str(session_data['state'])) or {}
+    self._verified = False
 
   def get_account(self, *args):
     raise Exception("Unimplemented operation: get_account")
@@ -77,6 +75,9 @@ class TotoSession():
 
   def __contains__(self, key):
     return key in self.state
+
+  def __str__(self):
+    return str({'user_id': self.user_id, 'expires': self.expires, 'id': self.session_id, 'state': self.state})
 
   def refresh(self):
     raise Exception("Unimplemented operation: refresh")
