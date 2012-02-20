@@ -4,6 +4,9 @@ from threading import Thread
 from collections import deque
 from tornado.web import *
 from tornado.ioloop import IOLoop
+from traceback import format_exc
+from tornado.options import options
+import logging
 
 _private_event_key = ''
 _server_routes = []
@@ -82,7 +85,10 @@ class EventManager():
       if route == _local_route:
         self.receive(event)
       else:
-        urlopen(Request(route, event_data, {'x-toto-event-key': _private_event_key}))
+        try:
+          urlopen(Request(route, event_data, {'x-toto-event-key': _private_event_key}))
+        except Exception as e:
+          logging.error("Bad event route: %s - %s", route, options.debug and format_exc() or e)
 
   @staticmethod
   def instance():
