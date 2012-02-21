@@ -150,7 +150,7 @@ class TotoHandler(RequestHandler):
 
   @tornado.web.asynchronous
   def post(self, path=None):
-    if self.bson and 'content-type' in headers and headers['content-type'] == 'application/bson':
+    if self.bson and 'content-type' in self.request.headers and self.request.headers['content-type'] == 'application/bson':
       self.response_type = 'application/bson'
       self.body = self.bson(self.request.body).decode()
     else:
