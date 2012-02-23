@@ -64,14 +64,14 @@ class MySQLdbConnection():
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.execute("delete from session where account_id = %s and expires <= UTC_TIMESTAMP", account['account_id'])
     self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", account['account_id'], datetime.utcfromtimestamp(expires).strftime("%Y%m%d%H%M%S"), session_id)
-    session = MySQLdbSession(self, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
+    session = MySQLdbSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
     return session
 
   def retrieve_session(self, session_id, hmac_data, data):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > UTC_TIMESTAMP", session_id)
     if not session_data:
       return None
-    session = MySQLdbSession(self, session_data)
+    session = MySQLdbSession(self.db, session_data)
     if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
