@@ -51,6 +51,32 @@ def requires(*args):
   return decorator
 
 """
+  Return the desired response body as a string. Optionally, set handler.response_type
+  to the mime type of your response.
+"""
+def raw_response(fn):
+  def wrapper(handler, parameters):
+    handler.response_type = 'application/octet-stream'
+    handler.respond_raw(fn(handler, parameters), handler.response_type, False)
+    return None
+  __copy_attributes(fn, wrapper)
+  return wrapper
+
+"""
+  Requires the parameter 'jsonp=<callback_function>' to be passed in the query string (meaning method_select
+  must be set to either 'both' or 'url'). This parameter will be stripped before the
+  parameters are passed to the decorated function.
+"""
+def jsonp(fn):
+  def wrapper(handler, parameters):
+    callback = parameters['jsonp']
+    del parameters['jsonp']
+    handler.respond_raw('%s(%s)' % (callback, fn(handler, parameters)), 'text/javascript')
+    return None
+  __copy_attributes(fn, wrapper)
+  return wrapper
+
+"""
   @error_redirect must be the outermost decorator if you want it to handle
   errors raised by other decorators.
 """
