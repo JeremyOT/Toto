@@ -165,7 +165,7 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
     (result, error) = self.invoke_method(path)
     if result is not None or error:
-      self.respond(result, error, True)
+      self.respond(result, error)
     elif not self._finished and not hasattr(self.__method, 'asynchronous'):
       self.finish()
 
@@ -173,24 +173,26 @@ class TotoHandler(RequestHandler):
     End request handlers
   """
 
-  def respond(self, result=None, error=None, finish=True):
-    if self._finished:
-      return
+  def respond(self, result=None, error=None):
     response = {}
     if result is not None:
       response['result'] = result
     if error:
       response['error'] = error
-    self.add_header('content-type', self.response_type)
     if self.response_type == 'application/bson':
       response_body = str(self.bson.encode(response))
     else:
       response_body = json.dumps(response)
     if self.session:
       self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id).lower(), response_body, hashlib.sha1).digest()))
-    self.write(response_body)
+    self.respond_raw(response_body, self.response_type)
+
+  def respond_raw(self, body, content_type, finish=True):
+    self.add_header('content-type', content_type)
+    self.write(body)
     if finish:
       self.finish()
+    
 
   def on_connection_close(self):
     if hasattr(self.__method, 'on_connection_close'):
