@@ -31,6 +31,7 @@ define("event_init_module", default=None, type=str, help="If defined, this modul
 define("start", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
+define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
 
 class TotoServer():
 
@@ -46,6 +47,8 @@ class TotoServer():
       options['daemon'].set('stop')
     elif options.restart:
       options['daemon'].set('restart')
+    elif options.nodaemon:
+      options['daemon'].set('')
     
 
   def __init__(self, conf_file=None, **kwargs):
