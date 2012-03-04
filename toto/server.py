@@ -32,6 +32,7 @@ define("start", default=False, help="Alias for daemon=start for command line usa
 define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
+define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
 
 class TotoServer():
 
@@ -101,7 +102,12 @@ class TotoServer():
     if not options.event_mode == 'only':
       handlers.append(main_handler)
 
+    
     application = Application(handlers, **application_settings)
+    
+    if options.startup_function:
+      startup_path = options.startup_function.rpartition('.')
+      __import__(startup_path[0]).__dict__[startup_path[2]](connection=connection, application=application)
 
     application.listen(port)
     print "Starting server on port %s" % port
@@ -133,7 +139,11 @@ class TotoServer():
           if re.match(pattern, pidfile):
             with open(pidfile, 'r') as f:
               pid = int(f.read())
-              os.kill(pid, signal.SIGTERM)
+              try:
+                os.kill(pid, signal.SIGTERM)
+              except OSError as e:
+                if e.errno != 3:
+                  raise
               print "Stopped server %s" % pid 
             os.remove(pidfile)
 
