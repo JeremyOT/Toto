@@ -35,8 +35,21 @@ class MongoDBSession(TotoSession):
 
 class MongoDBConnection():
 
+  def _ensure_indexes(self):
+    session_indexes = self.db.sessions.index_information()
+    if not 'session_id' in session_indexes:
+      self.db.sessions.ensure_index('session_id', unique=True, name='session_id')
+    if not 'user_id' in session_indexes:
+      self.db.sessions.ensure_index('user_id', name='user_id')
+    if not 'expires' in session_indexes:
+      self.db.sessions.ensure_index('expires', name='expires')
+    account_indexes = self.db.accounts.index_information()
+    if not 'user_id_password' in account_indexes:
+      self.db.accounts.ensure_index([('user_id', pymongo.ASCENDING), ('password', pymongo.ASCENDING)], name='user_id_password')
+  
   def __init__(self, host, port, database, password_salt='toto', default_session_ttl=24*60*60*365):
     self.db = pymongo.Connection(host, port)[database]
+    self._ensure_indexes()
     self.password_salt = password_salt
     self.default_session_ttl = default_session_ttl
 

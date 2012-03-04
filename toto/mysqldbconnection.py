@@ -38,8 +38,28 @@ class MySQLdbSession(TotoSession):
 
 class MySQLdbConnection():
 
+  def create_tables(self):
+    self.db.execute('''CREATE TABLE IF NOT EXISTS `account` (
+      `account_id` int(8) unsigned NOT NULL AUTO_INCREMENT,
+      `password` char(64) DEFAULT NULL,
+      `user_id` varchar(45) NOT NULL,
+      PRIMARY KEY (`account_id`),
+      UNIQUE KEY `user_id_UNIQUE` (`user_id`),
+      INDEX `user_id_password` (`user_id`, `password`)
+    )''')
+    self.db.execute('''CREATE TABLE IF NOT EXISTS `session` (
+      `session_id` char(32) NOT NULL,
+      `account_id` int(8) unsigned NOT NULL,
+      `expires` datetime NOT NULL,
+      `state` blob,
+      PRIMARY KEY (`session_id`),
+      INDEX (`expires`),
+      FOREIGN KEY (`account_id`) REFERENCES `account`(`account_id`)
+    )''')
+
   def __init__(self, host, database, username, password, password_salt='toto', default_session_ttl=24*60*60*365):
     self.db = Connection(host, database, username, password)
+    self.create_tables()
     self.password_salt = "toto"
     self.default_session_ttl = default_session_ttl
 
