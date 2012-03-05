@@ -25,6 +25,7 @@ class TotoHandler(RequestHandler):
   def initialize(self, method_root, connection):
     self.__method_root = method_root
     self.connection = connection
+    self.db = self.connection.db
     self.bson = options.bson_enabled and __import__('bson').BSON
     self.response_type = 'application/json'
     self.body = None
