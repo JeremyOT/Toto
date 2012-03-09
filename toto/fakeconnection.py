@@ -1,4 +1,8 @@
 class FakeConnection():
 
-  def retrieve_session(*args):
+  def __init__(self):
+    self.db = None
+
+  def retrieve_session(self, *args):
     return None
+
