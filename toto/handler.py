@@ -151,12 +151,15 @@ class TotoHandler(RequestHandler):
 
   @tornado.web.asynchronous
   def post(self, path=None):
-    if self.bson and 'content-type' in self.request.headers and self.request.headers['content-type'] == 'application/bson':
-      self.response_type = 'application/bson'
-      self.body = self.bson(self.request.body).decode()
+    if 'x-raw-body' not in self.request.headers:
+      if self.bson and 'content-type' in self.request.headers and self.request.headers['content-type'] == 'application/bson':
+        self.response_type = 'application/bson'
+        self.body = self.bson(self.request.body).decode()
+      else:
+        self.body = json.loads(self.request.body)
+      self.parameters = 'parameters' in self.body and self.body['parameters'] or {}
     else:
-      self.body = json.loads(self.request.body)
-    self.parameters = 'parameters' in self.body and self.body['parameters'] or None
+      self.parameters = {}
     self.process_request(path)
 
   def process_request(self, path=None):

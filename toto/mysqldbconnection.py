@@ -15,12 +15,24 @@ class MySQLdbSession(TotoSession):
   _account = None
 
   class MySQLdbAccount(TotoAccount):
+    
+    def __init__(self, session):
+      super(MySQLdbAccount, self).__init__(session)
+      self.properties['account_id'] = session.account_id
 
     def _load_property(self, *args):
-      return self._session._db.get('select ' + ', '.join(args) + ' from account where user_id = %s', self._session.user_id)
+      return self._session._db.get('select ' + ', '.join(args) + ' from account where account_id = %s', self._session.account_id)
 
     def _save_property(self, *args):
-      self._session._db.execute('update account set ' + ', '.join(['%s = %%s' % k for k in args]) + ' where user_id = %s', [self[k] for k in args] + [self._session.user_id,])
+      self._session._db.execute('update account set ' + ', '.join(['%s = %%s' % k for k in args]) + ' where account_id = %s', [self[k] for k in args] + [self._session.account_id,])
+
+    def __setitem__(self, key, value):
+      if key != 'account_id':
+        super(MySQLdbAccount, self).__setitem__(key, value)
+    
+  def __init__(self, db, session_data):
+    super(MySQLdbSession, self).__init__(db, session_data)
+    self.account_id = session_data['account_id']
 
   def get_account(self):
     if not self._account:
@@ -28,7 +40,7 @@ class MySQLdbSession(TotoSession):
     return self._account
   
   def refresh(self):
-    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
+    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
     self.__init__(session_data)
 
   def save(self):
