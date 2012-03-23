@@ -7,6 +7,7 @@ from exceptions import *
 from tornado.options import define, options
 import base64
 from events import EventManager
+from tornado.httputil import parse_multipart_form_data
 import logging
 
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
@@ -151,15 +152,18 @@ class TotoHandler(RequestHandler):
 
   @tornado.web.asynchronous
   def post(self, path=None):
-    if 'x-raw-body' not in self.request.headers:
-      if self.bson and 'content-type' in self.request.headers and self.request.headers['content-type'] == 'application/bson':
+    content_type = 'content-type' in self.request.headers and self.request.headers['content-type'] or 'application/json'
+    if content_type != 'application/json':
+      if content_type == 'application/x-www-form-urlencoded':
+        self.body = {'parameters': self.request.arguments}
+      elif content_type.startswith('multipart/form-data'):
+        self.body = {'parameters': {'arguments': self.request.arguments, 'files': self.request.files}}
+      elif self.bson and content_type == 'application/bson':
         self.response_type = 'application/bson'
         self.body = self.bson(self.request.body).decode()
-      else:
-        self.body = json.loads(self.request.body)
-      self.parameters = 'parameters' in self.body and self.body['parameters'] or {}
     else:
-      self.parameters = {}
+      self.body = json.loads(self.request.body)
+    self.parameters = self.body and 'parameters' in self.body and self.body['parameters'] or {}
     self.process_request(path)
 
   def process_request(self, path=None):
