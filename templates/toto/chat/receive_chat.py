@@ -6,12 +6,12 @@ import multiprocessing
 
 def listen(port):
   print "Listening on %d" % port
-  print urllib2.urlopen('http://localhost:%d' % port, json.dumps({'method': 'receive_message', 'parameters': {}})).read()
+  print urllib2.urlopen(urllib2.Request('http://localhost:%d' % port, json.dumps({'method': 'receive_message', 'parameters': {}}), {'content-type': 'application/json'})).read()
   print "Received from %d" % port
 
 def listen_url(port):
   print "Listening on %d" % port
-  print urllib2.urlopen('http://localhost:%d/receive_message' % port).read()
+  print urllib2.urlopen(urllib2.Request('http://localhost:%d/receive_message' % port, headers={'content-type': 'application/json'})).read()
   print "Received from %d" % port
 
 p1 = multiprocessing.Process(target=listen, args=(8888,))
