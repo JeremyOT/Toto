@@ -4,6 +4,7 @@ from tornado.web import *
 from tornado.ioloop import *
 from tornado.options import define, options
 from handler import *
+import logging
 
 define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use (default 'mongodb')")
 define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
@@ -58,6 +59,11 @@ class TotoServer():
     self.__method = options.method_module and __import__(options.method_module) or None
     self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
     sys.argv = original_argv
+    #clear root logger handlers to prevent duplicate logging if user has specified a log file
+    if options.log_file_prefix:
+      root_logger = logging.getLogger()
+      for handler in [h for h in root_logger.handlers]:
+        root_logger.removeHandler(handler)
     self.__load_options(conf_file, **kwargs)
     #clear method_module references so we can fully reload with new options
     if self.__method:
