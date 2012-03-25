@@ -9,7 +9,7 @@ for scheme in INSTALL_SCHEMES.values():
 
 template_files = []
 for (path, dirs, files) in os.walk('templates'):
-  template_files.append((path, [os.path.join(path, f) for f in files]))
+  template_files.extend([os.path.join('..', path, f) for f in files])
 
 setup(
   name='Toto',
@@ -26,5 +26,6 @@ setup(
   scripts=['scripts/toto-create',],
   description='A Tornado based framework designed to accelerate web service development',
   classifiers=['License :: OSI Approved :: MIT License', 'Operating System :: POSIX'],
-  data_files=template_files
+  package_data={'toto': template_files}
   )
+
