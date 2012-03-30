@@ -98,7 +98,7 @@ class TotoServer():
       application_settings['debug'] = True
 
     event_handler = (os.path.join(options.root, options.event_path), events.EventHandler)
-    main_handler = (os.path.join(options.root, '([\w\./]*)'), TotoHandler, {'method_root': self.__method, 'connection': connection})
+    main_handler = ('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'method_root': self.__method, 'connection': connection})
     handlers = []
     if not options.event_mode == 'off':
       handlers.append(event_handler)
@@ -107,7 +107,6 @@ class TotoServer():
         init_module.invoke(EventManager.instance())
     if not options.event_mode == 'only':
       handlers.append(main_handler)
-
     
     application = Application(handlers, **application_settings)
     
