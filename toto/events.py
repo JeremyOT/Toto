@@ -43,13 +43,13 @@ class EventManager():
   def __init__(self):
     self.__handlers = {}
 
-  def remove_handler(handler_sig):
+  def remove_handler(self, handler_sig):
     self.__handlers[handler_sig[0]].discard(handler_sig[1])
   
-  def register_handler(self, event_name, handler, run_on_main_loop=False, request_handler=None, persist=False):
+  def register_handler(self, event_name, event_handler, run_on_main_loop=False, request_handler=None, persist=False):
     if not event_name in self.__handlers:
       self.__handlers[event_name] = set()
-    handler_tuple = (handler, run_on_main_loop, request_handler, persist)
+    handler_tuple = (event_handler, run_on_main_loop, request_handler, persist)
     self.__handlers[event_name].add(handler_tuple)
     return (event_name, handler_tuple)
 
