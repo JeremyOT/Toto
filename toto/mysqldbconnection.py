@@ -108,6 +108,9 @@ class MySQLdbConnection():
     session._verified = True
     return session
 
+  def remove_session(self, session_id):
+    self.db.execute("delete from session where session_id = %s", session_id)
+
   def clear_sessions(self, user_id):
     user_id = user_id.lower()
     self.db.execute("delete from session using session join account on account.account_id = session.account_id where account.user_id = %s", user_id)

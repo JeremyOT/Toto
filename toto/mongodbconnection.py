@@ -86,7 +86,11 @@ class MongoDBConnection():
     session._verified = True
     return session
 
-  def clear_sessions(self, user_id):
+  def remove_session(self, session_id):
+    self.db.sessions.remove({'session_id': session_id})
+    
+
+  def clear_sessions(self, user_id, session_id=None):
     user_id = user_id.lower()
     self.db.sessions.remove({'user_id': user_id})
 
