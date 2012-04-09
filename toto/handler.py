@@ -57,8 +57,8 @@ class TotoHandler(RequestHandler):
       import math
       set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
       get_cookie = options.secure_cookies and cls.get_secure_cookie or cls.get_cookie
-      def create_session(self, user_id, password, ttl=0):
-        self.session = self.connection.create_session(user_id, password, ttl)
+      def create_session(self, user_id=None, password=None):
+        self.session = self.connection.create_session(user_id, password)
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
@@ -187,6 +187,8 @@ class TotoHandler(RequestHandler):
       response['result'] = result
     if error:
       response['error'] = error
+    if self.session:
+      response['session'] = {'session_id': self.session.session_id, 'expires': self.session.expires, 'user_id': self.session.user_id}
     if self.response_type == 'application/bson':
       response_body = str(self.bson.encode(response))
     else:
@@ -212,8 +214,8 @@ class TotoHandler(RequestHandler):
     if deregister_on_finish:
       self.registered_event_handlers.append(sig)
 
-  def create_session(self, user_id, password, ttl=0):
-    self.session = self.connection.create_session(user_id, password, ttl)
+  def create_session(self, user_id=None, password=None):
+    self.session = self.connection.create_session(user_id, password)
     return self.session
 
   def retrieve_session(self, session_id=None):

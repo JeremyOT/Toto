@@ -47,11 +47,14 @@ class MongoDBConnection():
     if not 'user_id_password' in account_indexes:
       self.db.accounts.ensure_index([('user_id', pymongo.ASCENDING), ('password', pymongo.ASCENDING)], name='user_id_password')
   
-  def __init__(self, host, port, database, password_salt='toto', default_session_ttl=24*60*60*365):
+  def __init__(self, host, port, database, password_salt='toto', session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = pymongo.Connection(host, port)[database]
     self._ensure_indexes()
     self.password_salt = password_salt
-    self.default_session_ttl = default_session_ttl
+    self.session_ttl = session_ttl
+    self.anon_session_ttl = anon_session_ttl or self.session_ttl
+    self.session_renew = session_renew or self.session_ttl
+    self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
   def password_hash(self, user_id, password):
     return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
@@ -65,32 +68,39 @@ class MongoDBConnection():
     values['password'] = self.password_hash(user_id, password)
     self.db.accounts.insert(values)
 
-  def create_session(self, user_id, password, ttl=0):
-    expires = time() + (ttl or self.default_session_ttl)
-    account = self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
-    if not account:
+  def create_session(self, user_id=None, password=None):
+    if not user_id:
+      user_id = ''
+    user_id = user_id.lower()
+    account = user_id and password and self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
+    if user_id and not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
+    expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     self.db.sessions.insert({'user_id': user_id, 'expires': expires, 'session_id': session_id})
     session = MongoDBSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
+    session._verified = True
     return session
 
   def retrieve_session(self, session_id, hmac_data, data):
     session_data = self.db.sessions.find_one({'session_id': session_id, 'expires': {'$gt': time()}})
     if not session_data:
       return None
+    user_id = session_data['user_id']
+    if session_data['expires'] < (time() + (user_id and self.session_renew or self.anon_session_renew)):
+      session_data['expires'] = time() + (user_id and self.session_ttl or self.anon_session_ttl)
+      self.db.sesions.update({'session_id': session_id}, {'$set': {'expires': session_data['expires']}})
     session = MongoDBSession(self.db, session_data)
-    if data and hmac_data != base64.b64encode(hmac.new(str(session_data['user_id']), data, hashlib.sha1).digest()):
+    if data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     session._verified = True
     return session
 
   def remove_session(self, session_id):
     self.db.sessions.remove({'session_id': session_id})
-    
 
-  def clear_sessions(self, user_id, session_id=None):
+  def clear_sessions(self, user_id):
     user_id = user_id.lower()
     self.db.sessions.remove({'user_id': user_id})
 
