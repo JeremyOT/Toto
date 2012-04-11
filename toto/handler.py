@@ -69,6 +69,7 @@ class TotoHandler(RequestHandler):
           session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
         if session_id:
           self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+          set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.retrieve_session = retrieve_session
     if options.debug:
