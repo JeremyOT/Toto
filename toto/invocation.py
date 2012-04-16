@@ -23,7 +23,6 @@ def anonymous_session(fn):
     handler.retrieve_session()
     if not handler.session:
       handler.create_session()
-    print handler.session.__dict__
     return fn(handler, parameters)
   __copy_attributes(fn, wrapper)
   return wrapper
