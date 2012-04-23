@@ -41,14 +41,14 @@ class TotoHandler(RequestHandler):
     if options.method_select == 'url':
       def get_method_path(self, path, body):
         if path:
-          self.method_path = path.split('/')
+          return path.split('/')
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
     elif options.method_select == 'parameter':
       def get_method_path(self, path, body):
         if 'method' in body:
-          self.method_path = body['method'].split('.')
+          return body['method'].split('.')
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
@@ -64,31 +64,32 @@ class TotoHandler(RequestHandler):
       cls.create_session = create_session
       
       def retrieve_session(self, session_id=None):
-        headers = self.request.headers
-        if not session_id:
-          session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
-        if session_id:
-          self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
-        if self.session:
-          set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
+        if not self.session or (session_id and self.session.session_id != session_id):
+          headers = self.request.headers
+          if not session_id:
+            session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
+          if session_id:
+            self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
+          if self.session:
+            set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.retrieve_session = retrieve_session
     if options.debug:
       import traceback
-      def invoke_method(self, path):
+      def invoke_method(self, path, request_body, parameters, finish_by_default=True):
         result = None
         error = None
+        method = None
         try:
-          self.__get_method_path(path, self.body)
-          self.__get_method()
-          result = self.__method(self, self.parameters)
+          method = self.__get_method(self.__get_method_path(path, request_body))
+          result = method(self, parameters)
         except TotoException as e:
           logging.error(traceback.format_exc())
           error = e.__dict__
         except Exception as e:
           logging.error(traceback.format_exc())
           error = TotoException(ERROR_SERVER, str(e)).__dict__
-        return result, error
+        return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
       cls.invoke_method = invoke_method
       
   """
@@ -98,25 +99,25 @@ class TotoHandler(RequestHandler):
   """
   def __get_method_path(self, path, body):
     if path:
-      self.method_path = path.split('/')
+      return path.split('/')
     elif 'method' in body:
-      self.method_path = body['method'].split('.')
+      return body['method'].split('.')
     else:
       raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
 
-  def __get_method(self):
+  def __get_method(self, path):
     method = self.__method_root
-    for i in self.method_path:
+    for i in path:
       method = getattr(method, i)
-    self.__method = method.invoke
+    return method.invoke
 
-  def invoke_method(self, path):
+  def invoke_method(self, path, request_body, parameters, finish_by_default=True):
     result = None
     error = None
+    method = None
     try:
-      self.__get_method_path(path, self.body)
-      self.__get_method()
-      result = self.__method(self, self.parameters)
+      method = self.__get_method(self.__get_method_path(path, request_body))
+      result = method(self, parameters)
     except TotoException as e:
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       error = e.__dict__
@@ -124,7 +125,7 @@ class TotoHandler(RequestHandler):
       e = TotoException(ERROR_SERVER, str(e))
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       error = e.__dict__
-    return result, error
+    return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
 
   """
     Request handlers
@@ -143,14 +144,14 @@ class TotoHandler(RequestHandler):
   
   @tornado.web.asynchronous
   def get(self, path=None):
-    self.parameters = {}
+    parameters = {}
     # Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1
     for k, v in self.request.arguments.items():
       if len(v) == 1:
-        self.parameters[k] = v[0]
+        parameters[k] = v[0]
       else:
-        self.parameters[k] = v
-    self.process_request(path)
+        parameters[k] = v
+    self.process_request(path, self.body, parameters)
 
   @tornado.web.asynchronous
   def post(self, path=None):
@@ -165,30 +166,44 @@ class TotoHandler(RequestHandler):
         self.body = self.bson(self.request.body).decode()
     else:
       self.body = json.loads(self.request.body)
-    self.parameters = self.body and 'parameters' in self.body and self.body['parameters'] or {}
-    self.process_request(path)
-
-  def process_request(self, path=None):
+    if 'batch' in self.body:
+      self.batch_process_request(self.body['batch'])
+    else:
+      self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
+  
+  def batch_process_request(self, requests):
     self.session = None
-    self.__method = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-    (result, error) = self.invoke_method(path)
+    batch_results = {}
+    for k, v in requests.iteritems():
+      (result, error, finish_by_default) = self.invoke_method(path, v, v['parameters'], False)
+      batch_results[k] = error is not None and {'error': error} or {'result': result}
+    self.respond(batch_results=batch_results)
+
+  
+  def process_request(self, path, request_body, parameters, finish_by_default=True):
+    self.session = None
+    self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
+    self.add_header('access-control-expose-headers', 'x-toto-hmac')
+    (result, error, finish_by_default) = self.invoke_method(path, request_body, parameters, finish_by_default)
     if result is not None or error:
       self.respond(result, error)
-    elif not self._finished and not hasattr(self.__method, 'asynchronous'):
+    elif finish_by_default and not self._finished:
       self.finish()
 
   """
     End request handlers
   """
 
-  def respond(self, result=None, error=None):
+  def respond(self, result=None, error=None, batch_results=None):
     response = {}
     if result is not None:
       response['result'] = result
     if error:
       response['error'] = error
+    if batch_results:
+      response['batch'] = batch_results
     if self.session:
       response['session'] = {'session_id': self.session.session_id, 'expires': self.session.expires, 'user_id': self.session.user_id}
     if self.response_type == 'application/bson':
@@ -221,11 +236,12 @@ class TotoHandler(RequestHandler):
     return self.session
 
   def retrieve_session(self, session_id=None):
-    headers = self.request.headers
-    if not session_id and 'x-toto-session-id' in headers:
-      session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
-    if session_id:
-      self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+    if not self.session or (session_id and self.session.session_id != session_id):
+      headers = self.request.headers
+      if not session_id and 'x-toto-session-id' in headers:
+        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
+      if session_id:
+        self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
     return self.session
     
   def on_finish(self):
