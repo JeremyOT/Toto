@@ -177,7 +177,7 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
     batch_results = {}
     for k, v in requests.iteritems():
-      (result, error, finish_by_default) = self.invoke_method(path, v, v['parameters'], False)
+      (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False)
       batch_results[k] = error is not None and {'error': error} or {'result': result}
     self.respond(batch_results=batch_results)
 
