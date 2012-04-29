@@ -156,12 +156,13 @@ class TotoHandler(RequestHandler):
   @tornado.web.asynchronous
   def post(self, path=None):
     content_type = 'content-type' in self.request.headers and self.request.headers['content-type'] or 'application/json'
-    if content_type != 'application/json':
-      if content_type == 'application/x-www-form-urlencoded':
+    print 'content-type', content_type
+    if not content_type.startswith('application/json'):
+      if content_type.startswith('application/x-www-form-urlencoded'):
         self.body = {'parameters': self.request.arguments}
       elif content_type.startswith('multipart/form-data'):
         self.body = {'parameters': {'arguments': self.request.arguments, 'files': self.request.files}}
-      elif self.bson and content_type == 'application/bson':
+      elif self.bson and content_type.startswith('application/bson'):
         self.response_type = 'application/bson'
         self.body = self.bson(self.request.body).decode()
     else:
