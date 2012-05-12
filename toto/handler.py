@@ -84,10 +84,10 @@ class TotoHandler(RequestHandler):
           method = self.__get_method(self.__get_method_path(path, request_body))
           result = method(self, parameters)
         except TotoException as e:
-          logging.error(traceback.format_exc())
+          logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
           error = e.__dict__
         except Exception as e:
-          logging.error(traceback.format_exc())
+          logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
           error = TotoException(ERROR_SERVER, str(e)).__dict__
         return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
       cls.invoke_method = invoke_method
