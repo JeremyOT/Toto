@@ -76,21 +76,14 @@ class TotoHandler(RequestHandler):
       cls.retrieve_session = retrieve_session
     if options.debug:
       import traceback
-      def invoke_method(self, path, request_body, parameters, finish_by_default=True):
-        result = None
-        error = None
-        method = None
-        try:
-          method = self.__get_method(self.__get_method_path(path, request_body))
-          result = method(self, parameters)
-        except TotoException as e:
+      def error_info(self, e):
+        if isinstance(e , TotoException):
           logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
-          error = e.__dict__
-        except Exception as e:
+          return e.__dict__
+        else:
           logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
-          error = TotoException(ERROR_SERVER, str(e)).__dict__
-        return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
-      cls.invoke_method = invoke_method
+          return TotoException(ERROR_SERVER, repr(e)).__dict__
+      cls.error_info = error_info
       
   """
     The default method_select "both" (or any unsupported value) will
@@ -111,6 +104,16 @@ class TotoHandler(RequestHandler):
       method = getattr(method, i)
     return method.invoke
 
+  def error_info(self, e):
+    if isinstance(exception , TotoException):
+      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
+      return e.__dict__
+    else:
+      e = TotoException(ERROR_SERVER, repr(e))
+      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
+      return e.__dict__
+      
+
   def invoke_method(self, path, request_body, parameters, finish_by_default=True):
     result = None
     error = None
@@ -118,13 +121,8 @@ class TotoHandler(RequestHandler):
     try:
       method = self.__get_method(self.__get_method_path(path, request_body))
       result = method(self, parameters)
-    except TotoException as e:
-      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
-      error = e.__dict__
     except Exception as e:
-      e = TotoException(ERROR_SERVER, str(e))
-      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
-      error = e.__dict__
+      error = self.error_info(e)
     return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
 
   """
