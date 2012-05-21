@@ -31,6 +31,7 @@ class TotoHandler(RequestHandler):
     self.response_type = 'application/json'
     self.body = None
     self.registered_event_handlers = []
+    self.__active_methods = []
 
   """
     Runtime method configuration
@@ -102,7 +103,7 @@ class TotoHandler(RequestHandler):
     method = self.__method_root
     for i in path:
       method = getattr(method, i)
-    return method.invoke
+    return method
 
   def error_info(self, e):
     if isinstance(exception , TotoException):
@@ -120,7 +121,8 @@ class TotoHandler(RequestHandler):
     method = None
     try:
       method = self.__get_method(self.__get_method_path(path, request_body))
-      result = method(self, parameters)
+      self.__active_methods.append(method)
+      result = method.invoke(self, parameters)
     except Exception as e:
       error = self.error_info(e)
     return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
@@ -220,8 +222,9 @@ class TotoHandler(RequestHandler):
     
 
   def on_connection_close(self):
-    if hasattr(self.__method, 'on_connection_close'):
-      self.__method.on_connection_close(self);
+    for method in self.__active_methods:
+      if hasattr(method, 'on_connection_close'):
+        method.on_connection_close(self);
     self.on_finish()
 
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
