@@ -1,43 +1,51 @@
 from threading import Thread, Lock
 from collections import deque
+import logging
+import traceback
 
 _task_queues = {}
 
 class TaskQueue():
 
-  def __init__(self):
+  def __init__(self, thread_count=1):
     self.tasks = deque()
     self.running = False
     self.lock = Lock()
+    self.threads = set()
+    self.thread_count = thread_count
   
   def add_task(self, fn, args=[]):
     self.tasks.append((fn, args))
     self.lock.acquire()
-    if not self.running:
-      self.run()
+    self.run()
     self.lock.release()
 
   def run(self):
-    if self.running:
+    if len(self.threads) >= self.thread_count:
       return
-    self.running = True
+    thread = None
     def task_loop():
       while 1:
         self.lock.acquire()
         try:
           task = self.tasks.popleft()
         except IndexError:
-          self.running = False
+          self.threads.remove(thread)
           return
+        except Exception as e:
+          logging.error(traceback.format_exc())
         finally:
           self.lock.release()
         task[0](*task[1])
-    Thread(target=task_loop).start()
+    thread = Thread(target=task_loop)
+    thread.daemon = True
+    self.threads.add(thread)
+    thread.start()
 
   @staticmethod
-  def instance(name):
+  def instance(name, thread_count=1):
     try:
       return _task_queues[name]
     except KeyError:
-      _task_queues[name] = TaskQueue()
+      _task_queues[name] = TaskQueue(thread_count)
       return _task_queues[name]
