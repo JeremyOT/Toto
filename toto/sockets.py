@@ -58,6 +58,10 @@ class TotoSocketHandler(WebSocketHandler):
     except Exception as e:
       self.log_error(e)
 
+  def send_message(self, message_id=None, data) {
+    self.write_message(message_id and {'message_id': message_id: 'data': data} or data)
+  }
+
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
     sig = EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
     if deregister_on_finish:
