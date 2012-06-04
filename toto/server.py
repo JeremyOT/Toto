@@ -4,6 +4,7 @@ from tornado.web import *
 from tornado.ioloop import *
 from tornado.options import define, options
 from handler import *
+from sockets import *
 import logging
 
 define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use (default 'mongodb')")
@@ -37,6 +38,15 @@ define("stop", default=False, help="Alias for daemon=start for command line usag
 define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
 define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
+define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
+define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False (default False)")
+define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set (default True)")
+define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com' (default None)")
+define("socket_opened_method", default=None, type=str, help="An optional function to run when a new web socket is opened, the socket handler will be passed as the only argument")
+define("socket_closed_method", default=None, type=str, help="An optional function to run when a web socket is closed, the socket handler will be passed as the only argument")
+define("socket_method_module", default=None, type=str, help="The root module to use for web socket method lookup")
+define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods (default False)")
+define("socket_path", default='websocket', help="The path to use for websocket connections (default 'websocket')")
 
 class TotoServer():
 
@@ -57,10 +67,16 @@ class TotoServer():
     
 
   def __init__(self, conf_file=None, **kwargs):
-    original_argv, sys.argv = sys.argv, [i for i in sys.argv if i.startswith('--method_module=')]
-    self.__load_options(conf_file, **('method_module' in kwargs and {'method_module': kwargs['method_module']} or {}))
-    self.__method = options.method_module and __import__(options.method_module) or None
-    self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
+    module_options = {'method_module', 'socket_method_module', 'event_init_module'}
+    function_options = {'startup_function', 'socket_opened_method', 'socket_closed_method'}
+    original_argv, sys.argv = sys.argv, [i for i in sys.argv if i.strip('-').split('=')[0] in module_options]
+    self.__load_options(conf_file, **{i: kwargs[i] for i in kwargs if i in module_options})
+    modules = {getattr(options, i) for i in module_options if getattr(options, i)}
+    for module in modules:
+      __import__(module)
+    function_modules = {getattr(options, i).rsplit('.')[0] for i in function_options if getattr(options, i)}
+    for module in function_modules:
+      __import__(module)
     sys.argv = original_argv
     #clear root logger handlers to prevent duplicate logging if user has specified a log file
     if options.log_file_prefix:
@@ -69,18 +85,19 @@ class TotoServer():
         root_logger.removeHandler(handler)
     self.__load_options(conf_file, **kwargs)
     #clear method_module references so we can fully reload with new options
-    if self.__method:
-      for i in (m for m in sys.modules.keys() if m.startswith(options.method_module)):
+    for module in modules:
+      for i in (m for m in sys.modules.keys() if m.startswith(module)):
         del sys.modules[i]
-    if self.__event_init:
-      for i in (m for m in sys.modules.keys() if m.startswith(options.event_init_module)):
+    for module in function_modules:
+      for i in (m for m in sys.modules.keys() if m.startswith(module)):
         del sys.modules[i]
     #prevent the reloaded module from re-defining options
     define, tornado.options.define = tornado.options.define, lambda *args, **kwargs: None
-    self.__method = options.method_module and __import__(options.method_module) or None
     self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
-    tornado.options.define = define
     TotoHandler.configure()
+    if options.use_web_sockets:
+      TotoSocketHandler.configure()
+    tornado.options.define = define
 
   def __run_server(self, port):
     connection = None
@@ -100,16 +117,16 @@ class TotoServer():
     if options.autoreload:
       application_settings['debug'] = True
 
-    event_handler = (os.path.join(options.root, options.event_path), events.EventHandler)
-    main_handler = ('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'method_root': self.__method, 'connection': connection})
     handlers = []
     if not options.event_mode == 'off':
-      handlers.append(event_handler)
+      handlers.append((os.path.join(options.root, options.event_path), events.EventHandler))
       init_module = self.__event_init
       if init_module:
         init_module.invoke(EventManager.instance())
     if not options.event_mode == 'only':
-      handlers.append(main_handler)
+      handlers.append(('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'connection': connection}))
+    if options.use_web_sockets:
+      handler.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root.rstrip('/'), options.socket_path), TotoSocketHandler, {'connection': connection}))
     
     application = Application(handlers, **application_settings)
     

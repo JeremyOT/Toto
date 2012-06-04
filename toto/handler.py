@@ -10,23 +10,18 @@ from events import EventManager
 from tornado.httputil import parse_multipart_form_data
 import logging
 
-define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
-define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
-define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False (default False)")
-define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set (default True)")
-define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com' (default None)")
+define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 
 class TotoHandler(RequestHandler):
 
   SUPPORTED_METHODS = ["POST", "OPTIONS", "GET"]
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
-  def initialize(self, method_root, connection):
-    self.__method_root = method_root
-    self.connection = connection
-    self.db = self.connection.db
+  def initialize(self, db_connection):
+    self.db_connection = connection
+    self.db = self.db_connection.db
     self.bson = options.bson_enabled and __import__('bson').BSON
     self.response_type = 'application/json'
     self.body = None
@@ -59,7 +54,7 @@ class TotoHandler(RequestHandler):
       set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
       get_cookie = options.secure_cookies and cls.get_secure_cookie or cls.get_cookie
       def create_session(self, user_id=None, password=None):
-        self.session = self.connection.create_session(user_id, password)
+        self.session = self.db_connection.create_session(user_id, password)
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
@@ -70,7 +65,7 @@ class TotoHandler(RequestHandler):
           if not session_id:
             session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
           if session_id:
-            self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
+            self.session = self.db_connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
           if self.session:
             set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
@@ -85,6 +80,7 @@ class TotoHandler(RequestHandler):
           logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
           return TotoException(ERROR_SERVER, repr(e)).__dict__
       cls.error_info = error_info
+      cls.__method_root = __import__(options.method_module)
       
   """
     The default method_select "both" (or any unsupported value) will
@@ -106,7 +102,7 @@ class TotoHandler(RequestHandler):
     return method
 
   def error_info(self, e):
-    if isinstance(exception , TotoException):
+    if isinstance(e, TotoException):
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       return e.__dict__
     else:
@@ -219,7 +215,6 @@ class TotoHandler(RequestHandler):
     self.write(body)
     if finish:
       self.finish()
-    
 
   def on_connection_close(self):
     for method in self.__active_methods:
@@ -231,9 +226,14 @@ class TotoHandler(RequestHandler):
     sig = EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
     if deregister_on_finish:
       self.registered_event_handlers.append(sig)
+    return sig
+
+  def deregister_event_handler(self, sig):
+    EventManager.instance().remove_handler(sig)
+    self.registered_event_handlers.remove(sig)
 
   def create_session(self, user_id=None, password=None):
-    self.session = self.connection.create_session(user_id, password)
+    self.session = self.db_connection.create_session(user_id, password)
     return self.session
 
   def retrieve_session(self, session_id=None):
@@ -242,12 +242,10 @@ class TotoHandler(RequestHandler):
       if not session_id and 'x-toto-session-id' in headers:
         session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
       if session_id:
-        self.session = self.connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+        self.session = self.db_connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
     return self.session
     
   def on_finish(self):
-    if self.registered_event_handlers:
-      event_manager = EventManager.instance()
-      for handler in self.registered_event_handlers:
-        event_manager.remove_handler(handler)
+    while self.registered_event_handlers:
+      self.deregister_event_handler(self.registered_event_handlers[0])
 
