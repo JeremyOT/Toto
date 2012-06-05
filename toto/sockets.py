@@ -18,12 +18,12 @@ class TotoSocketHandler(WebSocketHandler):
       cls.log_error = log_error
     open_function = options.socket_opened_method and options.socket_opened_method.rsplit('.', 1)
     cls._on_open = open_function and getattr(__import__(open_function[0]), open_function[1]) or None
-    close_function = options.socket_closed_method and options.socket_closed_method.rsplit('.', 1)
+    closed_function = options.socket_closed_method and options.socket_closed_method.rsplit('.', 1)
     cls._on_close = closed_function and getattr(__import__(closed_function[0]), closed_function[1]) or None
     cls.__method = __import__(options.socket_method_module)
 
-  def initialize(self, connection):
-    self.db_connection = connection
+  def initialize(self, db_connection):
+    self.db_connection = db_connection
     self.db = self.db_connection.db
     self.session = None
     self.registered_event_handlers = []
@@ -58,9 +58,8 @@ class TotoSocketHandler(WebSocketHandler):
     except Exception as e:
       self.log_error(e)
 
-  def send_message(self, message_id=None, data) {
-    self.write_message(message_id and {'message_id': message_id: 'data': data} or data)
-  }
+  def send_message(self, data, message_id=None):
+    self.write_message(message_id and {'message_id': message_id, 'data': data} or data)
 
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
     sig = EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)

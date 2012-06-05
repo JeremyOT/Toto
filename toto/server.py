@@ -74,7 +74,7 @@ class TotoServer():
     modules = {getattr(options, i) for i in module_options if getattr(options, i)}
     for module in modules:
       __import__(module)
-    function_modules = {getattr(options, i).rsplit('.')[0] for i in function_options if getattr(options, i)}
+    function_modules = {getattr(options, i).rsplit('.', 1)[0] for i in function_options if getattr(options, i)}
     for module in function_modules:
       __import__(module)
     sys.argv = original_argv
@@ -100,16 +100,16 @@ class TotoServer():
     tornado.options.define = define
 
   def __run_server(self, port):
-    connection = None
+    db_connection = None
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
-      connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      db_connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     elif options.database == "mysql":
       from mysqldbconnection import MySQLdbConnection
-      connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      db_connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     else:
       from fakeconnection import FakeConnection
-      connection = FakeConnection()
+      db_connection = FakeConnection()
   
     application_settings = {}
     if options.cookie_secret:
@@ -118,21 +118,21 @@ class TotoServer():
       application_settings['debug'] = True
 
     handlers = []
+    if options.use_web_sockets:
+      handlers.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root.rstrip('/'), options.socket_path), TotoSocketHandler, {'db_connection': db_connection}))
     if not options.event_mode == 'off':
       handlers.append((os.path.join(options.root, options.event_path), events.EventHandler))
       init_module = self.__event_init
       if init_module:
         init_module.invoke(EventManager.instance())
     if not options.event_mode == 'only':
-      handlers.append(('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'connection': connection}))
-    if options.use_web_sockets:
-      handler.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root.rstrip('/'), options.socket_path), TotoSocketHandler, {'connection': connection}))
+      handlers.append(('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'db_connection': db_connection}))
     
     application = Application(handlers, **application_settings)
     
     if options.startup_function:
-      startup_path = options.startup_function.rpartition('.')
-      __import__(startup_path[0]).__dict__[startup_path[2]](connection=connection, application=application)
+      startup_path = options.startup_function.rsplit('.')
+      __import__(startup_path[0]).__dict__[startup_path[1]](db_connection=db_connection, application=application)
 
     application.listen(port)
     print "Starting server on port %s" % port

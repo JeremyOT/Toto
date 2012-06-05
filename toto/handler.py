@@ -20,7 +20,7 @@ class TotoHandler(RequestHandler):
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
   def initialize(self, db_connection):
-    self.db_connection = connection
+    self.db_connection = db_connection
     self.db = self.db_connection.db
     self.bson = options.bson_enabled and __import__('bson').BSON
     self.response_type = 'application/json'
