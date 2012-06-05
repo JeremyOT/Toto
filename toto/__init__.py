@@ -1,4 +1,4 @@
-from server import *
+import server
 import handler
 import invocation
 import exceptions
@@ -7,3 +7,4 @@ import sockets
 import remoteworker
 import methods
 import tasks
+from server import TotoServer

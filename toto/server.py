@@ -3,8 +3,9 @@ import os
 from tornado.web import *
 from tornado.ioloop import *
 from tornado.options import define, options
-from handler import *
-from sockets import *
+from handler import TotoHandler
+from sockets import TotoSocketHandler
+from remoteworker import RemoteWorkerSocketHandler
 import logging
 
 define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use (default 'mongodb')")
@@ -47,6 +48,8 @@ define("socket_closed_method", default=None, type=str, help="An optional functio
 define("socket_method_module", default=None, type=str, help="The root module to use for web socket method lookup")
 define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods (default False)")
 define("socket_path", default='websocket', help="The path to use for websocket connections (default 'websocket')")
+define("use_remote_workers", default=False, help="Whether or not to use Toto's remote worker functionality (default False)")
+define("remote_worker_path", default="remoteworker", help="The path to use for remote worker connections (default 'remoteworker')")
 
 class TotoServer():
 
@@ -97,6 +100,8 @@ class TotoServer():
     TotoHandler.configure()
     if options.use_web_sockets:
       TotoSocketHandler.configure()
+    if options.use_remote_workers:
+      RemoteWorkerSocketHandler.configure()
     tornado.options.define = define
 
   def __run_server(self, port):
@@ -119,7 +124,9 @@ class TotoServer():
 
     handlers = []
     if options.use_web_sockets:
-      handlers.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root.rstrip('/'), options.socket_path), TotoSocketHandler, {'db_connection': db_connection}))
+      handlers.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root, options.socket_path), TotoSocketHandler, {'db_connection': db_connection}))
+    if options.use_remote_workers:
+      handlers.append((os.path.join(options.root, options.remote_worker_path), RemoteWorkerSocketHandler))
     if not options.event_mode == 'off':
       handlers.append((os.path.join(options.root, options.event_path), events.EventHandler))
       init_module = self.__event_init

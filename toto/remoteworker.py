@@ -17,7 +17,7 @@ class RemoteWorkerManager(object):
     self.__operation_callbacks = {}
 
   def add_worker(self, worker):
-    self.__workers(id(worker), worker)
+    self.__workers[id(worker)] = worker
     self.__worker_queue.append(id(worker))
     self.run_operation()
 
@@ -29,13 +29,15 @@ class RemoteWorkerManager(object):
       operation = self.__operation_queue.popleft()
       worker_id = self.__worker_queue.popleft()
       self.__workers[worker_id].write_message({'operation_id': operation[0], 'script': operation[1]})
+      if (operation[2]):
+        self.__operation_queue.append(operation)
 
-  def add_operation(self, operation_id, operation_script, callback_method=None, max_nodes=1):
+  def add_operation(self, operation_id, operation_script, callback_method=None, max_nodes=1, continuous=False):
     nodes = min(max_nodes, len(self.__worker_queue)) or 1
     if callback_method:
       self.__operation_callbacks[operation_id] = callback_method
     for i in xrange(nodes):
-      self.__operation_queue.append((operation_id, operation_script))
+      self.__operation_queue.append((operation_id, operation_script, continuous))
     self.run_operation()
 
   def finish_operation(self, worker, operation_id, result):
@@ -50,6 +52,16 @@ class RemoteWorkerManager(object):
       RemoteWorkerManager._instance = RemoteWorkerManager()
     return RemoteWorkerManager._instance
 
+# These methods allow RemoteWorkerSocketHandler to be swapped with the bulkier TotoSocketHandler
+def worker_connected(worker):
+  RemoteWorkerManager.instance().add_worker(worker)
+
+def worker_disconnected(worker):
+  RemoteWorkerManager.instance().remove_worker(worker)
+
+def complete(worker, data):
+  RemoteWorkerManager.instance().finish_operation(worker, data['operation_id'], data['result'])
+
 class RemoteWorkerSocketHandler(WebSocketHandler):
 
   @classmethod
@@ -60,28 +72,11 @@ class RemoteWorkerSocketHandler(WebSocketHandler):
         logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
       cls.log_error = log_error
 
-  def initialize(self, method_root, connection, on_open, on_close):
-    self.__method_root = method_root
-    self.db_connection = connection
-    self.__on_open = on_open
-    self.__on_close = on_close
-    self.db = self.db_connection.db
-    self.session = None
-    self.registered_event_handlers = []
-
   def log_error(self, e):
     if isinstance(exception , TotoException):
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
     else:
       logging.error("TotoException: %s Value: %s" % (ERROR_SERVER, repr(e)))
-  
-  def create_session(self, user_id=None, password=None):
-    self.session = self.db_connection.create_session(user_id, password)
-    return self.session
-
-  def retrieve_session(self, session_id):
-      self.session = self.db_connection.retrieve_session(session_id, None, None)
-      return self.session
 
   def open(self):
     RemoteWorkerManager.instance().add_worker(self)
