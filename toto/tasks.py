@@ -42,6 +42,9 @@ class TaskQueue():
     self.threads.add(thread)
     thread.start()
 
+  def __len__(self):
+    return len(self.threads) + len(self.tasks)
+
   @staticmethod
   def instance(name, thread_count=1):
     try:
