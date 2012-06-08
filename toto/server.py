@@ -1,4 +1,3 @@
-import events
 import os
 from tornado.web import *
 from tornado.ioloop import *
@@ -22,8 +21,7 @@ define("processes", default=1, help="The number of daemon processes to run, pass
 define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
 define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
 define("method_module", default='methods', help="The root module to use for method lookup (default method)")
-define("event_key", type=str, help="The string to use for the x-toto-event-key header when sending events to the event manager. By default this is auto generated on launch, but a value can be passed to facilitate sending events from external processes")
-define("remote_instances", type=str, help="A comma separated list of remote servers (http://192.168.1.2:8888/) or event handlers (!http://192.168.1.2:9000/handler_path) that should be treated as instances of this server. Set this parameter to have the event system send events to remote servers (event_key is required to match on all servers in this list).")
+define("remote_instances", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'")
 define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire (default 1 year)")
 define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire (default 1 day)")
 define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request (default 0)")
@@ -31,7 +29,6 @@ define("anon_session_renew", default=0, help="The number of seconds before an an
 define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
-define("event_path", default='event', help="The path to listen for events on - primarily used for internal communication (default event)")
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
 define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
 define("start", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
@@ -50,6 +47,7 @@ define("use_web_sockets", default=False, help="Whether or not web sockets should
 define("socket_path", default='websocket', help="The path to use for websocket connections (default 'websocket')")
 define("use_remote_workers", default=False, help="Whether or not to use Toto's remote worker functionality (default False)")
 define("remote_worker_path", default="remoteworker", help="The path to use for remote worker connections (default 'remoteworker')")
+define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well (default '8999')")
 
 class TotoServer():
 
@@ -104,7 +102,7 @@ class TotoServer():
       RemoteWorkerSocketHandler.configure()
     tornado.options.define = define
 
-  def __run_server(self, port):
+  def __run_server(self, port, index=0):
     db_connection = None
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
@@ -128,10 +126,18 @@ class TotoServer():
     if options.use_remote_workers:
       handlers.append((os.path.join(options.root, options.remote_worker_path), RemoteWorkerSocketHandler))
     if not options.event_mode == 'off':
-      handlers.append((os.path.join(options.root, options.event_path), events.EventHandler))
+      from toto.events import EventManager
+      event_manager = EventManager.instance()
+      event_manager.address = 'tcp://*:%s' % (options.event_port + index)
+      event_manager.start_listening()
+      for i in xrange(options.processes > 0 and options.processes or multiprocessing.cpu_count()):
+        event_manager.register_server('tcp://127.0.0.1:%s' % (options.event_port + i))
+      if options.remote_instances:
+        for address in options.remote_instances.split(','):
+          event_manager.register_server(address)
       init_module = self.__event_init
       if init_module:
-        init_module.invoke(EventManager.instance())
+        init_module.invoke(event_manager)
     if not options.event_mode == 'only':
       handlers.append(('%s/?([^/]?[\w\./]*)' % options.root.rstrip('/'), TotoHandler, {'db_connection': db_connection}))
     
@@ -146,10 +152,6 @@ class TotoServer():
     IOLoop.instance().start()
 
   def run(self): 
-    events.set_key(options.event_key)
-    if options.remote_instances:
-      for route in options.remote_instances.split(','):
-        events.add_route(route[0] == '!' and route[1:] or os.path.join(route, options.event_path))
     if options.daemon:
       import multiprocessing
       #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
@@ -181,7 +183,7 @@ class TotoServer():
 
       if options.daemon == 'start' or options.daemon == 'restart':
         import sys
-        def run_daemon_server(port, pidfile):
+        def run_daemon_server(port, pidfile, index):
           #fork and only continue on child process
           if not os.fork():
             #detach from controlling terminal
@@ -192,10 +194,7 @@ class TotoServer():
               with open(pidfile, 'w') as f:
                 f.write(str(pid))
             else:
-              self.__run_server(port)
-
-        for i in xrange(count):
-          events.add_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_path))
+              self.__run_server(port, index)
 
         for i in xrange(count):
           pidfile = path_with_id(options.pidfile, i)
@@ -203,14 +202,10 @@ class TotoServer():
             print "Skipping %d, pidfile exists at %s" % (i, pidfile)
             continue
 
-          events.set_local_route(os.path.join("http://127.0.0.1:%d%s" % (options.port + i, options.root), options.event_path))
-          p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile))
+          p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile, i))
           p.start()
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
 
     else:
-      event_route = os.path.join("http://127.0.0.1:%d%s" % (options.port, options.root), options.event_path)
-      events.add_route(event_route)
-      events.set_local_route(event_route)
       self.__run_server(options.port)

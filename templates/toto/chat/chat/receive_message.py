@@ -1,6 +1,5 @@
 import toto
 from toto.invocation import *
-from toto.events import EventManager
 from tornado.ioloop import IOLoop
 
 @asynchronous

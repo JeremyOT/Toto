@@ -6,7 +6,6 @@ from invocation import *
 from exceptions import *
 from tornado.options import define, options
 import base64
-from events import EventManager
 from tornado.httputil import parse_multipart_form_data
 import logging
 
@@ -34,6 +33,9 @@ class TotoHandler(RequestHandler):
   @classmethod
   def configure(cls):
     #Method configuration
+    if options.event_mode != 'off':
+      from toto.events import EventManager
+      cls.event_manager = EventManager
     if options.method_select == 'url':
       def get_method_path(self, path, body):
         if path:
@@ -223,13 +225,13 @@ class TotoHandler(RequestHandler):
     self.on_finish()
 
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
-    sig = EventManager.instance().register_handler(event_name, handler, run_on_main_loop, self)
+    sig = TotoHandler.event_manager.instance().register_handler(event_name, handler, run_on_main_loop, self)
     if deregister_on_finish:
       self.registered_event_handlers.append(sig)
     return sig
 
   def deregister_event_handler(self, sig):
-    EventManager.instance().remove_handler(sig)
+    TotoHandler.event_manager.instance().remove_handler(sig)
     self.registered_event_handlers.remove(sig)
 
   def create_session(self, user_id=None, password=None):
