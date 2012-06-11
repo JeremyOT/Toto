@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import toto
+import toto.server
 
 if __name__ == "__main__":
-  toto.TotoServer('event.conf').run()
+  toto.server.TotoServer('event.conf').run()

@@ -8,7 +8,7 @@ from tornado.websocket import WebSocketHandler
 import logging
 from collections import deque
 
-class RemoteWorkerManager(object):
+class ClientSideWorkerManager(object):
   
   def __init__(self):
     self.__workers = {}
@@ -48,21 +48,21 @@ class RemoteWorkerManager(object):
 
   @staticmethod
   def instance():
-    if not hasattr(RemoteWorkerManager, '_instance'):
-      RemoteWorkerManager._instance = RemoteWorkerManager()
-    return RemoteWorkerManager._instance
+    if not hasattr(ClientSideWorkerManager, '_instance'):
+      ClientSideWorkerManager._instance = ClientSideWorkerManager()
+    return ClientSideWorkerManager._instance
 
-# These methods allow RemoteWorkerSocketHandler to be swapped with the bulkier TotoSocketHandler
+# These methods allow ClientSideWorkerSocketHandler to be swapped with the bulkier TotoSocketHandler
 def worker_connected(worker):
-  RemoteWorkerManager.instance().add_worker(worker)
+  ClientSideWorkerManager.instance().add_worker(worker)
 
 def worker_disconnected(worker):
-  RemoteWorkerManager.instance().remove_worker(worker)
+  ClientSideWorkerManager.instance().remove_worker(worker)
 
 def complete(worker, data):
-  RemoteWorkerManager.instance().finish_operation(worker, data['operation_id'], data['result'])
+  ClientSideWorkerManager.instance().finish_operation(worker, data['operation_id'], data['result'])
 
-class RemoteWorkerSocketHandler(WebSocketHandler):
+class ClientSideWorkerSocketHandler(WebSocketHandler):
 
   @classmethod
   def configure(cls):
@@ -79,11 +79,11 @@ class RemoteWorkerSocketHandler(WebSocketHandler):
       logging.error("TotoException: %s Value: %s" % (ERROR_SERVER, repr(e)))
 
   def open(self):
-    RemoteWorkerManager.instance().add_worker(self)
+    ClientSideWorkerManager.instance().add_worker(self)
 
   def on_message(self, message_data):
     message = json.loads(message_data)
-    RemoteWorkerManager.instance().finish_operation(self, message['operation_id'], message['result'])
+    ClientSideWorkerManager.instance().finish_operation(self, message['operation_id'], message['result'])
 
   def on_close(self):
-    RemoteWorkerManager.instance().remove_worker(self)
+    ClientSideWorkerManager.instance().remove_worker(self)

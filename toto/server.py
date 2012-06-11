@@ -4,29 +4,29 @@ from tornado.ioloop import *
 from tornado.options import define, options
 from handler import TotoHandler
 from sockets import TotoSocketHandler
-from remoteworker import RemoteWorkerSocketHandler
+from clientsideworker import ClientSideWorkerSocketHandler
 import logging
 
-define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use (default 'mongodb')")
-define("mysql_host", default="localhost:3306", help="MySQL database 'host:port' (default 'localhost:3306')")
+define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use")
+define("mysql_host", default="localhost:3306", help="MySQL database 'host:port'")
 define("mysql_database", type=str, help="Main MySQL schema name")
 define("mysql_user", type=str, help="Main MySQL user")
 define("mysql_password", type=str, help="Main MySQL user password")
-define("mongodb_host", default="localhost", help="MongoDB host (default 'localhost')")
-define("mongodb_port", default=27017, help="MongoDB port (default 27017)")
-define("mongodb_database", default="toto_server", help="MongoDB database (default 'toto_server')")
-define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port. (default 8888)")
+define("mongodb_host", default="localhost", help="MongoDB host")
+define("mongodb_port", default=27017, help="MongoDB port")
+define("mongodb_database", default="toto_server", help="MongoDB database")
+define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.")
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
-define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu (default 1)")
-define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (default toto.pid -> toto.0.pid)")
-define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain (default /)")
-define("method_module", default='methods', help="The root module to use for method lookup (default method)")
-define("remote_instances", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'")
-define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire (default 1 year)")
-define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire (default 1 day)")
-define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request (default 0)")
-define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request (default 0)")
-define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords (default toto)")
+define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu")
+define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.pid -> toto.0.pid)")
+define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain")
+define("method_module", default='methods', help="The root module to use for method lookup")
+define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
+define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire")
+define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire")
+define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request")
+define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
+define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
@@ -37,17 +37,17 @@ define("restart", default=False, help="Alias for daemon=start for command line u
 define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
 define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
-define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False (default False)")
-define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set (default True)")
-define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com' (default None)")
+define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False")
+define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set")
+define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com'")
 define("socket_opened_method", default=None, type=str, help="An optional function to run when a new web socket is opened, the socket handler will be passed as the only argument")
 define("socket_closed_method", default=None, type=str, help="An optional function to run when a web socket is closed, the socket handler will be passed as the only argument")
 define("socket_method_module", default=None, type=str, help="The root module to use for web socket method lookup")
-define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods (default False)")
-define("socket_path", default='websocket', help="The path to use for websocket connections (default 'websocket')")
-define("use_remote_workers", default=False, help="Whether or not to use Toto's remote worker functionality (default False)")
-define("remote_worker_path", default="remoteworker", help="The path to use for remote worker connections (default 'remoteworker')")
-define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well (default '8999')")
+define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods")
+define("socket_path", default='websocket', help="The path to use for websocket connections")
+define("client_side_worker_path", default="", help="The path to use for client side worker connections - functionality will be disabled if this is not set.")
+define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
+define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 class TotoServer():
 
@@ -98,8 +98,8 @@ class TotoServer():
     TotoHandler.configure()
     if options.use_web_sockets:
       TotoSocketHandler.configure()
-    if options.use_remote_workers:
-      RemoteWorkerSocketHandler.configure()
+    if options.client_side_worker_path:
+      ClientSideWorkerSocketHandler.configure()
     tornado.options.define = define
 
   def __run_server(self, port, index=0):
@@ -123,8 +123,8 @@ class TotoServer():
     handlers = []
     if options.use_web_sockets:
       handlers.append(('%s/?([^/]?[\w\./]*)' % os.path.join(options.root, options.socket_path), TotoSocketHandler, {'db_connection': db_connection}))
-    if options.use_remote_workers:
-      handlers.append((os.path.join(options.root, options.remote_worker_path), RemoteWorkerSocketHandler))
+    if options.client_side_worker_path:
+      handlers.append((os.path.join(options.root, options.client_side_worker_path), ClientSideWorkerSocketHandler))
     if not options.event_mode == 'off':
       from toto.events import EventManager
       event_manager = EventManager.instance()
@@ -132,8 +132,8 @@ class TotoServer():
       event_manager.start_listening()
       for i in xrange(options.processes > 0 and options.processes or multiprocessing.cpu_count()):
         event_manager.register_server('tcp://127.0.0.1:%s' % (options.event_port + i))
-      if options.remote_instances:
-        for address in options.remote_instances.split(','):
+      if options.remote_event_receivers:
+        for address in options.remote_event_receivers:
           event_manager.register_server(address)
       init_module = self.__event_init
       if init_module:
