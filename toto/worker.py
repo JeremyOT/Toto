@@ -19,7 +19,7 @@ define("mongodb_host", default="localhost", help="MongoDB host")
 define("mongodb_port", default=27017, help="MongoDB port")
 define("mongodb_database", default="toto_server", help="MongoDB database")
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
-define("processes", default=0, help="The number of daemon processes to run, pass 0 to run one per cpu")
+define("processes", default=-1, help="The number of daemon processes to run, pass 0 to run only the load balancer. Negative numbers will run one worker per cpu")
 define("pidfile", default="toto.worker.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.worker.pid -> toto.worker.0.pid)")
 define("method_module", default='methods', help="The root module to use for method lookup")
 define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
@@ -31,8 +31,17 @@ define("nodaemon", default=False, help="Alias for daemon='' for command line usa
 define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
-define("worker_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers")
-define("worker_socket_address", default="ipc://workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
+define("worker_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers. If this is set to an empty string, workers will connect directly to worker_socket_address.")
+define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
+
+#convert p to the absolute path, insert ".i" before the last "." or at the end of the path
+def pid_path_with_id(p, i):
+  (d, f) = os.path.split(os.path.abspath(p))
+  components = f.rsplit('.', 1)
+  f = '%s.%s' % (components[0], i)
+  if len(components) > 1:
+    f += "." + components[1]
+  return os.path.join(d, f)
 
 class TotoWorkerService():
 
@@ -50,7 +59,6 @@ class TotoWorkerService():
       options['daemon'].set('restart')
     elif options.nodaemon:
       options['daemon'].set('')
-    
 
   def __init__(self, conf_file=None, **kwargs):
     module_options = {'method_module', 'event_init_module'}
@@ -84,12 +92,14 @@ class TotoWorkerService():
     tornado.options.define = define
 
   def __run_server(self):
-    dev = ProcessDevice(zmq.STREAMER, zmq.PULL, zmq.PUSH)
-    dev.bind_in(options.worker_address)
-    dev.bind_out(options.worker_socket_address)
-    dev.setsockopt_in(zmq.IDENTITY, 'PULL')
-    dev.setsockopt_out(zmq.IDENTITY, 'PUSH')
-    dev.start()
+    balancer = None
+    if options.worker_address:
+      balancer = ProcessDevice(zmq.STREAMER, zmq.PULL, zmq.PUSH)
+      balancer.bind_in(options.worker_address)
+      balancer.bind_out(options.worker_socket_address)
+      balancer.setsockopt_in(zmq.IDENTITY, 'PULL')
+      balancer.setsockopt_out(zmq.IDENTITY, 'PUSH')
+      balancer.start()
 
     def start_server_process(module):
       db_connection = None
@@ -115,32 +125,38 @@ class TotoWorkerService():
         startup_path = options.startup_function.rsplit('.')
         __import__(startup_path[0]).__dict__[startup_path[1]](worker=worker, db_connection=db_connection)
       worker.start()
-    count = options.processes > 0 and options.processes or cpu_count()
+    count = options.processes if options.processes >= 0 else cpu_count()
     processes = []
     for i in xrange(count):
       proc = Process(target=start_server_process, args=(self.__method_module,))
       proc.daemon = True
       processes.append(proc)
       proc.start()
-    print "Starting %s worker process%s. Listening on '%s'." % (count, count > 1 and 'es' or '',  options.worker_address)
+    if count == 0:
+      print 'Starting load balancer. Listening on "%s". Routing to "%s"' % (options.worker_address, options.worker_socket_address)
+    else:
+      print "Starting %s worker process%s. %s." % (count, count > 1 and 'es' or '', options.worker_address and ('Listening on "%s"' % options.worker_address) or ('Connecting to "%s"' % options.worker_socket_address))
+    if options.daemon:
+      i = 1
+      for proc in processes:
+        with open(pid_path_with_id(options.pidfile, i), 'w') as f:
+          f.write(str(proc.pid))
+        i += 1
+      if balancer:
+        with open(pid_path_with_id(options.pidfile, i), 'w') as f:
+          f.write(str(balancer.launcher.pid))
     for proc in processes:
       proc.join()
+    if balancer:
+      balancer.join()
 
   def run(self): 
     if options.daemon:
       import multiprocessing
-      #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
-      def path_with_id(p, i):
-        (d, f) = os.path.split(os.path.abspath(p))
-        components = f.rsplit('.', 1)
-        f = '%s.%s' % (components[0], i)
-        if len(components) > 1:
-          f += "." + components[1]
-        return os.path.join(d, f)
 
       if options.daemon == 'stop' or options.daemon == 'restart':
         import signal, re
-        pattern = path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
+        pattern = pid_path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
         piddir = os.path.dirname(pattern)
         for fn in os.listdir(os.path.dirname(pattern)):
           pidfile = os.path.join(piddir, fn)
@@ -157,7 +173,7 @@ class TotoWorkerService():
 
       if options.daemon == 'start' or options.daemon == 'restart':
         import sys
-        pidfile = path_with_id(options.pidfile, 0)
+        pidfile = pid_path_with_id(options.pidfile, 0)
         if os.path.exists(pidfile):
           print "Not starting, pidfile exists at %s" % pidfile
           return
