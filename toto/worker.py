@@ -153,30 +153,30 @@ class TotoWorkerService():
   def run(self): 
     if options.daemon:
       import multiprocessing
+      import signal, re
+
+      pattern = pid_path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
+      piddir = os.path.dirname(pattern)
+      existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
 
       if options.daemon == 'stop' or options.daemon == 'restart':
-        import signal, re
-        pattern = pid_path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
-        piddir = os.path.dirname(pattern)
-        for fn in os.listdir(os.path.dirname(pattern)):
-          pidfile = os.path.join(piddir, fn)
-          if re.match(pattern, pidfile):
-            with open(pidfile, 'r') as f:
-              pid = int(f.read())
-              try:
-                os.kill(pid, signal.SIGTERM)
-              except OSError as e:
-                if e.errno != 3:
-                  raise
-              print "Stopped server %s" % pid 
-            os.remove(pidfile)
+        for pidfile in existing_pidfiles:
+          with open(pidfile, 'r') as f:
+            pid = int(f.read())
+            try:
+              os.kill(pid, signal.SIGTERM)
+            except OSError as e:
+              if e.errno != 3:
+                raise
+            print "Stopped server %s" % pid 
+          os.remove(pidfile)
 
       if options.daemon == 'start' or options.daemon == 'restart':
         import sys
-        pidfile = pid_path_with_id(options.pidfile, 0)
-        if os.path.exists(pidfile):
-          print "Not starting, pidfile exists at %s" % pidfile
+        if existing_pidfiles:
+          print "Not starting, pidfile%s exist%s at %s" % (len(existing_pidfiles) > 1 and 's' or '', len(existing_pidfiles) == 1 and 's' or '', ', '.join(existing_pidfiles))
           return
+        pidfile = pid_path_with_id(options.pidfile, 0)
         #fork and only continue on child process
         if not os.fork():
           #detach from controlling terminal
