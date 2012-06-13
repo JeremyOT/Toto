@@ -2,21 +2,44 @@ import toto
 import zmq
 import cPickle as pickle
 import zlib
+import logging
+from threading import Thread
 from tornado.options import options
+from collections import deque
 
 class WorkerConnection(object):
 
   def __init__(self, address):
     self.address = address
     self.__context = zmq.Context()
-    self.__socket = self.__context.socket(zmq.PUSH)
-    self.__socket.connect(self.address)
+    self.__thread = None
+    self.__queue = deque()
   
   def invoke(self, method, parameters):
-    self.__socket.send(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})))
+    self.__queue_request(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})))
   
+  def __len__(self):
+    return len(self.__queue)
+
   def __getattr__(self, path):
     return WorkerInvocation(path, self)
+
+  def __queue_request(self, request):
+    self.__queue.append(request)
+    if self.__thread:
+      return
+    def send_queue():
+      socket = self.__context.socket(zmq.REQ)
+      socket.connect(self.address)
+      while self.__queue:
+        socket.send(self.__queue[0])
+        response = pickle.loads(zlib.decompress(socket.recv()))
+        if response and response['received']:
+          self.__queue.popleft()
+      self.__thread = None
+    self.__thread = Thread(target=send_queue)
+    self.__thread.daemon = True
+    self.__thread.start()
 
   _instance = None
   @classmethod

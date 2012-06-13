@@ -94,11 +94,11 @@ class TotoWorkerService():
   def __run_server(self):
     balancer = None
     if options.worker_address:
-      balancer = ProcessDevice(zmq.STREAMER, zmq.PULL, zmq.PUSH)
+      balancer = ProcessDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
       balancer.bind_in(options.worker_address)
       balancer.bind_out(options.worker_socket_address)
-      balancer.setsockopt_in(zmq.IDENTITY, 'PULL')
-      balancer.setsockopt_out(zmq.IDENTITY, 'PUSH')
+      balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER')
+      balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
       balancer.start()
 
     def start_server_process(module):
@@ -198,11 +198,11 @@ class TotoWorkerService():
 class TotoWorker():
   def __init__(self, method_module, socket_address, db_connection):
     self.context = zmq.Context()
-    self.socket = self.context.socket(zmq.PULL)
+    self.socket = self.context.socket(zmq.REP)
     self.socket_address = socket_address
     self.method_module = method_module
     self.db_connection = db_connection
-    self.db = db_connection.db
+    self.db = db_connection and db_connection.db or None
     if options.debug:
       from traceback import format_exc
       def log_error(self, e):
@@ -217,6 +217,7 @@ class TotoWorker():
     while True:
       try:
         message = pickle.loads(zlib.decompress(self.socket.recv()))
+        self.socket.send(zlib.compress(pickle.dumps({'received': True})))
         logging.info(message['method'])
         method = self.method_module
         for i in message['method'].split('.'):
