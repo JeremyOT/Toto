@@ -8,6 +8,7 @@ import zlib
 import cPickle as pickle
 import sys
 import time
+from threading import Thread
 from multiprocessing import Process, cpu_count
 
 define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use")
@@ -33,6 +34,8 @@ define("debug", default=False, help="Set this to true to prevent Toto from nicel
 define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
 define("worker_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers. If this is set to an empty string, workers will connect directly to worker_socket_address.")
 define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
+define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
+define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path_with_id(p, i):
@@ -101,7 +104,7 @@ class TotoWorkerService():
       balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
       balancer.start()
 
-    def start_server_process(module):
+    def start_server_process(module, pidfile):
       db_connection = None
       if options.database == "mongodb":
         from mongodbconnection import MongoDBConnection
@@ -120,15 +123,16 @@ class TotoWorkerService():
         if init_module:
           init_module.invoke(event_manager)
     
-      worker = TotoWorker(module, options.worker_socket_address, db_connection)
+      worker = TotoWorker(module, options.worker_socket_address, db_connection, pidfile)
       if options.startup_function:
         startup_path = options.startup_function.rsplit('.')
         __import__(startup_path[0]).__dict__[startup_path[1]](worker=worker, db_connection=db_connection)
       worker.start()
     count = options.processes if options.processes >= 0 else cpu_count()
     processes = []
+    worker_pidfiles = options.daemon and [pid_path_with_id(options.pidfile, i) for i in xrange(1, count + 1)] or []
     for i in xrange(count):
-      proc = Process(target=start_server_process, args=(self.__method_module,))
+      proc = Process(target=start_server_process, args=(self.__method_module, worker_pidfiles and worker_pidfiles[i]))
       proc.daemon = True
       processes.append(proc)
       proc.start()
@@ -139,7 +143,7 @@ class TotoWorkerService():
     if options.daemon:
       i = 1
       for proc in processes:
-        with open(pid_path_with_id(options.pidfile, i), 'w') as f:
+        with open(worker_pidfiles[i - 1], 'w') as f:
           f.write(str(proc.pid))
         i += 1
       if balancer:
@@ -150,7 +154,18 @@ class TotoWorkerService():
     if balancer:
       balancer.join()
 
+  def send_worker_command(self, command):
+    if options.control_socket_address:
+      socket = zmq.Context().socket(zmq.PUB)
+      socket.bind(options.control_socket_address)
+      time.sleep(1)
+      socket.send('command %s' % command)
+      print "Sent command: %s" % options.command
+
   def run(self): 
+    if options.command:
+      self.send_worker_command(options.command)
+      return
     if options.daemon:
       import multiprocessing
       import signal, re
@@ -196,13 +211,15 @@ class TotoWorkerService():
       self.__run_server()
 
 class TotoWorker():
-  def __init__(self, method_module, socket_address, db_connection):
+  def __init__(self, method_module, socket_address, db_connection, pidfile=None):
     self.context = zmq.Context()
-    self.socket = self.context.socket(zmq.REP)
     self.socket_address = socket_address
     self.method_module = method_module
     self.db_connection = db_connection
     self.db = db_connection and db_connection.db or None
+    self.status = 'Initialized'
+    self.running = False
+    self.__pidfile = pidfile
     if options.debug:
       from traceback import format_exc
       def log_error(self, e):
@@ -212,12 +229,43 @@ class TotoWorker():
   def log_error(self, e):
     logging.error(repr(e))
 
+  def log_status(self):
+    logging.info('Pid: %s Pidfile: %s status: %s' % (os.getpid(), self.__pidfile, self.status))
+  
+  def __monitor_control(self, address=options.control_socket_address):
+    def monitor():
+      socket = self.context.socket(zmq.SUB)
+      socket.setsockopt(zmq.SUBSCRIBE, 'command')
+      socket.connect(address)
+      while self.running:
+        try:
+          command = socket.recv().split(' ', 1)[1]
+          logging.info("Received command: %s" % command)
+          if command == 'shutdown':
+            self.running = False
+            self.context.term()
+            return
+          elif command == 'status':
+            self.log_status()
+        except Exception as e:
+          self.log_error(e)
+    if address:
+      thread = Thread(target=monitor)
+      thread.daemon = True
+      thread.start()
+
   def start(self):
-    self.socket.connect(self.socket_address)
-    while True:
+    self.running = True
+    self.__monitor_control()
+    while self.running:
       try:
-        message = pickle.loads(zlib.decompress(self.socket.recv()))
-        self.socket.send(zlib.compress(pickle.dumps({'received': True})))
+        socket = self.context.socket(zmq.REP)
+        socket.connect(self.socket_address)
+        self.status = 'Listening'
+        message = pickle.loads(zlib.decompress(socket.recv()))
+        socket.send(zlib.compress(pickle.dumps({'received': True})))
+        socket.close()
+        self.status = 'Working'
         logging.info(message['method'])
         method = self.method_module
         for i in message['method'].split('.'):
@@ -225,3 +273,7 @@ class TotoWorker():
         method.invoke(self, message['parameters'])
       except Exception as e:
         self.log_error(e)
+      self.status = 'Finished'
+      self.log_status()
+    if self.__pidfile:
+      os.remove(self.__pidfile)
