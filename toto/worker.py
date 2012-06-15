@@ -159,7 +159,7 @@ class TotoWorkerService():
       socket = zmq.Context().socket(zmq.PUB)
       socket.bind(options.control_socket_address)
       time.sleep(1)
-      socket.send('command %s' % command)
+      socket.send_string('command %s' % command)
       print "Sent command: %s" % options.command
 
   def run(self): 
