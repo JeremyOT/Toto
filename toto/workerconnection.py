@@ -32,14 +32,22 @@ class WorkerConnection(object):
       socket = self.__context.socket(zmq.REQ)
       socket.connect(self.address)
       while self.__queue:
-        socket.send(self.__queue[0])
-        response = pickle.loads(zlib.decompress(socket.recv()))
-        if response and response['received']:
-          self.__queue.popleft()
+        try:
+          socket.send(self.__queue[0])
+          response = pickle.loads(zlib.decompress(socket.recv()))
+          if response and response['received']:
+            self.__queue.popleft()
+          else:
+        except Exception as e:
+          logging.error(repr(e))
       self.__thread = None
     self.__thread = Thread(target=send_queue)
     self.__thread.daemon = True
     self.__thread.start()
+  
+  def join(self):
+    if self.__thread:
+      self.__thread.join()
 
   _instance = None
   @classmethod

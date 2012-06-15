@@ -273,7 +273,7 @@ class TotoWorker():
         method.invoke(self, message['parameters'])
       except Exception as e:
         self.log_error(e)
-      self.status = 'Finished'
-      self.log_status()
+    self.status = 'Finished'
+    self.log_status()
     if self.__pidfile:
       os.remove(self.__pidfile)
