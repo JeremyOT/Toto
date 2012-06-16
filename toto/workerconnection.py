@@ -37,7 +37,6 @@ class WorkerConnection(object):
           response = pickle.loads(zlib.decompress(socket.recv()))
           if response and response['received']:
             self.__queue.popleft()
-          else:
         except Exception as e:
           logging.error(repr(e))
       self.__thread = None

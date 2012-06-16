@@ -1,6 +1,6 @@
 import os
 import zmq
-from zmq.devices.basedevice import ProcessDevice
+from zmq.devices.monitoredqueuedevice import ProcessMonitoredQueue
 import tornado
 from tornado.options import define, options
 import logging
@@ -36,6 +36,7 @@ define("worker_address", default="tcp://*:55555", help="The service will bind to
 define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
 define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
 define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
+define("balancer_monitor_address", default="ipc:///tmp/balancermonitor.sock", help="The balancer will publish monitor messages to this address (if not an empty string)")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path_with_id(p, i):
@@ -97,11 +98,13 @@ class TotoWorkerService():
   def __run_server(self):
     balancer = None
     if options.worker_address:
-      balancer = ProcessDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+      balancer = ProcessMonitoredQueue(zmq.ROUTER, zmq.DEALER, zmq.PUB)
       balancer.bind_in(options.worker_address)
       balancer.bind_out(options.worker_socket_address)
-      balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER')
-      balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
+      if options.balancer_monitor_address:
+        balancer.bind_mon(options.balancer_monitor_address)
+      balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER_IN')
+      balancer.setsockopt_out(zmq.IDENTITY, 'ROUTER_OUT')
       balancer.start()
 
     def start_server_process(module, pidfile):
@@ -149,10 +152,20 @@ class TotoWorkerService():
       if balancer:
         with open(pid_path_with_id(options.pidfile, i), 'w') as f:
           f.write(str(balancer.launcher.pid))
+    if balancer:
+      if options.balancer_monitor_address:
+        context = zmq.Context()
+        socket = context.socket(zmq.SUB)
+        socket.connect(options.balancer_monitor_address)
+        socket.setsockopt(zmq.SUBSCRIBE, 'in')
+        socket.setsockopt(zmq.SUBSCRIBE, 'out')
+        logging.info('Monitoring balancer on: %s' % options.balancer_monitor_address)
+        while True:
+          logging.info(socket.recv())
+      else:
+        balancer.join()
     for proc in processes:
       proc.join()
-    if balancer:
-      balancer.join()
 
   def send_worker_command(self, command):
     if options.control_socket_address:
@@ -257,14 +270,13 @@ class TotoWorker():
   def start(self):
     self.running = True
     self.__monitor_control()
+    socket = self.context.socket(zmq.REP)
+    socket.connect(self.socket_address)
     while self.running:
       try:
-        socket = self.context.socket(zmq.REP)
-        socket.connect(self.socket_address)
         self.status = 'Listening'
         message = pickle.loads(zlib.decompress(socket.recv()))
         socket.send(zlib.compress(pickle.dumps({'received': True})))
-        socket.close()
         self.status = 'Working'
         logging.info(message['method'])
         method = self.method_module
