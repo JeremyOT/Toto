@@ -17,20 +17,20 @@ class WorkerConnection(object):
   def __init__(self, address, request_timeout_ms=5000):
     self.address = address
     self.message_address = 'inproc://WorkerConnection%s' % id(self)
-    print 'address: %s' % self.message_address
     self.__context = zmq.Context()
     self.__queue_socket = self.__context.socket(zmq.PUSH)
     self.__queue_socket.bind(self.message_address)
     self.__thread = None
     self.__request_timeout_ms = request_timeout_ms
     self.__callbacks = {}
+    self.__queued_messages = {}
     self.__ioloop = None
   
   def invoke(self, method, parameters, callback=None):
     self._queue_message(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})), callback)
   
   def __len__(self):
-    return len(self.__queue)
+    return len(self.__queued_messages)
 
   def __getattr__(self, path):
     return WorkerInvocation(path, self)
@@ -45,7 +45,6 @@ class WorkerConnection(object):
 
   def start(self):
     def loop():
-      queued_messages = {}
       self.__ioloop = IOLoop()
       queue_socket = self.__context.socket(zmq.PULL)
       queue_socket.connect(self.message_address)
@@ -55,7 +54,7 @@ class WorkerConnection(object):
       worker_stream = ZMQStream(worker_socket, self.__ioloop)
 
       def receive_response(message):
-        queued_messages.pop(message[1], None)
+        self.__queued_messages.pop(message[1], None)
         callback = self.__callbacks.pop(message[1], None)
         if callback:
           try:
@@ -65,18 +64,17 @@ class WorkerConnection(object):
       worker_stream.on_recv(receive_response)
 
       def queue_message(message):
-        queued_messages[message[1]] = (time() * 1000, message)
+        self.__queued_messages[message[1]] = (time() * 1000, message)
         try:
           worker_stream.send_multipart(message)
         except Exception as e:
-          print e
+          logging.error(repr(e))
       queue_stream.on_recv(queue_message)
 
       def requeue_message():
         now = time() * 1000
-        for message in (item[1] for item in queued_messages.itervalues() if item[0] + self.__request_timeout_ms < now):
+        for message in (item[1] for item in self.__queued_messages.itervalues() if item[0] + self.__request_timeout_ms < now):
           queue_message(message)
-        self.__ioloop.flush()
       requeue_callback = PeriodicCallback(requeue_message, self.__request_timeout_ms, io_loop = self.__ioloop)
       requeue_callback.start()
 
