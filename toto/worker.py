@@ -1,6 +1,6 @@
 import os
 import zmq
-from zmq.devices.monitoredqueuedevice import ProcessMonitoredQueue
+from zmq.devices.basedevice import ProcessDevice
 import tornado
 from tornado.options import define, options
 import logging
@@ -36,7 +36,6 @@ define("worker_address", default="tcp://*:55555", help="The service will bind to
 define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
 define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
 define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
-define("balancer_monitor_address", default="ipc:///tmp/balancermonitor.sock", help="The balancer will publish monitor messages to this address (if not an empty string)")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path_with_id(p, i):
@@ -98,13 +97,11 @@ class TotoWorkerService():
   def __run_server(self):
     balancer = None
     if options.worker_address:
-      balancer = ProcessMonitoredQueue(zmq.ROUTER, zmq.DEALER, zmq.PUB)
+      balancer = ProcessDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
       balancer.bind_in(options.worker_address)
       balancer.bind_out(options.worker_socket_address)
-      if options.balancer_monitor_address:
-        balancer.bind_mon(options.balancer_monitor_address)
-      balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER_IN')
-      balancer.setsockopt_out(zmq.IDENTITY, 'ROUTER_OUT')
+      balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER')
+      balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
       balancer.start()
 
     def start_server_process(module, pidfile):
@@ -153,17 +150,7 @@ class TotoWorkerService():
         with open(pid_path_with_id(options.pidfile, i), 'w') as f:
           f.write(str(balancer.launcher.pid))
     if balancer:
-      if options.balancer_monitor_address:
-        context = zmq.Context()
-        socket = context.socket(zmq.SUB)
-        socket.connect(options.balancer_monitor_address)
-        socket.setsockopt(zmq.SUBSCRIBE, 'in')
-        socket.setsockopt(zmq.SUBSCRIBE, 'out')
-        logging.info('Monitoring balancer on: %s' % options.balancer_monitor_address)
-        while True:
-          logging.info(socket.recv())
-      else:
-        balancer.join()
+      balancer.join()
     for proc in processes:
       proc.join()
 
@@ -272,19 +259,33 @@ class TotoWorker():
     self.__monitor_control()
     socket = self.context.socket(zmq.REP)
     socket.connect(self.socket_address)
+    pending_reply = False
     while self.running:
       try:
         self.status = 'Listening'
-        message = pickle.loads(zlib.decompress(socket.recv()))
-        socket.send(zlib.compress(pickle.dumps({'received': True})))
-        self.status = 'Working'
-        logging.info(message['method'])
+        message = socket.recv_multipart()
+        pending_reply = True
+        message_id = message[0]
+        data = pickle.loads(zlib.decompress(message[1]))
+        logging.info('Received Task %s: %s' % (message_id, data['method']))
         method = self.method_module
-        for i in message['method'].split('.'):
+        for i in data['method'].split('.'):
           method = getattr(method, i)
-        method.invoke(self, message['parameters'])
+        if hasattr(method.invoke, 'asynchronous'):
+          socket.send_multipart((message_id,))
+          pending_reply = False
+          self.status = 'Working'
+          method.invoke(self, data['parameters'])
+        else:
+          self.status = 'Working'
+          response = method.invoke(self, data['parameters'])
+          socket.send_multipart((message_id, pickle.dumps(response)))
+          pending_reply = False
       except Exception as e:
         self.log_error(e)
+        if pending_reply:
+          socket.send_multipart((message_id,))
+
     self.status = 'Finished'
     self.log_status()
     if self.__pidfile:

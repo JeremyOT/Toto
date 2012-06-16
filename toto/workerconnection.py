@@ -6,17 +6,28 @@ import logging
 from threading import Thread
 from tornado.options import options
 from collections import deque
+from zmq.eventloop.ioloop import ZMQPoller, IOLoop, PeriodicCallback
+from zmq.eventloop.zmqstream import ZMQStream
+from time import time
+from uuid import uuid4
+from traceback import format_exc
 
 class WorkerConnection(object):
 
-  def __init__(self, address):
+  def __init__(self, address, request_timeout_ms=5000):
     self.address = address
+    self.message_address = 'inproc://WorkerConnection%s' % id(self)
+    print 'address: %s' % self.message_address
     self.__context = zmq.Context()
+    self.__queue_socket = self.__context.socket(zmq.PUSH)
+    self.__queue_socket.bind(self.message_address)
     self.__thread = None
-    self.__queue = deque()
+    self.__request_timeout_ms = request_timeout_ms
+    self.__callbacks = {}
+    self.__ioloop = None
   
-  def invoke(self, method, parameters):
-    self.__queue_request(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})))
+  def invoke(self, method, parameters, callback=None):
+    self._queue_message(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})), callback)
   
   def __len__(self):
     return len(self.__queue)
@@ -24,25 +35,60 @@ class WorkerConnection(object):
   def __getattr__(self, path):
     return WorkerInvocation(path, self)
 
-  def __queue_request(self, request):
-    self.__queue.append(request)
-    if self.__thread:
-      return
-    def send_queue():
-      socket = self.__context.socket(zmq.REQ)
-      socket.connect(self.address)
-      while self.__queue:
+  def _queue_message(self, message, callback=None):
+    if not self.__ioloop:
+      self.start()
+    message_id = str(uuid4())
+    if callback:
+      self.__callbacks[message_id] = callback
+    self.__queue_socket.send_multipart(('', message_id, message))
+
+  def start(self):
+    def loop():
+      queued_messages = {}
+      self.__ioloop = IOLoop()
+      queue_socket = self.__context.socket(zmq.PULL)
+      queue_socket.connect(self.message_address)
+      queue_stream = ZMQStream(queue_socket, self.__ioloop)
+      worker_socket = self.__context.socket(zmq.DEALER)
+      worker_socket.connect(self.address)
+      worker_stream = ZMQStream(worker_socket, self.__ioloop)
+
+      def receive_response(message):
+        queued_messages.pop(message[1], None)
+        callback = self.__callbacks.pop(message[1], None)
+        if callback:
+          try:
+            callback(pickle.loads(zlib.decompress(message[1])))
+          except Exception as e:
+            logging.error(repr(e))
+      worker_stream.on_recv(receive_response)
+
+      def queue_message(message):
+        queued_messages[message[1]] = (time() * 1000, message)
         try:
-          socket.send(self.__queue[0])
-          response = pickle.loads(zlib.decompress(socket.recv()))
-          if response and response['received']:
-            self.__queue.popleft()
+          worker_stream.send_multipart(message)
         except Exception as e:
-          logging.error(repr(e))
+          print e
+      queue_stream.on_recv(queue_message)
+
+      def requeue_message():
+        now = time() * 1000
+        for message in (item[1] for item in queued_messages.itervalues() if item[0] + self.__request_timeout_ms < now):
+          queue_message(message)
+        self.__ioloop.flush()
+      requeue_callback = PeriodicCallback(requeue_message, self.__request_timeout_ms, io_loop = self.__ioloop)
+      requeue_callback.start()
+
+      self.__ioloop.start()
       self.__thread = None
-    self.__thread = Thread(target=send_queue)
+    self.__thread = Thread(target=loop)
     self.__thread.daemon = True
     self.__thread.start()
+
+  def stop(self):
+    if self.__ioloop:
+      self.__ioloop.stop()
   
   def join(self):
     if self.__thread:
@@ -58,11 +104,11 @@ class WorkerConnection(object):
 class WorkerInvocation(object):
   
   def __init__(self, path, connection):
-    self.path = path
-    self.connection = connection
+    self._path = path
+    self._connection = connection
 
   def __call__(self, parameters):
-    self.connection.invoke(self.path, parameters)
+    self._connection.invoke(self._path, parameters)
 
   def __getattr__(self, path):
-    return getattr(self.connection, self.path + '.' + path)
+    return getattr(self._connection, self._path + '.' + path)
