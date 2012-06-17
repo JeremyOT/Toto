@@ -271,7 +271,6 @@ class TotoWorker():
       try:
         self.status = 'Listening'
         message = socket.recv_multipart()
-        print message
         pending_reply = True
         message_id = message[0]
         data = self.loads(self.decompress(message[1]))
