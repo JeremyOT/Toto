@@ -17,7 +17,7 @@ define("worker_serialization_module", type=str, help="The module to use for seri
 
 class WorkerConnection(object):
 
-  def __init__(self, address, request_timeout_ms=10000, compression=None, serialization=pickle):
+  def __init__(self, address, request_timeout_ms=10000, compression=None, serialization=None):
     self.address = address
     self.message_address = 'inproc://WorkerConnection%s' % id(self)
     self.__context = zmq.Context()
@@ -28,8 +28,8 @@ class WorkerConnection(object):
     self.__callbacks = {}
     self.__queued_messages = {}
     self.__ioloop = None
-    self.loads = serialization.loads
-    self.dumps = serialization.dumps
+    self.loads = serialization and serialization.loads or pickle.loads
+    self.dumps = serialization and serialization.dumps or pickle.dumps
     self.compress = compression and compression.compress or (lambda x: x)
     self.decompress = compression and compression.decompress or (lambda x: x)
   
