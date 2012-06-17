@@ -36,6 +36,8 @@ define("worker_address", default="tcp://*:55555", help="The service will bind to
 define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
 define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
 define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
+define("compression_module", type=str, help="The module to use for compressing and decompressing messages. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. You can also set worker.compress and worker.decompress in your startup method for increased flexibility")
+define("serialization_module", type=str, help="The module to use for serializing and deserializing messages. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. You can also set worker.dumps and worker.loads in your startup method for increased flexibility")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path_with_id(p, i):
@@ -122,8 +124,9 @@ class TotoWorkerService():
         init_module = self.__event_init
         if init_module:
           init_module.invoke(event_manager)
-    
-      worker = TotoWorker(module, options.worker_socket_address, db_connection, pidfile)
+      serialization = options.serialization_module and __import__(options.serialization_module) or pickle
+      compression = options.compression_module and __import__(options.compression_module)
+      worker = TotoWorker(module, options.worker_socket_address, db_connection, compression, serialization, pidfile)
       if options.startup_function:
         startup_path = options.startup_function.rsplit('.')
         __import__(startup_path[0]).__dict__[startup_path[1]](worker=worker, db_connection=db_connection)
@@ -211,7 +214,7 @@ class TotoWorkerService():
       self.__run_server()
 
 class TotoWorker():
-  def __init__(self, method_module, socket_address, db_connection, pidfile=None):
+  def __init__(self, method_module, socket_address, db_connection, compression=None, serialization=None, pidfile=None):
     self.context = zmq.Context()
     self.socket_address = socket_address
     self.method_module = method_module
@@ -220,6 +223,10 @@ class TotoWorker():
     self.status = 'Initialized'
     self.running = False
     self.__pidfile = pidfile
+    self.compress = compression and compression.compress or (lambda x: x)
+    self.decompress = compression and compression.decompress or (lambda x: x)
+    self.loads = serialization and serialization.loads or pickle.loads
+    self.dumps = serialization and serialization.dumps or pickle.dumps
     if options.debug:
       from traceback import format_exc
       def log_error(self, e):
@@ -264,9 +271,10 @@ class TotoWorker():
       try:
         self.status = 'Listening'
         message = socket.recv_multipart()
+        print message
         pending_reply = True
         message_id = message[0]
-        data = pickle.loads(zlib.decompress(message[1]))
+        data = self.loads(self.decompress(message[1]))
         logging.info('Received Task %s: %s' % (message_id, data['method']))
         method = self.method_module
         for i in data['method'].split('.'):
@@ -279,7 +287,7 @@ class TotoWorker():
         else:
           self.status = 'Working'
           response = method.invoke(self, data['parameters'])
-          socket.send_multipart((message_id, pickle.dumps(response)))
+          socket.send_multipart((message_id, self.compress(self.dumps(response))))
           pending_reply = False
       except Exception as e:
         self.log_error(e)

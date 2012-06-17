@@ -4,7 +4,7 @@ import cPickle as pickle
 import zlib
 import logging
 from threading import Thread
-from tornado.options import options
+from tornado.options import options, define
 from collections import deque
 from zmq.eventloop.ioloop import ZMQPoller, IOLoop, PeriodicCallback
 from zmq.eventloop.zmqstream import ZMQStream
@@ -12,9 +12,12 @@ from time import time
 from uuid import uuid4
 from traceback import format_exc
 
+define("worker_compression_module", type=str, help="The module to use for compressing and decompressing messages to workers. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. Only the default instance will be affected")
+define("worker_serialization_module", type=str, help="The module to use for serializing and deserializing messages to workers. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. Only the default instance will be affected")
+
 class WorkerConnection(object):
 
-  def __init__(self, address, request_timeout_ms=5000):
+  def __init__(self, address, request_timeout_ms=10000, compression=None, serialization=pickle):
     self.address = address
     self.message_address = 'inproc://WorkerConnection%s' % id(self)
     self.__context = zmq.Context()
@@ -25,9 +28,13 @@ class WorkerConnection(object):
     self.__callbacks = {}
     self.__queued_messages = {}
     self.__ioloop = None
+    self.loads = serialization.loads
+    self.dumps = serialization.dumps
+    self.compress = compression and compression.compress or (lambda x: x)
+    self.decompress = compression and compression.decompress or (lambda x: x)
   
   def invoke(self, method, parameters, callback=None):
-    self._queue_message(zlib.compress(pickle.dumps({'method': method, 'parameters': parameters})), callback)
+    self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback)
   
   def __len__(self):
     return len(self.__queued_messages)
@@ -58,7 +65,7 @@ class WorkerConnection(object):
         callback = self.__callbacks.pop(message[1], None)
         if callback:
           try:
-            callback(pickle.loads(zlib.decompress(message[1])))
+            callback(self.loads(self.decompress(message[2])))
           except Exception as e:
             logging.error(repr(e))
       worker_stream.on_recv(receive_response)
@@ -96,7 +103,7 @@ class WorkerConnection(object):
   @classmethod
   def instance(cls):
     if not cls._instance:
-      cls._instance = cls(options.worker_address)
+      cls._instance = cls(options.worker_address, compression=options.worker_compression_module and __import__(options.worker_compression_module), serialization=options.worker_serialization_module and __import__(options.worker_serialization_module))
     return cls._instance
 
 class WorkerInvocation(object):
@@ -105,8 +112,8 @@ class WorkerInvocation(object):
     self._path = path
     self._connection = connection
 
-  def __call__(self, parameters):
-    self._connection.invoke(self._path, parameters)
+  def __call__(self, parameters, callback=None):
+    self._connection.invoke(self._path, parameters, callback)
 
   def __getattr__(self, path):
     return getattr(self._connection, self._path + '.' + path)
