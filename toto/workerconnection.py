@@ -55,7 +55,7 @@ class WorkerConnection(object):
     self.__queue_socket.send_multipart(('', message_id, message))
   
   def log_error(self, error):
-    logging.error(repr(e))
+    logging.error(repr(error))
 
   def start(self):
     def loop():
@@ -111,8 +111,8 @@ class WorkerConnection(object):
     from new import instancemethod
     from traceback import format_exc
     def log_error(self, e):
-      logging.error(format_exc)
-    instancemethod(log_error, self)
+      logging.error(format_exc())
+    self.log_error = instancemethod(log_error, self)
 
   _instance = None
   @classmethod
