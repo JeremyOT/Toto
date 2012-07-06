@@ -53,6 +53,9 @@ class WorkerConnection(object):
     if retry_ms > 0:
       self.__message_timeouts[message_id] = retry_ms
     self.__queue_socket.send_multipart(('', message_id, message))
+  
+  def log_error(self, error):
+    logging.error(repr(e))
 
   def start(self):
     def loop():
@@ -72,7 +75,7 @@ class WorkerConnection(object):
           try:
             callback(self.loads(self.decompress(message[2])))
           except Exception as e:
-            logging.error(repr(e))
+            self.log_error(e)
       worker_stream.on_recv(receive_response)
 
       def queue_message(message):
@@ -80,7 +83,7 @@ class WorkerConnection(object):
         try:
           worker_stream.send_multipart(message)
         except Exception as e:
-          logging.error(repr(e))
+          self.log_error(e)
       queue_stream.on_recv(queue_message)
 
       def requeue_message():
@@ -103,6 +106,13 @@ class WorkerConnection(object):
   def join(self):
     if self.__thread:
       self.__thread.join()
+
+  def enable_traceback_logging(self):
+    from new import instancemethod
+    from traceback import format_exc
+    def log_error(self, e):
+      logging.error(format_exc)
+    instancemethod(log_error, self)
 
   _instance = None
   @classmethod
