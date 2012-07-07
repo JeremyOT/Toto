@@ -230,11 +230,15 @@ class TotoWorker():
     if options.debug:
       from traceback import format_exc
       def log_error(self, e):
-        logging.error(format_exc())
+        err_string = format_exc()
+        logging.error(err_string)
+        return err_string
       TotoWorker.log_error = log_error
   
   def log_error(self, e):
-    logging.error(repr(e))
+    err_string = repr(e)
+    logging.error(err_string)
+    return err_string
 
   def log_status(self):
     logging.info('Pid: %s Pidfile: %s status: %s' % (os.getpid(), self.__pidfile, self.status))
@@ -289,9 +293,9 @@ class TotoWorker():
           socket.send_multipart((message_id, self.compress(self.dumps(response))))
           pending_reply = False
       except Exception as e:
-        self.log_error(e)
+        err_string = self.log_error(e)
         if pending_reply:
-          socket.send_multipart((message_id,))
+          socket.send_multipart((message_id, self.compress(self.dumps(err_string))))
 
     self.status = 'Finished'
     self.log_status()
