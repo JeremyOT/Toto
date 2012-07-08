@@ -1,24 +1,27 @@
 import pycassa
-from pycassa.pool import ConnectionPool
+from pycassa import *
+from pycassa.types import *
 from toto.exceptions import *
 from toto.session import *
 from time import time
 from datetime import datetime
+from uuid import uuid4
 import base64
 import uuid
 import hmac
 import hashlib
 import cPickle as pickle
+import pycassa_util
 
 class CassandraSession(TotoSession):
   _account = None
 
   class CassandraAccount(TotoAccount):
     def _load_property(self, *args):
-      return self._session._db.accounts.find_one({'user_id': self._session.user_id}, dict([(a, 1) for a in args]))
+      return dict(self._session._db.accounts.get_columns(self._session.user_id, columns=args))
 
     def _save_property(self, *args):
-      self._session._db.accounts.update({'user_id': self._session.user_id}, {'$set': dict([(k, self[k]) for k in args])})
+      self._session._db.accounts.insert(self._session.user_id, dict([(k, self[k]) for k in args]))
 
   def get_account(self):
     if not self._account:
@@ -26,31 +29,46 @@ class CassandraSession(TotoSession):
     return self._account
 
   def refresh(self):
-    session_data = self._db.sessions.find_one({'session_id': self.session_id})
+    session_data = self._db.sessions.get(self.session_id)
     self.__init__(self._db, session_data)
   
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': pickle.dumps(self.state)}})
+    self._db.insert(self.session_id, {'expires': self.expires, 'user_id': self.user_id, 'state': pickle.dumps(self.state)}, ttl=(self.expires-time()))
+
+class CassandraDB():
+  def __init__(self, pool):
+    self.pool = pool
+    self.column_families = {}
+
+  def __get__(self, name):
+    try:
+      return self.column_families[name]
+    except:
+      self.column_families[name] = ColumnFamily(self.pool, name)
+      return self.column_families[name]
 
 class CassandraConnection():
 
-  def _ensure_indexes(self):
-    session_indexes = self.db.sessions.index_information()
-    if not 'session_id' in session_indexes:
-      self.db.sessions.ensure_index('session_id', unique=True, name='session_id')
-    if not 'user_id' in session_indexes:
-      self.db.sessions.ensure_index('user_id', name='user_id')
-    if not 'expires' in session_indexes:
-      self.db.sessions.ensure_index('expires', name='expires')
-    account_indexes = self.db.accounts.index_information()
-    if not 'user_id_password' in account_indexes:
-      self.db.accounts.ensure_index([('user_id', pymongo.ASCENDING), ('password', pymongo.ASCENDING)], name='user_id_password')
+  def _create_column_families(self):
+    from pycassa.system_manager import SystemManager
+    sysm = SystemManager(server=self.hosts[0])
+    families = sysm.get_keyspace_column_families(self.keyspace, True)
+    if 'accounts' not in families:
+      sysm.create_column_family(self.keyspace, 'accounts', key_validation_class=LexicalUUIDType(), comparator_type=UTF8Type(), default_validation_class=BytesType())
+      sysm.create_index(self.keyspace, 'sessions', 'user_id', UTF8Type(), index_name='account_user_id')
+    if 'sessions' not in families:
+      column_types = {'user_id': LexicalUUIDType(), 'expires': DoubleType()}
+      sysm.create_column_family(self.keyspace, 'sessions', key_validation_class=LexicalUUIDType(), comparator_type=UTF8Type(), default_validation_class=BytesType(), column_validation_classes=column_types)
+      sysm.create_index(self.keyspace, 'sessions', 'user_id', LEXICAL_UUID_TYPE, index_name='session_user_id')
+    sysm.close()
   
   def __init__(self, hosts, keyspace, password_salt='toto', session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
-    self.db = ConnectionPool(keyspace, hosts)
-    self._ensure_indexes()
+    self.db = CassandraDB(ConnectionPool(keyspace, hosts))
+    self.keyspace = keyspace
+    self.hosts = hosts
+    self._create_column_families()
     self.password_salt = password_salt
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
@@ -62,12 +80,16 @@ class CassandraConnection():
 
   def create_account(self, user_id, password, additional_values={}, **values):
     user_id = user_id.lower()
-    if self.db.accounts.find_one({'user_id': user_id}):
+    try:
+      self.db.accounts.get(user_id):
+    except:
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values.update(additional_values)
     values['user_id'] = user_id
     values['password'] = self.password_hash(user_id, password)
-    self.db.accounts.insert(values)
+    uid = uuid4()
+    self.db.accounts.insert(uid, values)
+    return uid
 
   def create_session(self, user_id=None, password=None):
     if not user_id:
@@ -77,10 +99,10 @@ class CassandraConnection():
     if user_id and not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
-    self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
+    #self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     self.db.sessions.insert({'user_id': user_id, 'expires': expires, 'session_id': session_id})
-    session = CassandraSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
+    session = CassandraSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id}, expires)
     session._verified = True
     return session
 
