@@ -12,6 +12,7 @@ import logging
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
+define("msgpack_enabled", default=False, help="Allows requests to use MessagePack with content-type application/msgpack")
 
 class TotoHandler(RequestHandler):
 
@@ -22,6 +23,7 @@ class TotoHandler(RequestHandler):
     self.db_connection = db_connection
     self.db = self.db_connection.db
     self.bson = options.bson_enabled and __import__('bson').BSON
+    self.msgpack = options.msgpack_enabled and __import__('msgpack')
     self.response_type = 'application/json'
     self.body = None
     self.registered_event_handlers = []
@@ -162,6 +164,9 @@ class TotoHandler(RequestHandler):
       elif self.bson and content_type.startswith('application/bson'):
         self.response_type = 'application/bson'
         self.body = self.bson(self.request.body).decode()
+      elif self.msgpack and content_type.startswith('application/msgpack'):
+        self.response_type = 'application/msgpack'
+        self.body = self.msgpack.loads(self.request.body)
     else:
       self.body = json.loads(self.request.body)
     if 'batch' in self.body:
@@ -206,6 +211,8 @@ class TotoHandler(RequestHandler):
       response['session'] = {'session_id': self.session.session_id, 'expires': self.session.expires, 'user_id': self.session.user_id}
     if self.response_type == 'application/bson':
       response_body = str(self.bson.encode(response))
+    elif self.response_type == 'application/msgpack':
+      response_body = self.msgpack.dumps(response)
     else:
       response_body = json.dumps(response)
     if self.session:
