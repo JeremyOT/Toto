@@ -36,6 +36,13 @@ def authenticated(fn):
   __copy_attributes(fn, wrapper)
   return wrapper
 
+def optionally_authenticated(fn):
+  def wrapper(handler, parameters):
+    handler.retrieve_session()
+    return fn(handler, parameters)
+  __copy_attributes(fn, wrapper)
+  return wrapper
+
 def authenticated_with_parameter(fn):
   def wrapper(handler, parameters):
     if 'session_id' in parameters:
