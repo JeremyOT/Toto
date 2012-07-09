@@ -70,8 +70,8 @@ class TotoHandler(RequestHandler):
             session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
           if session_id:
             self.session = self.db_connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
-          if self.session:
-            set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
+        if self.session:
+          set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.retrieve_session = retrieve_session
     if options.debug:
@@ -208,7 +208,7 @@ class TotoHandler(RequestHandler):
     if batch_results:
       response['batch'] = batch_results
     if self.session:
-      response['session'] = {'session_id': self.session.session_id, 'expires': self.session.expires, 'user_id': self.session.user_id}
+      response['session'] = {'session_id': self.session.session_id, 'expires': self.session.expires, 'user_id': str(self.session.user_id)}
     if self.response_type == 'application/bson':
       response_body = str(self.bson.encode(response))
     elif self.response_type == 'application/msgpack':
