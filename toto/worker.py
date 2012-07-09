@@ -29,7 +29,7 @@ define("start", default=False, help="Alias for daemon=start for command line usa
 define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
-define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
+define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each worker process after it is configured and before it starts listening for tasks with the named parameters worker and db_connection.")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
 define("worker_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers. If this is set to an empty string, workers will connect directly to worker_socket_address.")
