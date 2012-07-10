@@ -11,14 +11,14 @@ import time
 from threading import Thread
 from multiprocessing import Process, cpu_count
 
-define("database", metavar='mysql|mongodb|none', default="mongodb", help="the database driver to use")
-define("mysql_host", default="localhost:3306", help="MySQL database 'host:port'")
+define("database", metavar='mysql|mongodb|redis|none', default="mongodb", help="the database driver to use")
+define("db_host", default='localhost', help="The host to use for database connections.")
+define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
 define("mysql_database", type=str, help="Main MySQL schema name")
 define("mysql_user", type=str, help="Main MySQL user")
 define("mysql_password", type=str, help="Main MySQL user password")
-define("mongodb_host", default="localhost", help="MongoDB host")
-define("mongodb_port", default=27017, help="MongoDB port")
 define("mongodb_database", default="toto_server", help="MongoDB database")
+define("redis_database", default=0, help="Redis DB")
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
 define("processes", default=-1, help="The number of daemon processes to run, pass 0 to run only the load balancer. Negative numbers will run one worker per cpu")
 define("pidfile", default="toto.worker.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.worker.pid -> toto.worker.0.pid)")
@@ -110,10 +110,16 @@ class TotoWorkerService():
       db_connection = None
       if options.database == "mongodb":
         from mongodbconnection import MongoDBConnection
-        db_connection = MongoDBConnection(options.mongodb_host, options.mongodb_port, options.mongodb_database)
+        db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      elif options.database == "redis":
+        from redisconnection import RedisConnection
+        db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
       elif options.database == "mysql":
         from mysqldbconnection import MySQLdbConnection
-        db_connection = MySQLdbConnection(options.mysql_host, options.mysql_database, options.mysql_user, options.mysql_password)
+        db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      else:
+        from fakeconnection import FakeConnection
+        db_connection = FakeConnection()
 
       if options.remote_event_receivers:
         from toto.events import EventManager

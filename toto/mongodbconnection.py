@@ -14,10 +14,10 @@ class MongoDBSession(TotoSession):
 
   class MongoDBAccount(TotoAccount):
     def _load_property(self, *args):
-      return self._session._db.accounts.find_one({'user_id': self._session.user_id}, dict([(a, 1) for a in args]))
+      return self._session._db.accounts.find_one({'user_id': self._session.user_id}, {a: 1 for a in args})
 
     def _save_property(self, *args):
-      self._session._db.accounts.update({'user_id': self._session.user_id}, {'$set': dict([(k, self[k]) for k in args])})
+      self._session._db.accounts.update({'user_id': self._session.user_id}, {'$set': {k: self[k] for k in args}})
 
   def get_account(self):
     if not self._account:

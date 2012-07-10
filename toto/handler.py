@@ -84,7 +84,7 @@ class TotoHandler(RequestHandler):
           logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
           return TotoException(ERROR_SERVER, repr(e)).__dict__
       cls.error_info = error_info
-      cls.__method_root = __import__(options.method_module)
+    cls.__method_root = __import__(options.method_module)
       
   """
     The default method_select "both" (or any unsupported value) will
