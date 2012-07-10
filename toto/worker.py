@@ -110,13 +110,13 @@ class TotoWorkerService():
       db_connection = None
       if options.database == "mongodb":
         from mongodbconnection import MongoDBConnection
-        db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+        db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database)
       elif options.database == "redis":
         from redisconnection import RedisConnection
-        db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+        db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database)
       elif options.database == "mysql":
         from mysqldbconnection import MySQLdbConnection
-        db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+        db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password)
       else:
         from fakeconnection import FakeConnection
         db_connection = FakeConnection()
