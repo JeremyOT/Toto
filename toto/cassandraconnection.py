@@ -29,3 +29,9 @@ class CassandraConnection():
     except:
       self.column_families[name] = ColumnFamily(self.pool, name)
       return self.column_families[name]
+
+  def __str__(self):
+    return  '<toto.cassandraconnection.CassandraConnection %d [%s]>' % (id(self), ','.join(self.column_families.keys()))
+
+  def __repr__(self):
+    return str(self)
