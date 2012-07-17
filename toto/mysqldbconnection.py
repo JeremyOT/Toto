@@ -3,6 +3,7 @@ from toto.exceptions import *
 from toto.session import *
 from time import time, mktime
 from datetime import datetime
+import toto.secret as secret
 import base64
 import uuid
 import hmac
@@ -69,17 +70,13 @@ class MySQLdbConnection():
       FOREIGN KEY (`account_id`) REFERENCES `account`(`account_id`)
     )''')
 
-  def __init__(self, host, database, username, password, password_salt='toto', default_session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host, database, username, password, default_session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = Connection(host, database, username, password)
     self.create_tables()
-    self.password_salt = "toto"
     self.default_session_ttl = default_session_ttl
     self.anon_session_ttl = anon_session_ttl or self.default_session_ttl
     self.session_renew = session_renew or self.default_session_ttl
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
-
-  def password_hash(self, user_id, password):
-    return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
   def create_account(self, user_id, password, additional_values={}, **values):
     user_id = user_id.lower()
@@ -87,15 +84,15 @@ class MySQLdbConnection():
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values.update(additional_values)
     values['user_id'] = user_id
-    values['password'] = self.password_hash(user_id, password)
+    values['password'] = secret.password_hash(password)
     self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
   def create_session(self, user_id=None, password=None):
     if not user_id:
       user_id = ''
     user_id = user_id.lower()
-    account = user_id and password and self.db.get("select * from account where user_id = %s and password = %s", user_id, self.password_hash(user_id, password))
-    if user_id and not account:
+    account = user_id and self.db.get("select * from account where user_id = %s", user_id)
+    if user_id and not account or not secret.verify_password(password, account['password']):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.execute("delete from session where account_id = %s and expires <= %s", account['account_id'], time())
@@ -128,10 +125,10 @@ class MySQLdbConnection():
 
   def change_password(self, user_id, password, new_password):
     user_id = user_id.lower()
-    account = self.db.get("select account_id, user_id, password from account where user_id = %s and password = %s", user_id, self.password_hash(user_id, password))
-    if not account:
+    account = self.db.get("select account_id, user_id, password from account where user_id = %s", user_id)
+    if not account or not secret.verify_password(password, account['password']):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.db.execute("update account set password = %s where account_id = %s", self.password_hash(user_id, new_password), account['account_id'])
+    self.db.execute("update account set password = %s where account_id = %s", secret.password_hash(new_password), account['account_id'])
     self.clear_sessions(user_id)
 
   def generate_password(self, user_id):
@@ -141,6 +138,6 @@ class MySQLdbConnection():
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
     pass_chars = string.ascii_letters + string.digits
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.execute("update account set password = %s where account_id = %s", self.password_hash(user_id, new_password), account['account_id'])
+    self.db.execute("update account set password = %s where account_id = %s", secret.password_hash(new_password), account['account_id'])
     self.clear_sessions(user_id)
     return new_password

@@ -8,6 +8,7 @@ import uuid
 import hmac
 import hashlib
 import cPickle as pickle
+import toto.secret as secret
 
 def _account_key(user_id):
   return 'account:%s' % user_id
@@ -41,16 +42,12 @@ class RedisSession(TotoSession):
 
 class RedisConnection():
   
-  def __init__(self, host='localhost', port=6379, database=0, password_salt='toto', session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host='localhost', port=6379, database=0, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = redis.Redis(host=host, port=port, db=database)
-    self.password_salt = password_salt
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
     self.session_renew = session_renew or self.session_ttl
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
-
-  def password_hash(self, user_id, password):
-    return hashlib.sha256(user_id + self.password_salt + password).hexdigest()
 
   def create_account(self, user_id, password, additional_values={}, **values):
     user_id = user_id.lower()
@@ -59,7 +56,7 @@ class RedisConnection():
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values.update(additional_values)
     values['user_id'] = user_id
-    values['password'] = self.password_hash(user_id, password)
+    values['password'] = secret.password_hash(password)
     self.db.hmset(account_key, values)
 
   def create_session(self, user_id=None, password=None):
@@ -68,7 +65,7 @@ class RedisConnection():
       user_id = ''
     account_key = _account_key(user_id)
     account = user_id and password and self.db.hmget(account_key, 'user_id', 'password')
-    if user_id and account[0] != user_id or account[1] != self.password_hash(user_id, password):
+    if user_id and account[0] != user_id or not secret.verify_password(password, account[1]):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     ttl = (user_id and self.session_ttl or self.anon_session_ttl)
@@ -106,9 +103,9 @@ class RedisConnection():
     user_id = user_id.lower()
     account_key = _account_key(user_id)
     account = self.db.hmget(account_key, 'user_id', 'password')
-    if account[0] != user_id or account[1] != self.password_hash(user_id, password):
+    if account[0] != user_id or not secret.verify_password(password, account[1]):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.db.hset(account_key, 'password', self.password_hash(user_id, new_password))
+    self.db.hset(account_key, 'password', secret.password_hash(new_password))
 
   def generate_password(self, user_id):
     user_id = user_id.lower()
@@ -117,5 +114,5 @@ class RedisConnection():
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     pass_chars = string.ascii_letters + string.digits 
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.hset(account_key, 'password', self.password_hash(user_id, new_password))
+    self.db.hset(account_key, 'password', secret.password_hash(new_password))
     return new_password

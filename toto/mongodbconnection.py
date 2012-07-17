@@ -8,6 +8,7 @@ import uuid
 import hmac
 import hashlib
 import cPickle as pickle
+import toto.secret as secret
 
 class MongoDBSession(TotoSession):
   _account = None
@@ -44,34 +45,30 @@ class MongoDBConnection():
     if not 'expires' in session_indexes:
       self.db.sessions.ensure_index('expires', name='expires')
     account_indexes = self.db.accounts.index_information()
-    if not 'user_id_password' in account_indexes:
-      self.db.accounts.ensure_index([('user_id', pymongo.ASCENDING), ('password', pymongo.ASCENDING)], name='user_id_password')
+    if not 'user_id' in account_indexes:
+      self.db.accounts.ensure_index('user_id', name='user_id')
   
-  def __init__(self, host, port, database, password_salt='toto', session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host, port, database, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = pymongo.Connection(host, port)[database]
     self._ensure_indexes()
-    self.password_salt = password_salt
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
     self.session_renew = session_renew or self.session_ttl
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
-
-  def password_hash(self, user_id, password):
-    return hashlib.sha256(str(user_id).lower() + self.password_salt + password).hexdigest()
 
   def create_account(self, user_id, password, additional_values={}, **values):
     if self.db.accounts.find_one({'user_id': user_id}):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values.update(additional_values)
     values['user_id'] = user_id
-    values['password'] = self.password_hash(user_id, password)
+    values['password'] = secret.password_hash(password)
     self.db.accounts.insert(values)
 
   def create_session(self, user_id=None, password=None):
     if not user_id:
       user_id = ''
-    account = user_id and password and self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
-    if user_id and not account:
+    account = user_id and self.db.accounts.find_one({'user_id': user_id})
+    if user_id and not account or not secret.verify_password(password, account['password']):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
@@ -102,10 +99,10 @@ class MongoDBConnection():
     self.db.sessions.remove({'user_id': user_id})
 
   def change_password(self, user_id, password, new_password):
-    account = self.db.accounts.find_one({'user_id': user_id, 'password': self.password_hash(user_id, password)})
-    if not account:
+    account = self.db.accounts.find_one({'user_id': user_id})
+    if not account or not secret.verify_password(password, account['password']):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.db.accounts.update({'user_id': user_id, 'password': self.password_hash(user_id, password)}, {'$set': {'password': self.password_hash(user_id, new_password)}})
+    self.db.accounts.update({'user_id': user_id}, {'$set': {'password': secret.password_hash(new_password)}})
     self.clear_sessions(user_id)
 
   def generate_password(self, user_id):
@@ -114,6 +111,6 @@ class MongoDBConnection():
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     pass_chars = string.ascii_letters + string.digits 
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.accounts.update({'user_id': user_id}, {'$set': {'password': self.password_hash(user_id, new_password)}})
+    self.db.accounts.update({'user_id': user_id}, {'$set': {'password': secret.password_hash(new_password)}})
     self.clear_sessions(user_id)
     return new_password

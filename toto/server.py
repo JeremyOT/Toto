@@ -26,7 +26,6 @@ define("session_ttl", default=24*60*60*365, help="The number of seconds after cr
 define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire")
 define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request")
 define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
-define("password_salt", default='toto', help="An additional salt to use when generating a password hash - changing this value will invalidate all stored passwords")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
@@ -106,13 +105,13 @@ class TotoServer():
     db_connection = None
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
-      db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     elif options.database == "redis":
       from redisconnection import RedisConnection
-      db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     elif options.database == "mysql":
       from mysqldbconnection import MySQLdbConnection
-      db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.password_salt, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     else:
       from fakeconnection import FakeConnection
       db_connection = FakeConnection()
