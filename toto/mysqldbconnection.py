@@ -74,8 +74,8 @@ class MySQLdbConnection():
     self.create_tables()
     self.password_salt = "toto"
     self.default_session_ttl = default_session_ttl
-    self.anon_session_ttl = anon_session_ttl or self.session_ttl
-    self.session_renew = session_renew or self.session_ttl
+    self.anon_session_ttl = anon_session_ttl or self.default_session_ttl
+    self.session_renew = session_renew or self.default_session_ttl
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
   def password_hash(self, user_id, password):
