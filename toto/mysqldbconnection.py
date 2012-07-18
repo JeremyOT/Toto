@@ -53,23 +53,23 @@ class MySQLdbConnection():
 
   def create_tables(self):
     if not self.db.get('''show tables like "account"'''):
-      self.db.execute('''CREATE TABLE IF NOT EXISTS `account` (
-        `account_id` int(8) unsigned NOT NULL AUTO_INCREMENT,
-        `password` char(48) DEFAULT NULL,
-        `user_id` varchar(45) NOT NULL,
-        PRIMARY KEY (`account_id`),
-        UNIQUE KEY `user_id_UNIQUE` (`user_id`),
-        INDEX `user_id_password` (`user_id`, `password`)
+      self.db.execute('''create table if not exists `account` (
+        `account_id` int(8) unsigned not null auto_increment,
+        `password` char(48) default null,
+        `user_id` varchar(45) not null,
+        primary key (`account_id`),
+        unique key `user_id_unique` (`user_id`),
+        index `user_id_password` (`user_id`, `password`)
       )''')
     if not self.db.get('''show tables like "session"'''):
-      self.db.execute('''CREATE TABLE IF NOT EXISTS `session` (
-        `session_id` char(32) NOT NULL,
-        `account_id` int(8) unsigned NOT NULL,
-        `expires` double NOT NULL,
+      self.db.execute('''create table if not exists `session` (
+        `session_id` char(32) not null,
+        `account_id` int(8) unsigned not null,
+        `expires` double not null,
         `state` blob,
-        PRIMARY KEY (`session_id`),
-        INDEX (`expires`),
-        FOREIGN KEY (`account_id`) REFERENCES `account`(`account_id`)
+        primary key (`session_id`),
+        index (`expires`),
+        foreign key (`account_id`) references `account`(`account_id`)
       )''')
 
   def __init__(self, host, database, username, password, default_session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
