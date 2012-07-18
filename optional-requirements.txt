@@ -1,0 +1,7 @@
+MySQL-python>=1.2.3
+hiredis>=0.1.1
+msgpack-python>=0.1.13
+pycassa>=1.6.0
+pymongo>=2.1
+pyzmq>=2.2.0
+redis>=2.4.12
