@@ -1,2 +1,2 @@
 import account
-import client_error
+import toto.methods.client_error as client_error
