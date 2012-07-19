@@ -22,7 +22,7 @@ setup(
   url='https://github.com/JeremyOT/Toto',
   packages=['toto','toto.methods','toto.methods.account'],
   requires=['tornado(>=2.1)','pbkdf2(>=1.3)'],
-  install_requires=['tornado>=2.1','pbkdf2>=1.3'],
+  install_requires=['tornado>=2.1','pbkdf2>=1.3','pyzmq>=2.2.0'],
   provides=['toto',],
   scripts=['scripts/toto-create',],
   description='A Tornado based framework designed to accelerate web service development',
