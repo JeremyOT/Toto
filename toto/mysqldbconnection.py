@@ -72,12 +72,12 @@ class MySQLdbConnection():
         foreign key (`account_id`) references `account`(`account_id`)
       )''')
 
-  def __init__(self, host, database, username, password, default_session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host, database, username, password, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = Connection(host, database, username, password)
     self.create_tables()
-    self.default_session_ttl = default_session_ttl
-    self.anon_session_ttl = anon_session_ttl or self.default_session_ttl
-    self.session_renew = session_renew or self.default_session_ttl
+    self.session_ttl = session_ttl
+    self.anon_session_ttl = anon_session_ttl or self.session_ttl
+    self.session_renew = session_renew or self.session_ttl
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
   def create_account(self, user_id, password, additional_values={}, **values):
@@ -100,12 +100,12 @@ class MySQLdbConnection():
     self.db.execute("delete from session where account_id = %s and expires <= %s", account['account_id'], time())
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", account['account_id'], expires, session_id)
-    session = MySQLdbSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id})
+    session = MySQLdbSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id, 'account_id': account['account_id']})
     session._verified = True
     return session
 
   def retrieve_session(self, session_id, hmac_data, data):
-    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", session_id, time())
+    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", session_id, time())
     if not session_data:
       return None
     user_id = session_data['user_id']

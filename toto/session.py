@@ -1,6 +1,6 @@
 import cPickle as pickle
 
-class TotoAccount():
+class TotoAccount(object):
 
   def __init__(self, session):
     self._session = session
@@ -44,7 +44,7 @@ class TotoAccount():
   def _save_property(self, *args):
     raise Exception("Unimplemented operation: _save_property")
 
-class TotoSession():
+class TotoSession(object):
   
   def __init__(self, db, session_data):
     self._db = db
