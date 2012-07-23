@@ -18,8 +18,8 @@ class MySQLdbSession(TotoSession):
   class MySQLdbAccount(TotoAccount):
     
     def __init__(self, session):
-      super(MySQLdbAccount, self).__init__(session)
-      self.properties['account_id'] = session.account_id
+      super(MySQLdbSession.MySQLdbAccount, self).__init__(session)
+      self._properties['account_id'] = session.account_id
 
     def _load_property(self, *args):
       return self._session._db.get('select ' + ', '.join(args) + ' from account where account_id = %s', self._session.account_id)
@@ -111,7 +111,7 @@ class MySQLdbConnection():
     user_id = session_data['user_id']
     if session_data['expires'] < (time() + (user_id and self.session_renew or self.anon_session_renew)):
       session_data['expires'] = time() + (user_id and self.session_ttl or self.anon_session_ttl)
-      self.db.execute("update session set expires = %s where session_id = %s", session['expires'], session_id)
+      self.db.execute("update session set expires = %s where session_id = %s", session_data['expires'], session_id)
     session = MySQLdbSession(self.db, session_data)
     if data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
