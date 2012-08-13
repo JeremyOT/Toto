@@ -68,7 +68,7 @@ class MongoDBConnection():
     if not user_id:
       user_id = ''
     account = user_id and self.db.accounts.find_one({'user_id': user_id})
-    if user_id and not account or not secret.verify_password(password, account['password']):
+    if user_id and (not account or not secret.verify_password(password, account['password'])):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})

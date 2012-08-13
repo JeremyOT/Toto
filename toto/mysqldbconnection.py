@@ -94,7 +94,7 @@ class MySQLdbConnection():
       user_id = ''
     user_id = user_id.lower()
     account = user_id and self.db.get("select * from account where user_id = %s", user_id)
-    if user_id and not account or not secret.verify_password(password, account['password']):
+    if user_id and (not account or not secret.verify_password(password, account['password'])):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.execute("delete from session where account_id = %s and expires <= %s", account['account_id'], time())
