@@ -47,7 +47,7 @@ class TotoHandler(RequestHandler):
       cls.__get_method_path = get_method_path
     elif options.method_select == 'parameter':
       def get_method_path(self, path, body):
-        if 'method' in body:
+        if body and 'method' in body:
           return body['method'].split('.')
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
@@ -94,7 +94,7 @@ class TotoHandler(RequestHandler):
   def __get_method_path(self, path, body):
     if path:
       return path.split('/')
-    elif 'method' in body:
+    elif body and 'method' in body:
       return body['method'].split('.')
     else:
       raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
