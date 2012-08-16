@@ -169,7 +169,7 @@ class TotoHandler(RequestHandler):
         self.body = self.msgpack.loads(self.request.body)
     else:
       self.body = json.loads(self.request.body)
-    if 'batch' in self.body:
+    if self.body and 'batch' in self.body:
       self.batch_process_request(self.body['batch'])
     else:
       self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
