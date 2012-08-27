@@ -178,8 +178,9 @@ class TotoHandler(RequestHandler):
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
+    request_keys = sorted(requests.keys())
     batch_results = {}
-    for k, v in requests.iteritems():
+    for k, v in ((i, requests[i]) for i in request_keys):
       (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False)
       batch_results[k] = error is not None and {'error': error} or {'result': result}
     self.respond(batch_results=batch_results)
