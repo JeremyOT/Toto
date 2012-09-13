@@ -181,9 +181,9 @@ class TotoWorkerService():
 
       pattern = pid_path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
       piddir = os.path.dirname(pattern)
-      existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
 
       if options.daemon == 'stop' or options.daemon == 'restart':
+        existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
         for pidfile in existing_pidfiles:
           with open(pidfile, 'r') as f:
             pid = int(f.read())
@@ -197,6 +197,7 @@ class TotoWorkerService():
 
       if options.daemon == 'start' or options.daemon == 'restart':
         import sys
+        existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
         if existing_pidfiles:
           print "Not starting, pidfile%s exist%s at %s" % (len(existing_pidfiles) > 1 and 's' or '', len(existing_pidfiles) == 1 and 's' or '', ', '.join(existing_pidfiles))
           return
