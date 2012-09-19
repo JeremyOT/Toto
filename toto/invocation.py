@@ -73,7 +73,7 @@ def requires(*args):
 def raw_response(fn):
   def wrapper(handler, parameters):
     handler.response_type = 'application/octet-stream'
-    handler.respond_raw(fn(handler, parameters), handler.response_type, False)
+    handler.respond_raw(fn(handler, parameters), handler.response_type)
     return None
   __copy_attributes(fn, wrapper)
   return wrapper
