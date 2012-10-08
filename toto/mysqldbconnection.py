@@ -25,11 +25,11 @@ class MySQLdbSession(TotoSession):
       return self._session._db.get('select ' + ', '.join(args) + ' from account where account_id = %s', self._session.account_id)
 
     def _save_property(self, *args):
-      self._session._db.execute('update account set ' + ', '.join(['%s = %%s' % k for k in args]) + ' where account_id = %s', [self[k] for k in args] + [self._session.account_id,])
+      self._session._db.execute('update account set ' + ', '.join(['%s = %%s' % k for k in args]) + ' where account_id = %s', *([self[k] for k in args] + [self._session.account_id,]))
 
     def __setitem__(self, key, value):
       if key != 'account_id':
-        super(MySQLdbAccount, self).__setitem__(key, value)
+        super(MySQLdbSession.MySQLdbAccount, self).__setitem__(key, value)
     
   def __init__(self, db, session_data):
     super(MySQLdbSession, self).__init__(db, session_data)
