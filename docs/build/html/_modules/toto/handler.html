@@ -1,0 +1,425 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.handler &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.handler</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">tornado.web</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">from</span> <span class="nn">invocation</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">exceptions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">from</span> <span class="nn">tornado.httputil</span> <span class="kn">import</span> <span class="n">parse_multipart_form_data</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;allow_origin&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the value for the Access-Control-Allow-Origin header (default *)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;method_select&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;both&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&quot;both|url|parameter&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Selects whether methods can be specified via URL, parameter in the message body or both (default both)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;bson_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Allows requests to use BSON with content-type application/bson&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;msgpack_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Allows requests to use MessagePack with content-type application/msgpack&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TotoHandler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler">[docs]</a><span class="k">class</span> <span class="nc">TotoHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;The handler is responsible for processing all requests to the server. An instance</span>
+<span class="sd">  will be initialized for each incoming request and will handle authentication, session</span>
+<span class="sd">  management and method delegation for you.</span>
+<span class="sd">  </span>
+<span class="sd">  You can set the module to use for method delegation via the &#39;method_module&#39; parameter.</span>
+<span class="sd">  Methods are modules that contain an invoke function::</span>
+
+<span class="sd">    def invoke(handler, parameters)</span>
+<span class="sd">  </span>
+<span class="sd">  The request handler will be passed as the first parameter to the invoke function and</span>
+<span class="sd">  provides access to the server&#39;s database connection, the current session and other</span>
+<span class="sd">  useful request properties. Request parameters will be passed as the second argument</span>
+<span class="sd">  to the invoke function.</span>
+<span class="sd">  </span>
+<span class="sd">  Toto methods are generally invoked via a POST request to the server with a JSON</span>
+<span class="sd">  serialized object as the body. The body should contain two properties:</span>
+
+<span class="sd">  1. method - The name of the method to invoke.</span>
+<span class="sd">  2. parameters - Any parameters to pass to the Toto function.</span>
+
+<span class="sd">  For example::</span>
+
+<span class="sd">    {&quot;method&quot;: &quot;account.create&quot;, &quot;parameters&quot;: {&quot;user_id&quot;: &quot;test&quot;, &quot;password&quot;: &quot;testpassword&quot;}}</span>
+
+<span class="sd">  Will call method_module.account.create.invoke(handler, {&#39;user_id&#39;: &#39;test&#39;, &#39;password&#39;: &#39;testpassword&#39;})</span>
+
+<span class="sd">  There are client libraries for iOS and Javascript that will make using Toto much easier. They are</span>
+<span class="sd">  available at https://github.com/JeremyOT/TotoClient-iOS and https://github.com/JeremyOT/TotoClient-JS</span>
+<span class="sd">  respectively.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="n">SUPPORTED_METHODS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;OPTIONS&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">]</span>
+  <span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">allow_origin</span>
+
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_connection</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span> <span class="o">=</span> <span class="n">db_connection</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">db</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">bson</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">bson_enabled</span> <span class="ow">and</span> <span class="nb">__import__</span><span class="p">(</span><span class="s">&#39;bson&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">BSON</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">msgpack</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">msgpack_enabled</span> <span class="ow">and</span> <span class="nb">__import__</span><span class="p">(</span><span class="s">&#39;msgpack&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span> <span class="o">=</span> <span class="s">&#39;application/json&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__active_methods</span> <span class="o">=</span> <span class="p">[]</span>
+
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Runtime method configuration</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="nd">@classmethod</span>
+  <span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="c">#Method configuration</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">event_mode</span> <span class="o">!=</span> <span class="s">&#39;off&#39;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">toto.events</span> <span class="kn">import</span> <span class="n">EventManager</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">event_manager</span> <span class="o">=</span> <span class="n">EventManager</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">method_select</span> <span class="o">==</span> <span class="s">&#39;url&#39;</span><span class="p">:</span>
+      <span class="k">def</span> <span class="nf">get_method_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_METHOD</span><span class="p">,</span> <span class="s">&quot;Missing method.&quot;</span><span class="p">)</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">__get_method_path</span> <span class="o">=</span> <span class="n">get_method_path</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">method_select</span> <span class="o">==</span> <span class="s">&#39;parameter&#39;</span><span class="p">:</span>
+      <span class="k">def</span> <span class="nf">get_method_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">body</span> <span class="ow">and</span> <span class="s">&#39;method&#39;</span> <span class="ow">in</span> <span class="n">body</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">body</span><span class="p">[</span><span class="s">&#39;method&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_METHOD</span><span class="p">,</span> <span class="s">&quot;Missing method.&quot;</span><span class="p">)</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">__get_method_path</span> <span class="o">=</span> <span class="n">get_method_path</span>
+    
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">use_cookies</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">math</span>
+      <span class="n">set_cookie</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">secure_cookies</span> <span class="ow">and</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_secure_cookie</span> <span class="ow">or</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_cookie</span>
+      <span class="n">get_cookie</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">secure_cookies</span> <span class="ow">and</span> <span class="n">cls</span><span class="o">.</span><span class="n">get_secure_cookie</span> <span class="ow">or</span> <span class="n">cls</span><span class="o">.</span><span class="n">get_cookie</span>
+      <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+        <span class="n">set_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;toto-session-id&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="n">expires_days</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span> <span class="o">/</span> <span class="p">(</span><span class="mf">24.0</span> <span class="o">*</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">)),</span> <span class="n">domain</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">cookie_domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">create_session</span> <span class="o">=</span> <span class="n">create_session</span>
+      
+      <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="p">(</span><span class="n">session_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span> <span class="o">!=</span> <span class="n">session_id</span><span class="p">):</span>
+          <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">session_id</span><span class="p">:</span>
+            <span class="n">session_id</span> <span class="o">=</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">get_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;toto-session-id&#39;</span><span class="p">)</span>
+          <span class="k">if</span> <span class="n">session_id</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+          <span class="n">set_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;toto-session-id&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="n">expires_days</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span> <span class="o">/</span> <span class="p">(</span><span class="mf">24.0</span> <span class="o">*</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">)),</span> <span class="n">domain</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">cookie_domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">retrieve_session</span> <span class="o">=</span> <span class="n">retrieve_session</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">traceback</span>
+      <span class="k">def</span> <span class="nf">error_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span> <span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
+          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="s">Headers: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">)))</span>
+          <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="s">Headers: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">)))</span>
+          <span class="k">return</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_SERVER</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span><span class="o">.</span><span class="n">__dict__</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">error_info</span> <span class="o">=</span> <span class="n">error_info</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">__method_root</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">method_module</span><span class="p">)</span>
+      
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default method_select &quot;both&quot; (or any unsupported value) will</span>
+<span class="sd">    call this method. The class method configure() will update this</span>
+<span class="sd">    to a more efficient method according to the tornado.options</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__get_method_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">body</span> <span class="ow">and</span> <span class="s">&#39;method&#39;</span> <span class="ow">in</span> <span class="n">body</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">body</span><span class="p">[</span><span class="s">&#39;method&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_METHOD</span><span class="p">,</span> <span class="s">&quot;Missing method.&quot;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__get_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__method_root</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+      <span class="n">method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">method</span>
+
+  <span class="k">def</span> <span class="nf">error_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
+      <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TotoException: </span><span class="si">%s</span><span class="s"> Value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+      <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">e</span> <span class="o">=</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_SERVER</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+      <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TotoException: </span><span class="si">%s</span><span class="s"> Value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+      <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
+      
+
+  <span class="k">def</span> <span class="nf">invoke_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">error</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__get_method_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__active_methods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+      <span class="n">result</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+      <span class="n">error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_info</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="p">(</span><span class="n">finish_by_default</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s">&#39;asynchronous&#39;</span><span class="p">))</span>
+
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request handlers</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">allowed_headers</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">,</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">,</span><span class="s">&#39;origin&#39;</span><span class="p">,</span><span class="s">&#39;content-type&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s">&#39;access-control-request-headers&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">:</span>
+      <span class="n">allowed_headers</span> <span class="o">=</span> <span class="n">allowed_headers</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s">&#39;access-control-request-headers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span><span class="s">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-headers&#39;</span><span class="p">,</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">allowed_headers</span><span class="p">))</span>
+    <span class="k">if</span> <span class="s">&#39;access-control-request-method&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s">&#39;access-control-request-method&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">SUPPORTED_METHODS</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">HTTPError</span><span class="p">(</span><span class="mi">405</span><span class="p">,</span> <span class="s">&#39;Method not supported&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-origin&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-methods&#39;</span><span class="p">,</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SUPPORTED_METHODS</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-expose-headers&#39;</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span><span class="p">)</span>
+  
+  <span class="nd">@tornado.web.asynchronous</span>
+  <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c"># Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">parameters</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">process_request</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+
+  <span class="nd">@tornado.web.asynchronous</span>
+  <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">content_type</span> <span class="o">=</span> <span class="s">&#39;content-type&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s">&#39;content-type&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="s">&#39;application/json&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;application/json&#39;</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">content_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;application/x-www-form-urlencoded&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;parameters&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">arguments</span><span class="p">}</span>
+      <span class="k">elif</span> <span class="n">content_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;multipart/form-data&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s">&#39;arguments&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="s">&#39;files&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">files</span><span class="p">}}</span>
+      <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">bson</span> <span class="ow">and</span> <span class="n">content_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;application/bson&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span> <span class="o">=</span> <span class="s">&#39;application/bson&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bson</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+      <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">msgpack</span> <span class="ow">and</span> <span class="n">content_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;application/msgpack&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span> <span class="o">=</span> <span class="s">&#39;application/msgpack&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msgpack</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="ow">and</span> <span class="s">&#39;batch&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">batch_process_request</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">[</span><span class="s">&#39;batch&#39;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">process_request</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="ow">and</span> <span class="s">&#39;parameters&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">[</span><span class="s">&#39;parameters&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="p">{})</span>
+  
+  <span class="k">def</span> <span class="nf">batch_process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-origin&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-expose-headers&#39;</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span><span class="p">)</span>
+    <span class="n">request_keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">requests</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">batch_results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">requests</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">request_keys</span><span class="p">):</span>
+      <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">invoke_method</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">[</span><span class="s">&#39;parameters&#39;</span><span class="p">],</span> <span class="bp">False</span><span class="p">)</span>
+      <span class="n">batch_results</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="p">{</span><span class="s">&#39;error&#39;</span><span class="p">:</span> <span class="n">error</span><span class="p">}</span> <span class="ow">or</span> <span class="p">{</span><span class="s">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span><span class="n">batch_results</span><span class="o">=</span><span class="n">batch_results</span><span class="p">)</span>
+
+  
+  <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-origin&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-expose-headers&#39;</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">invoke_method</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">error</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">finish_by_default</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finished</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    End request handlers</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TotoHandler.respond"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.respond">[docs]</a>  <span class="k">def</span> <span class="nf">respond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">batch_results</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Respond to the request with the given result or error object (the batch_results parameter</span>
+<span class="sd">    is for internal use only and not intendented to be supplied manually). Responses will be</span>
+<span class="sd">    serialized according to the response_type propery. The default serialization is</span>
+<span class="sd">    application/json. Other supported protocols are:</span>
+
+<span class="sd">    - application/bson - requires pymongo</span>
+<span class="sd">    - application/msgpack - requires msgpack-python</span>
+
+<span class="sd">    The response will also contain any available session information.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+      <span class="n">response</span><span class="p">[</span><span class="s">&#39;result&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+      <span class="n">response</span><span class="p">[</span><span class="s">&#39;error&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">error</span>
+    <span class="k">if</span> <span class="n">batch_results</span><span class="p">:</span>
+      <span class="n">response</span><span class="p">[</span><span class="s">&#39;batch&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_results</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+      <span class="n">response</span><span class="p">[</span><span class="s">&#39;session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;session_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;expires&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span><span class="p">,</span> <span class="s">&#39;user_id&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">user_id</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span> <span class="o">==</span> <span class="s">&#39;application/bson&#39;</span><span class="p">:</span>
+      <span class="n">response_body</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bson</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span> <span class="o">==</span> <span class="s">&#39;application/msgpack&#39;</span><span class="p">:</span>
+      <span class="n">response_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msgpack</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">response_body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">,</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">response_body</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="n">response_body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.respond_raw"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.respond_raw">[docs]</a>  <span class="k">def</span> <span class="nf">respond_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">content_type</span><span class="p">,</span> <span class="n">finish</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Respond raw is used by respond to send the response to the client. You can pass a string as the body parameter</span>
+<span class="sd">    and it will be written directly to the response stream. The response content-type header will be set to content_type.</span>
+<span class="sd">    Use finish to specify whether or not the response stream should be closed after body is written. Use finish=False</span>
+<span class="sd">    to send the response in multiple calls to respond_raw.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="n">content_type</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">finish</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.on_connection_close"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.on_connection_close">[docs]</a>  <span class="k">def</span> <span class="nf">on_connection_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;You should not call this method directly, but if you implement an on_connection_close function in a</span>
+<span class="sd">    method module (where you defined invoke) it will be called when the connection closes if that method was</span>
+<span class="sd">    invoked. E.G.::</span>
+
+<span class="sd">      def invoke(handler, parameters):</span>
+<span class="sd">        #main method body</span>
+
+<span class="sd">      def on_connection_close(handler):</span>
+<span class="sd">        #clean up</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__active_methods</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s">&#39;on_connection_close&#39;</span><span class="p">):</span>
+        <span class="n">method</span><span class="o">.</span><span class="n">on_connection_close</span><span class="p">(</span><span class="bp">self</span><span class="p">);</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">on_finish</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.register_event_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.register_event_handler">[docs]</a>  <span class="k">def</span> <span class="nf">register_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">run_on_main_loop</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">deregister_on_finish</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;If using Toto&#39;s event framework, this method makes it easy to register an event callback tied to the</span>
+<span class="sd">    current connection and handler. Event handlers registered via this method will not be called once this handler</span>
+<span class="sd">    has finished (connection closed). The deregister_on_finish parameter will cause this handler to be explicitly</span>
+<span class="sd">    deregisted as part of the handler.on_finish event. Otherwise, event handlers are only cleaned up when the</span>
+<span class="sd">    associated event is received.</span>
+
+<span class="sd">    The return value can be used to manually deregister the event handler at a later point.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">TotoHandler</span><span class="o">.</span><span class="n">event_manager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">register_handler</span><span class="p">(</span><span class="n">event_name</span><span class="p">,</span> <span class="n">handler</span><span class="p">,</span> <span class="n">run_on_main_loop</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">deregister_on_finish</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sig</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.deregister_event_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.deregister_event_handler">[docs]</a>  <span class="k">def</span> <span class="nf">deregister_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Pass the value returned from register_event_handler to deregister an active event handler.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">TotoHandler</span><span class="o">.</span><span class="n">event_manager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">remove_handler</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.create_session"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create a new session for the given user id and password (or an anonymous session if user_id is None).</span>
+<span class="sd">    After this method is called, the session will be available via self.session.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
+</div>
+<div class="viewcode-block" id="TotoHandler.retrieve_session"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.retrieve_session">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it</span>
+<span class="sd">    in self.session. Alternatively, pass a session_id to this function to retrieve that session explicitly.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="p">(</span><span class="n">session_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span> <span class="o">!=</span> <span class="n">session_id</span><span class="p">):</span>
+      <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">session_id</span> <span class="ow">and</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+        <span class="n">session_id</span> <span class="o">=</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span>
+      <span class="k">if</span> <span class="n">session_id</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
+    </div>
+  <span class="k">def</span> <span class="nf">on_finish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">deregister_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

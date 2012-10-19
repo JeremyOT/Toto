@@ -1,0 +1,339 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.server &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.server</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;The Toto server and handler classes are designed to simplify most of the boilerplate that comes with</span>
+<span class="sd">building web services so you can focus on the important parts specific to your application.</span>
+
+<span class="sd">Most of the time you&#39;ll only need this script to start your server::</span>
+
+<span class="sd">  from toto.server import TotoServer</span>
+<span class="sd">  </span>
+<span class="sd">  TotoServer(&#39;settings.conf&#39;).run()</span>
+
+<span class="sd">Methods, startup functions and databases can all be configured with the conf file.</span>
+
+<span class="sd">Run your startup script with --help to see all available options.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">tornado.web</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tornado.ioloop</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">handler</span> <span class="kn">import</span> <span class="n">TotoHandler</span>
+<span class="kn">from</span> <span class="nn">sockets</span> <span class="kn">import</span> <span class="n">TotoSocketHandler</span>
+<span class="kn">from</span> <span class="nn">clientsideworker</span> <span class="kn">import</span> <span class="n">ClientSideWorkerSocketHandler</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;database&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;mysql|mongodb|redis|none&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;mongodb&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;the database driver to use&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;db_host&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The host to use for database connections.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;db_port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The port to use for database connections. Leave this at zero to use the default for the selected database type&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;mysql_database&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main MySQL schema name&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;mysql_user&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main MySQL user&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;mysql_password&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main MySQL user password&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;postgres_database&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main Postgres database name&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;postgres_user&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main Postgres user&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;postgres_password&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main Postgres user password&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;postgres_min_connections&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The minimum number of connections to keep in the Postgres connection pool&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;postgres_max_connections&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The maximum number of connections to keep in the Postgres connection pool&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;mongodb_database&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;toto_server&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;MongoDB database&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;redis_database&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Redis DB&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8888</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;daemon&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;start|stop|restart&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;processes&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of daemon processes to run, pass 0 to run one per cpu&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;pidfile&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;toto.pid&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The path to the pidfile for daemon processes will be named &lt;path&gt;.&lt;num&gt;.pid (toto.pid -&gt; toto.0.pid)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;root&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;/&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The path to run the server on. This can be helpful when hosting multiple services on the same domain&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;method_module&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;methods&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The root module to use for method lookup&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;remote_event_receivers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;A comma separated list of remote event address that this event manager should connect to. e.g.: &#39;tcp://192.168.1.2:8889&#39;&quot;</span><span class="p">,</span> <span class="n">multiple</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;session_ttl&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">24</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">365</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds after creation a session should expire&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;anon_session_ttl&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">24</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds after creation an anonymous session should expire&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;session_renew&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds before a session expires that it should be renewed, or zero to renew on every request&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;anon_session_renew&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;cookie_secret&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;autoreload&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This option autoreloads modules as changes occur - useful for debugging.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;event_mode&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;off&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;off|on|only&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This option enables or disables the event system, also providing an option to launch this server as an event server only&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;event_init_module&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If defined, this module&#39;s &#39;invoke&#39; function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;start&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;stop&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;restart&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;nodaemon&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=&#39;&#39; for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;startup_function&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=&lt;active database connection&gt;, application=&lt;tornado.web.Application&gt;).&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;debug&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;use_cookies&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;secure_cookies&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;cookie_domain&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The value to use for the session cookie&#39;s domain attribute - e.g. &#39;.example.com&#39;&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;socket_opened_method&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;An optional function to run when a new web socket is opened, the socket handler will be passed as the only argument&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;socket_closed_method&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;An optional function to run when a web socket is closed, the socket handler will be passed as the only argument&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;socket_method_module&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The root module to use for web socket method lookup&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;use_web_sockets&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Whether or not web sockets should be installed as an alternative way to call methods&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;socket_path&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;websocket&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The path to use for websocket connections&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;client_side_worker_path&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The path to use for client side worker connections - functionality will be disabled if this is not set.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;event_port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8999</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The address to listen to event connections on - due to message queuing, servers use the next higher port as well&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TotoServer"><a class="viewcode-back" href="../../server.html#toto.server.TotoServer">[docs]</a><span class="k">class</span> <span class="nc">TotoServer</span><span class="p">():</span>
+  <span class="sd">&#39;&#39;&#39;Instances can be configured in three ways:</span>
+
+<span class="sd">  1. (Most common) Pass the path to a config file as the first parameter to the constructor.</span>
+<span class="sd">  2. Pass config parameters as command line arguments to the initialization script.</span>
+<span class="sd">  3. Pass keyword arguments to the constructor.</span>
+
+<span class="sd">  Precidence is as follows:</span>
+
+<span class="sd">  Keyword args, config file, command line</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__load_options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">conf_file</span><span class="p">:</span>
+      <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">parse_config_file</span><span class="p">(</span><span class="n">conf_file</span><span class="p">)</span>
+    <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">parse_command_line</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">stop</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;stop&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">restart</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;restart&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">nodaemon</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">module_options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;method_module&#39;</span><span class="p">,</span> <span class="s">&#39;socket_method_module&#39;</span><span class="p">,</span> <span class="s">&#39;event_init_module&#39;</span><span class="p">}</span>
+    <span class="n">function_options</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;startup_function&#39;</span><span class="p">,</span> <span class="s">&#39;socket_opened_method&#39;</span><span class="p">,</span> <span class="s">&#39;socket_closed_method&#39;</span><span class="p">}</span>
+    <span class="n">original_argv</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">,</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">module_options</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__load_options</span><span class="p">(</span><span class="n">conf_file</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">module_options</span><span class="p">})</span>
+    <span class="n">modules</span> <span class="o">=</span> <span class="p">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">module_options</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">i</span><span class="p">)}</span>
+    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">:</span>
+      <span class="nb">__import__</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="n">function_modules</span> <span class="o">=</span> <span class="p">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">function_options</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">i</span><span class="p">)}</span>
+    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">function_modules</span><span class="p">:</span>
+      <span class="nb">__import__</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="o">=</span> <span class="n">original_argv</span>
+    <span class="c">#clear root logger handlers to prevent duplicate logging if user has specified a log file</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">log_file_prefix</span><span class="p">:</span>
+      <span class="n">root_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+      <span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">root_logger</span><span class="o">.</span><span class="n">handlers</span><span class="p">]:</span>
+        <span class="n">root_logger</span><span class="o">.</span><span class="n">removeHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__load_options</span><span class="p">(</span><span class="n">conf_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c">#clear method_module references so we can fully reload with new options</span>
+    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">module</span><span class="p">)):</span>
+        <span class="k">del</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">function_modules</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">module</span><span class="p">)):</span>
+        <span class="k">del</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="c">#prevent the reloaded module from re-defining options</span>
+    <span class="n">define</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">define</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">define</span><span class="p">,</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__event_init</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">event_init_module</span> <span class="ow">and</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">event_init_module</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">None</span>
+    <span class="n">TotoHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">use_web_sockets</span><span class="p">:</span>
+      <span class="n">TotoSocketHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">client_side_worker_path</span><span class="p">:</span>
+      <span class="n">ClientSideWorkerSocketHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
+    <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">define</span> <span class="o">=</span> <span class="n">define</span>
+
+  <span class="k">def</span> <span class="nf">__run_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">db_connection</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;mongodb&quot;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">mongodbconnection</span> <span class="kn">import</span> <span class="n">MongoDBConnection</span>
+      <span class="n">db_connection</span> <span class="o">=</span> <span class="n">MongoDBConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">27017</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mongodb_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;redis&quot;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">redisconnection</span> <span class="kn">import</span> <span class="n">RedisConnection</span>
+      <span class="n">db_connection</span> <span class="o">=</span> <span class="n">RedisConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">6379</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">redis_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;mysql&quot;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">mysqldbconnection</span> <span class="kn">import</span> <span class="n">MySQLdbConnection</span>
+      <span class="n">db_connection</span> <span class="o">=</span> <span class="n">MySQLdbConnection</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">3306</span><span class="p">),</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_password</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&#39;postgres&#39;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">postgresconnection</span> <span class="kn">import</span> <span class="n">PostgresConnection</span>
+      <span class="n">db_connection</span> <span class="o">=</span> <span class="n">PostgresConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">5432</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_password</span><span class="p">,</span>  <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_min_connections</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_max_connections</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">fakeconnection</span> <span class="kn">import</span> <span class="n">FakeConnection</span>
+      <span class="n">db_connection</span> <span class="o">=</span> <span class="n">FakeConnection</span><span class="p">()</span>
+  
+    <span class="n">application_settings</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">cookie_secret</span><span class="p">:</span>
+      <span class="n">application_settings</span><span class="p">[</span><span class="s">&#39;cookie_secret&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">cookie_secret</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">autoreload</span><span class="p">:</span>
+      <span class="n">application_settings</span><span class="p">[</span><span class="s">&#39;debug&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="n">handlers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">use_web_sockets</span><span class="p">:</span>
+      <span class="n">handlers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">/?([^/]?[\w\./]*)&#39;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">socket_path</span><span class="p">),</span> <span class="n">TotoSocketHandler</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;db_connection&#39;</span><span class="p">:</span> <span class="n">db_connection</span><span class="p">}))</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">client_side_worker_path</span><span class="p">:</span>
+      <span class="n">handlers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">client_side_worker_path</span><span class="p">),</span> <span class="n">ClientSideWorkerSocketHandler</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">event_mode</span> <span class="o">==</span> <span class="s">&#39;off&#39;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">toto.events</span> <span class="kn">import</span> <span class="n">EventManager</span>
+      <span class="n">event_manager</span> <span class="o">=</span> <span class="n">EventManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+      <span class="n">event_manager</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="s">&#39;tcp://*:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">event_port</span> <span class="o">+</span> <span class="n">index</span><span class="p">)</span>
+      <span class="n">event_manager</span><span class="o">.</span><span class="n">start_listening</span><span class="p">()</span>
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="ow">or</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()):</span>
+        <span class="n">event_manager</span><span class="o">.</span><span class="n">register_server</span><span class="p">(</span><span class="s">&#39;tcp://127.0.0.1:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">event_port</span> <span class="o">+</span> <span class="n">i</span><span class="p">))</span>
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">remote_event_receivers</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">remote_event_receivers</span><span class="p">:</span>
+          <span class="n">event_manager</span><span class="o">.</span><span class="n">register_server</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+      <span class="n">init_module</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__event_init</span>
+      <span class="k">if</span> <span class="n">init_module</span><span class="p">:</span>
+        <span class="n">init_module</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">event_manager</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">event_mode</span> <span class="o">==</span> <span class="s">&#39;only&#39;</span><span class="p">:</span>
+      <span class="n">handlers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">/?([^/]?[\w\./]*)&#39;</span> <span class="o">%</span> <span class="n">options</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">),</span> <span class="n">TotoHandler</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;db_connection&#39;</span><span class="p">:</span> <span class="n">db_connection</span><span class="p">}))</span>
+    
+    <span class="n">application</span> <span class="o">=</span> <span class="n">Application</span><span class="p">(</span><span class="n">handlers</span><span class="p">,</span> <span class="o">**</span><span class="n">application_settings</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">startup_function</span><span class="p">:</span>
+      <span class="n">startup_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">startup_function</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+      <span class="nb">__import__</span><span class="p">(</span><span class="n">startup_path</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">startup_path</span><span class="p">[</span><span class="mi">1</span><span class="p">]](</span><span class="n">db_connection</span><span class="o">=</span><span class="n">db_connection</span><span class="p">,</span> <span class="n">application</span><span class="o">=</span><span class="n">application</span><span class="p">)</span>
+
+    <span class="n">application</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;Starting server on port </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">port</span>
+    <span class="n">IOLoop</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TotoServer.run"><a class="viewcode-back" href="../../server.html#toto.server.TotoServer.run">[docs]</a>  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+    <span class="sd">&#39;&#39;&#39;Start the server and run with the current configuration&#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">multiprocessing</span>
+      <span class="c">#convert p to the absolute path, insert &quot;.i&quot; before the last &quot;.&quot; or at the end of the path</span>
+      <span class="k">def</span> <span class="nf">path_with_id</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">components</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="n">f</span> <span class="o">+=</span> <span class="s">&quot;.&quot;</span> <span class="o">+</span> <span class="n">components</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+      <span class="n">count</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="ow">or</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;restart&#39;</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">signal</span><span class="o">,</span> <span class="nn">re</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">r&#39;\d+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">r&#39;\.&#39;</span><span class="p">)</span>
+        <span class="n">piddir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)):</span>
+          <span class="n">pidfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">piddir</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+          <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+              <span class="n">pid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+              <span class="k">try</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+              <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                  <span class="k">raise</span>
+              <span class="k">print</span> <span class="s">&quot;Stopped server </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pid</span> 
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pidfile</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;restart&#39;</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">sys</span>
+        <span class="k">def</span> <span class="nf">run_daemon_server</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+          <span class="c">#fork and only continue on child process</span>
+          <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">():</span>
+            <span class="c">#detach from controlling terminal</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">setsid</span><span class="p">()</span>
+            <span class="c">#fork again and write pid to pidfile from parent, run server on child</span>
+            <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">pid</span><span class="p">:</span>
+              <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pid</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">__run_server</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+          <span class="n">pidfile</span> <span class="o">=</span> <span class="n">path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+          <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">pidfile</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;Skipping </span><span class="si">%d</span><span class="s">, pidfile exists at </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+          <span class="n">p</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">run_daemon_server</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">port</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+          <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">,</span> <span class="s">&#39;stop&#39;</span><span class="p">,</span> <span class="s">&#39;restart&#39;</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;Invalid daemon option: &quot;</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span>
+
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__run_server</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">port</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
