@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Overview &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
+    <link rel="next" title="The Toto web server" href="server.html" />
+    <link rel="prev" title="Toto Documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="The Toto web server"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Toto Documentation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>Toto is a small framework intended to accelerate web service development. It is
+built on top of Tornado (<a class="reference external" href="http://tornadoweb.org">http://tornadoweb.org</a>) and can currently use MySQL, MongoDB, PostgreSQL or
+Redis as a backing database.</p>
+<div class="section" id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Uses JSON (or BSON or msgpack) for easy consumption by clients on any platform</li>
+<li>Easy to add new methods</li>
+<li>Simple authentication built in with HMAC-SHA1 verification for authenticated requests</li>
+<li>Session state persistence for authenticated requests</li>
+<li>Sessions stored in database to simplify scaling across servers</li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>The simplest way to install Toto is with pip. Simply run <cite>pip install -e git+git://github.com/JeremyOT/Toto.git#egg=Toto</cite>
+to install the latest version of the Toto module on your machine.</p>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>Getting started with Toto is easy, all you need to do is make a new instance of <cite>toto.TotoServer</cite>
+and call <cite>run()</cite>. Toto needs a root module to use for method lookup. By default, a <cite>TotoServer</cite>
+will look for a module called <cite>methods</cite>. The <cite>method_module</cite> parameter can be used to specify
+another module by name.</p>
+</div>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>By default, Toto is configured to run on port 8888 and connect to a MongoDB server
+running on localhost. Configuration can be performed in three ways with each overriding the last:</p>
+<ol class="arabic simple">
+<li>By passing options as named parameters to the <cite>TotoServer</cite> constructor.</li>
+<li>Through a configuration file by passing the path to the config file as the first parameter to
+the <cite>TotoServer</cite> constructor.</li>
+<li>With command line parameters (<cite>&#8211;option=&#8217;string value&#8217; &#8211;option=1234</cite>)</li>
+</ol>
+<p>Combining the configuration methods can be useful when debugging. Run your script with <cite>&#8211;help</cite>
+to see a full list of available parameters.</p>
+</div>
+<div class="section" id="methods">
+<h2>Methods<a class="headerlink" href="#methods" title="Permalink to this headline">¶</a></h2>
+<p>Methods are referenced by name in each request. <cite>a.b.c</cite> (or <cite>a/b/c</cite>) maps to <cite>methods.a.b.c</cite>. To add new
+methods, add modules and packages to the <cite>methods</cite> (or specified) package (see the account package for
+reference) and ensure that each callable module defines <cite>invoke(handler, parameters)</cite>
+where <cite>handler</cite> is the <cite>TotoHandler</cite> (subclass of <cite>tornado.web.RequestHandler</cite>) handling
+the current request.</p>
+<p><cite>handler.connection.db</cite> provides direct access to the database used by the sessions and
+accounts framework.</p>
+<p><cite>handler.session</cite> provides access to the current session or <cite>None</cite> if not authenticated.
+Available properties:</p>
+<ul class="simple">
+<li><cite>session.user_id</cite> - the current user ID</li>
+<li><cite>session.expires</cite> - the unix timestamp when the session will expire</li>
+<li><cite>session.session_id</cite> - the current session ID</li>
+<li><cite>session.state</cite> - a python dict containing the current state, you must call <cite>session.save_state()</cite> to persist any changes.</li>
+</ul>
+<p>The session object acts like a proxy to state so you can use dictionary accessors on it directly.</p>
+<p>To enforce authentication for any method, decorate the <cite>invoke()</cite> function with
+<cite>&#64;toto.invocation.authenticated</cite>. Unauthorized attempts to call authenticated methods
+will return a not authorized error.</p>
+<p>Required parameters can be specified by decorating an <cite>invoke()</cite> function with
+<cite>&#64;toto.invocation.requires(param1, param2,...)</cite>.</p>
+<p>Method modules can take advantage of [Tornado&#8217;s][tornado] non-blocking features by decorating
+an <cite>invoke()</cite> function with <cite>&#64;toto.invocation.asynchronous</cite>. Data can be sent
+to the client with <cite>handler.respond()</cite> and <cite>handler.raw_respond()</cite>. Optionally, modules can
+implement <cite>on_connection_close()</cite> to clean up any resources if the client closes the
+connection. See <cite>RequestHandler.on_connection_close()</cite> in the [Tornado][tornado] documentation
+for more information.</p>
+<p>It is important to remember that [Tornado][tornado] requires that all calls to <cite>respond()</cite>, <cite>respond_raw()</cite>, <cite>write()</cite>,
+<cite>flush()</cite> and <cite>finish()</cite> are performed on the main thread. You can schedule a function to
+run on the main thread with <cite>IOLoop.instance().add_callback(callback)</cite>.</p>
+<p>_Note: Any data returned from a call to <cite>method.invoke()</cite> will be sent to the client as
+JSON data and be used to generate the <cite>x-toto-hmac</cite> header for verification. This may cause
+issues with asynchronous methods. If <cite>method.invoke()</cite> returns <cite>None</cite>, a response will not
+automatically be sent to the client and no <cite>x-toto-hmac</cite> header will be generated._</p>
+</div>
+<div class="section" id="requests">
+<h2>Requests<a class="headerlink" href="#requests" title="Permalink to this headline">¶</a></h2>
+<p>Non-authenticated methods:</p>
+<p>1. Call service with JSON object in the form: <cite>{&#8220;method&#8221;: &#8220;a.b.c&#8221;, &#8220;parameters&#8221;: &lt;parameters&gt;}</cite>. Instead of passing
+the &#8220;method&#8221; argument in the request body, it is also possible to call methods by URL. The URL equivalent to the
+above call is <cite>http://service.com/service/a/b/c</cite>.
+2. Parse response JSON.</p>
+<p>Account Creation:</p>
+<ol class="arabic simple">
+<li>Call <cite>account.create</cite> method with <cite>{&#8220;user_id&#8221;: &lt;user_id&gt;, &#8220;password&#8221;: &lt;password&gt;}</cite>.</li>
+<li>Verify that the base64 encoded HMAC-SHA1 of the response body with <cite>&lt;user_id&gt;</cite> as the key matches the <cite>x-toto-hmac</cite> header in the response.</li>
+<li>Parse response JSON.</li>
+<li>Read and store <cite>session_id</cite> from the response object.</li>
+</ol>
+<p>Login:</p>
+<ol class="arabic simple">
+<li>Call <cite>account.login</cite> method with <cite>{&#8220;user_id&#8221;: &lt;user_id&gt;, &#8220;password&#8221;: &lt;password&gt;}</cite>.</li>
+<li>Verify that the base64 encoded HMAC-SHA1 of the response body with <cite>&lt;user_id&gt;</cite> as the key matches the <cite>x-toto-hmac</cite> header in the response.</li>
+<li>Parse response JSON.</li>
+<li>Read and store <cite>session_id</cite> from the response object.</li>
+</ol>
+<p>Authenticated methods:</p>
+<ol class="arabic simple">
+<li>Login (see-above).</li>
+<li>Call service with JSON object in the form: <cite>{&#8220;method&#8221;: &#8220;a.b.c&#8221;, &#8220;parameters&#8221;: &lt;parameters&gt;}</cite> with the <cite>x-toto-session-id</cite> header set to the session ID returned from login and the <cite>x-toto-hmac</cite> header set to the base64 encoded HMAC-SHA1 generated with <cite>&lt;user_id&gt;</cite> as the key and the JSON request string as the message.</li>
+<li>Verify that the base64 encoded HMAC-SHA1 of the response body with <cite>&lt;user_id&gt;</cite> as the key matches the <cite>x-toto-hmac</cite> header in the response.</li>
+<li>Parse response JSON.</li>
+</ol>
+<p>_Note: These instructions assume that <cite>method.invoke()</cite> returns an object to be serialized
+and sent to the client. Methods that return None can be used the send any data and must be
+handled accordingly._</p>
+</div>
+</div>
+<div class="section" id="events">
+<h1>Events<a class="headerlink" href="#events" title="Permalink to this headline">¶</a></h1>
+<p>Sometimes you may need to send events from one request to another. Toto&#8217;s <cite>toto.events.EventManager</cite> makes this easy.</p>
+<p>To send an event use <cite>EventManager.instance().send(&#8216;eventname&#8217;, args)</cite>. EventManager uses python&#8217;s <cite>cPickle</cite> module
+for serialization so you can pass anything cPickle can handle as <cite>args</cite>.</p>
+<p>To receive an event, you must register a handler with <cite>TotoHandler.register_event_handler(&#8216;eventname&#8217;, handler)</cite>.
+<cite>handler</cite> is a function that takes one parameters and will be called with <cite>args</cite> when the <cite>EventManager</cite> sends an event
+with &#8216;eventname&#8217;. Toto&#8217;s events were primarily designed to be combined with tornado&#8217;s support for non-blocking requests.
+See the &#8220;chat&#8221; template for an example.</p>
+<p>_Toto&#8217;s event system supports sending events across multiple instances both on the same machine and in a distributed
+system. Run your server with &#8211;help for more configuration <a href="#id1"><span class="problematic" id="id2">options_</span></a></p>
+</div>
+<div class="section" id="daemonization">
+<h1>Daemonization<a class="headerlink" href="#daemonization" title="Permalink to this headline">¶</a></h1>
+<p>The Toto server can be run as a daemon by passing the argument <cite>&#8211;start</cite>. To stop any running processes pass
+<cite>&#8211;stop</cite>. This will stop any processes that share the specified pid file format (default <cite>toto.pid</cite>). The
+<cite>&#8211;processes=&lt;n&gt;</cite> option may be used to specify the number of server instances to run. Multiple instances will be run
+on sequential ports starting at the port specified by <cite>&#8211;port</cite>. If <cite>0</cite> is used as the argument to <cite>&#8211;processes</cite>, Toto
+will run one process per cpu as detected by Python&#8217;s <cite>multiprocessing</cite> module. Additional daemonization options can
+be viewed from <cite>&#8211;help</cite>.</p>
+</div>
+<div class="section" id="clients">
+<h1>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h1>
+<p>To help you get started, JavaScript and iOS client libraries are in development at <a class="reference external" href="https://github.com/JeremyOT/TotoClient-JS">https://github.com/JeremyOT/TotoClient-JS</a>
+and <a class="reference external" href="https://github.com/JeremyOT/TotoClient-iOS">https://github.com/JeremyOT/TotoClient-iOS</a> respectively.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Overview</a><ul>
+<li><a class="reference internal" href="#features">Features</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#configuration">Configuration</a></li>
+<li><a class="reference internal" href="#methods">Methods</a></li>
+<li><a class="reference internal" href="#requests">Requests</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#events">Events</a></li>
+<li><a class="reference internal" href="#daemonization">Daemonization</a></li>
+<li><a class="reference internal" href="#clients">Clients</a></li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Toto Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="server.html"
+                        title="next chapter">The Toto web server</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/overview.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="The Toto web server"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Toto Documentation"
+             >previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
