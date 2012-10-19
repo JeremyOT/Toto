@@ -1,6 +1,11 @@
 import cPickle as pickle
 
 class TotoAccount(object):
+  '''Instances of TotoAccount provide dictionary-like access to user account properties. Unlike
+  sessions, account properties are loaded directly from distinct fields in the database so if
+  you're not using a schemaless database you'll need to make sure the fields (columns) exist
+  in advance.
+  '''
 
   def __init__(self, session):
     self._session = session
@@ -26,10 +31,16 @@ class TotoAccount(object):
     return self.__iter__()
 
   def save(self):
+    '''Save any modified keys to the user account stored in the database.
+    '''
     self._save_property(*self._modified_properties)
     self._modified_properties.clear()
 
   def load_property(self, *args):
+    '''Load the properties passed to args. Properties will be dynamically loaded as they are accessed,
+    but if you know you'll be referencing multiple properties, it can be faster to load them in bulk
+    by passing all the keys you want to load as arguments to this method first.
+    '''
     loaded = self._load_property(*args)
     for k in loaded:
       self._properties[k] = loaded[k]
@@ -45,7 +56,9 @@ class TotoAccount(object):
     raise Exception("Unimplemented operation: _save_property")
 
 class TotoSession(object):
-  
+  '''Instances of TotoSession provide dictionary-like access to current session variables, and the current
+  account (if authenticated).
+  '''
   def __init__(self, db, session_data):
     self._db = db
     self.user_id = session_data['user_id']
@@ -55,6 +68,10 @@ class TotoSession(object):
     self._verified = False
 
   def get_account(self, *args):
+    '''Load the account associated with this session (if authenticated). Session properties are
+    pickled to a binary string and stored as the 'state' field, so you don't need to configure your database to handle them in
+    advance.
+    '''
     raise Exception("Unimplemented operation: get_account")
 
   def __getitem__(self, key):
@@ -80,7 +97,11 @@ class TotoSession(object):
     return str({'user_id': self.user_id, 'expires': self.expires, 'id': self.session_id, 'state': self.state})
 
   def refresh(self):
+    '''Refresh the current session to the state in the database.
+    '''
     raise Exception("Unimplemented operation: refresh")
 
   def save(self):
+    '''Save the session to the database.
+    '''
     raise Exception("Unimplemented operation: save")

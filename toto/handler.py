@@ -15,6 +15,36 @@ define("bson_enabled", default=False, help="Allows requests to use BSON with con
 define("msgpack_enabled", default=False, help="Allows requests to use MessagePack with content-type application/msgpack")
 
 class TotoHandler(RequestHandler):
+  '''The handler is responsible for processing all requests to the server. An instance
+  will be initialized for each incoming request and will handle authentication, session
+  management and method delegation for you.
+  
+  You can set the module to use for method delegation via the 'method_module' parameter.
+  Methods are modules that contain an invoke function::
+
+    def invoke(handler, parameters)
+  
+  The request handler will be passed as the first parameter to the invoke function and
+  provides access to the server's database connection, the current session and other
+  useful request properties. Request parameters will be passed as the second argument
+  to the invoke function.
+  
+  Toto methods are generally invoked via a POST request to the server with a JSON
+  serialized object as the body. The body should contain two properties:
+
+  1. method - The name of the method to invoke.
+  2. parameters - Any parameters to pass to the Toto function.
+
+  For example::
+
+    {"method": "account.create", "parameters": {"user_id": "test", "password": "testpassword"}}
+
+  Will call method_module.account.create.invoke(handler, {'user_id': 'test', 'password': 'testpassword'})
+
+  There are client libraries for iOS and Javascript that will make using Toto much easier. They are
+  available at https://github.com/JeremyOT/TotoClient-iOS and https://github.com/JeremyOT/TotoClient-JS
+  respectively.
+  '''
 
   SUPPORTED_METHODS = ["POST", "OPTIONS", "GET"]
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
@@ -201,6 +231,16 @@ class TotoHandler(RequestHandler):
   """
 
   def respond(self, result=None, error=None, batch_results=None):
+    '''Respond to the request with the given result or error object (the batch_results parameter
+    is for internal use only and not intendented to be supplied manually). Responses will be
+    serialized according to the response_type propery. The default serialization is
+    application/json. Other supported protocols are:
+
+    - application/bson - requires pymongo
+    - application/msgpack - requires msgpack-python
+
+    The response will also contain any available session information.
+    '''
     response = {}
     if result is not None:
       response['result'] = result
@@ -221,32 +261,63 @@ class TotoHandler(RequestHandler):
     self.respond_raw(response_body, self.response_type)
 
   def respond_raw(self, body, content_type, finish=True):
+    '''Respond raw is used by respond to send the response to the client. You can pass a string as the body parameter
+    and it will be written directly to the response stream. The response content-type header will be set to content_type.
+    Use finish to specify whether or not the response stream should be closed after body is written. Use finish=False
+    to send the response in multiple calls to respond_raw.
+    '''
     self.add_header('content-type', content_type)
     self.write(body)
     if finish:
       self.finish()
 
   def on_connection_close(self):
+    '''You should not call this method directly, but if you implement an on_connection_close function in a
+    method module (where you defined invoke) it will be called when the connection closes if that method was
+    invoked. E.G.::
+
+      def invoke(handler, parameters):
+        #main method body
+
+      def on_connection_close(handler):
+        #clean up
+    '''
     for method in self.__active_methods:
       if hasattr(method, 'on_connection_close'):
         method.on_connection_close(self);
     self.on_finish()
 
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
+    '''If using Toto's event framework, this method makes it easy to register an event callback tied to the
+    current connection and handler. Event handlers registered via this method will not be called once this handler
+    has finished (connection closed). The deregister_on_finish parameter will cause this handler to be explicitly
+    deregisted as part of the handler.on_finish event. Otherwise, event handlers are only cleaned up when the
+    associated event is received.
+
+    The return value can be used to manually deregister the event handler at a later point.
+    '''
     sig = TotoHandler.event_manager.instance().register_handler(event_name, handler, run_on_main_loop, self)
     if deregister_on_finish:
       self.registered_event_handlers.append(sig)
     return sig
 
   def deregister_event_handler(self, sig):
+    '''Pass the value returned from register_event_handler to deregister an active event handler.
+    '''
     TotoHandler.event_manager.instance().remove_handler(sig)
     self.registered_event_handlers.remove(sig)
 
   def create_session(self, user_id=None, password=None):
+    '''Create a new session for the given user id and password (or an anonymous session if user_id is None).
+    After this method is called, the session will be available via self.session.
+    '''
     self.session = self.db_connection.create_session(user_id, password)
     return self.session
 
   def retrieve_session(self, session_id=None):
+    '''Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
+    in self.session. Alternatively, pass a session_id to this function to retrieve that session explicitly.
+    '''
     if not self.session or (session_id and self.session.session_id != session_id):
       headers = self.request.headers
       if not session_id and 'x-toto-session-id' in headers:

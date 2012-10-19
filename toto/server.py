@@ -1,3 +1,17 @@
+'''The Toto server and handler classes are designed to simplify most of the boilerplate that comes with
+building web services so you can focus on the important parts specific to your application.
+
+Most of the time you'll only need this script to start your server::
+
+  from toto.server import TotoServer
+  
+  TotoServer('settings.conf').run()
+
+Methods, startup functions and databases can all be configured with the conf file.
+
+Run your startup script with --help to see all available options.
+'''
+
 import os
 from tornado.web import *
 from tornado.ioloop import *
@@ -54,6 +68,16 @@ define("event_port", default=8999, help="The address to listen to event connecti
 define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 class TotoServer():
+  '''Instances can be configured in three ways:
+
+  1. (Most common) Pass the path to a config file as the first parameter to the constructor.
+  2. Pass config parameters as command line arguments to the initialization script.
+  3. Pass keyword arguments to the constructor.
+
+  Precidence is as follows:
+
+  Keyword args, config file, command line
+  '''
 
   def __load_options(self, conf_file=None, **kwargs):
     for k in kwargs:
@@ -69,7 +93,6 @@ class TotoServer():
       options['daemon'].set('restart')
     elif options.nodaemon:
       options['daemon'].set('')
-    
 
   def __init__(self, conf_file=None, **kwargs):
     module_options = {'method_module', 'socket_method_module', 'event_init_module'}
@@ -162,6 +185,7 @@ class TotoServer():
     IOLoop.instance().start()
 
   def run(self): 
+    '''Start the server and run with the current configuration'''
     if options.daemon:
       import multiprocessing
       #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
