@@ -1,12 +1,12 @@
 Toto
 ===============
-Toto is a small framework intended to accelerate API server development. It is
-built on top of [Tornado][tornado] and can currently use either [MySQL][mysql] or [MongoDB][mongodb] as a
-backing database.
+Toto is a small framework intended to accelerate web service development. It is
+built on top of [Tornado][tornado] and can currently use [MySQL][mysql], [MongoDB][mongodb], [PostgreSQL][postgres] or
+[Redis][redis] as a backing database.
 
 Features
 --------
-* Uses JSON for easy consumption by clients on any platform
+* Uses JSON (or BSON or msgpack) for easy consumption by clients on any platform
 * Easy to add new methods
 * Simple authentication built in with HMAC-SHA1 verification for authenticated requests
 * Session state persistence for authenticated requests
@@ -16,6 +16,10 @@ Installation
 ------------
 The simplest way to install Toto is with pip. Simply run `pip install -e git+git://github.com/JeremyOT/Toto.git#egg=Toto`
 to install the latest version of the Toto module on your machine.
+
+Documentation
+-------------
+Complete documentation is available here: [http://jeremyot.com/Toto/docs/][docs].
 
 Usage
 -----
@@ -57,7 +61,8 @@ Available properties:
 * `session.expires` - the unix timestamp when the session will expire
 * `session.session_id` - the current session ID
 * `session.state` - a python dict containing the current state, you must call
-`session.save_state()` to persist any changes
+`session.save_state()` to persist any changes. The session object acts like a proxy to state so
+you can use dictionary accessors on it directly.
 
 To enforce authentication for any method, decorate the `invoke()` function with
 `@toto.invocation.authenticated`. Unauthorized attempts to call authenticated methods
@@ -67,14 +72,13 @@ Required parameters can be specified by decorating an `invoke()` function with
 `@toto.invocation.requires(param1, param2,...)`.
 
 Method modules can take advantage of [Tornado's][tornado] non-blocking features by decorating
-an `invoke()` function with `@toto.invocation.asynchronous`. When the asynchronous operation is
-complete you must call `handler.finish()` in order to finish the request. Data can be sent
-to the client with `handler.write()` and `handler.flush()`. Optionally, modules can
+an `invoke()` function with `@toto.invocation.asynchronous`. Data can be sent
+to the client with `handler.respond()` and `handler.raw_respond()`. Optionally, modules can
 implement `on_connection_close()` to clean up any resources if the client closes the
 connection. See `RequestHandler.on_connection_close()` in the [Tornado][tornado] documentation
 for more information.
 
-It is important to remember that [Tornado][tornado] requires that all calls to `write()`,
+It is important to remember that [Tornado][tornado] requires that all calls to `respond()`, `respond_raw()`, `write()`,
 `flush()` and `finish()` are performed on the main thread. You can schedule a function to
 run on the main thread with `IOLoop.instance().add_callback(callback)`.
 
@@ -130,7 +134,7 @@ Sometimes you may need to send events from one request to another. Toto's `toto.
 To send an event use `EventManager.instance().send('eventname', args)`. EventManager uses python's `cPickle` module
 for serialization so you can pass anything cPickle can handle as `args`.
 
-To receive an event, you must register a handler with `EventManager.instance().register_handler('eventname', handler)`.
+To receive an event, you must register a handler with `TotoHandler.register_event_handler('eventname', handler)`.
 `handler` is a function that takes one parameters and will be called with `args` when the `EventManager` sends an event
 with 'eventname'. Toto's events were primarily designed to be combined with tornado's support for non-blocking requests.
 See the "chat" template for an example.
@@ -140,8 +144,8 @@ system. Run your server with --help for more configuration options_
 
 Daemonization
 =============
-The Toto server can be run as a daemon by passing the argument `--daemon=start`. To stop any running processes pass
-`--daemon=stop`. This will stop any processes that share the specified pid file format (default `toto.pid`). The
+The Toto server can be run as a daemon by passing the argument `--start`. To stop any running processes pass
+`--stop`. This will stop any processes that share the specified pid file format (default `toto.pid`). The
 `--processes=<n>` option may be used to specify the number of server instances to run. Multiple instances will be run
 on sequential ports starting at the port specified by `--port`. If `0` is used as the argument to `--processes`, Toto
 will run one process per cpu as detected by Python's `multiprocessing` module. Additional daemonization options can
@@ -155,3 +159,6 @@ and [https://github.com/JeremyOT/TotoClient-iOS](https://github.com/JeremyOT/Tot
 [tornado]:http://www.tornadoweb.org
 [mysql]:http://www.mysql.com
 [mongodb]:http://www.mongodb.org
+[docs]:http://jeremyot.com/Toto/docs/ "http://jeremyot.com/Toto/docs/"
+[postgres]:http://www.postgresql.org/
+[redis]:http://redis.io/
