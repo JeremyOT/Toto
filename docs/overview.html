@@ -126,10 +126,10 @@ for more information.</p>
 <p>It is important to remember that [Tornado][tornado] requires that all calls to <cite>respond()</cite>, <cite>respond_raw()</cite>, <cite>write()</cite>,
 <cite>flush()</cite> and <cite>finish()</cite> are performed on the main thread. You can schedule a function to
 run on the main thread with <cite>IOLoop.instance().add_callback(callback)</cite>.</p>
-<p>_Note: Any data returned from a call to <cite>method.invoke()</cite> will be sent to the client as
+<p>Note: Any data returned from a call to <cite>method.invoke()</cite> will be sent to the client as
 JSON data and be used to generate the <cite>x-toto-hmac</cite> header for verification. This may cause
 issues with asynchronous methods. If <cite>method.invoke()</cite> returns <cite>None</cite>, a response will not
-automatically be sent to the client and no <cite>x-toto-hmac</cite> header will be generated._</p>
+automatically be sent to the client and no <cite>x-toto-hmac</cite> header will be generated.</p>
 </div>
 <div class="section" id="requests">
 <h2>Requests<a class="headerlink" href="#requests" title="Permalink to this headline">¶</a></h2>
@@ -159,9 +159,9 @@ above call is <cite>http://service.com/service/a/b/c</cite>.
 <li>Verify that the base64 encoded HMAC-SHA1 of the response body with <cite>&lt;user_id&gt;</cite> as the key matches the <cite>x-toto-hmac</cite> header in the response.</li>
 <li>Parse response JSON.</li>
 </ol>
-<p>_Note: These instructions assume that <cite>method.invoke()</cite> returns an object to be serialized
+<p>Note: These instructions assume that <cite>method.invoke()</cite> returns an object to be serialized
 and sent to the client. Methods that return None can be used the send any data and must be
-handled accordingly._</p>
+handled accordingly.</p>
 </div>
 </div>
 <div class="section" id="events">
@@ -173,8 +173,8 @@ for serialization so you can pass anything cPickle can handle as <cite>args</cit
 <cite>handler</cite> is a function that takes one parameters and will be called with <cite>args</cite> when the <cite>EventManager</cite> sends an event
 with &#8216;eventname&#8217;. Toto&#8217;s events were primarily designed to be combined with tornado&#8217;s support for non-blocking requests.
 See the &#8220;chat&#8221; template for an example.</p>
-<p>_Toto&#8217;s event system supports sending events across multiple instances both on the same machine and in a distributed
-system. Run your server with &#8211;help for more configuration <a href="#id1"><span class="problematic" id="id2">options_</span></a></p>
+<p>Toto&#8217;s event system supports sending events across multiple instances both on the same machine and in a distributed
+system. Run your server with &#8211;help for more configuration options.</p>
 </div>
 <div class="section" id="daemonization">
 <h1>Daemonization<a class="headerlink" href="#daemonization" title="Permalink to this headline">¶</a></h1>
