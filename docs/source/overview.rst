@@ -78,10 +78,10 @@ It is important to remember that [Tornado][tornado] requires that all calls to `
 `flush()` and `finish()` are performed on the main thread. You can schedule a function to
 run on the main thread with `IOLoop.instance().add_callback(callback)`.
 
-_Note: Any data returned from a call to `method.invoke()` will be sent to the client as
+Note: Any data returned from a call to `method.invoke()` will be sent to the client as
 JSON data and be used to generate the `x-toto-hmac` header for verification. This may cause
 issues with asynchronous methods. If `method.invoke()` returns `None`, a response will not
-automatically be sent to the client and no `x-toto-hmac` header will be generated._
+automatically be sent to the client and no `x-toto-hmac` header will be generated.
 
 Requests
 -----------
@@ -113,9 +113,9 @@ Authenticated methods:
 3. Verify that the base64 encoded HMAC-SHA1 of the response body with `<user_id>` as the key matches the `x-toto-hmac` header in the response.
 4. Parse response JSON.
 
-_Note: These instructions assume that `method.invoke()` returns an object to be serialized
+Note: These instructions assume that `method.invoke()` returns an object to be serialized
 and sent to the client. Methods that return None can be used the send any data and must be
-handled accordingly._
+handled accordingly.
 
 Events
 ======
@@ -129,8 +129,8 @@ To receive an event, you must register a handler with `TotoHandler.register_even
 with 'eventname'. Toto's events were primarily designed to be combined with tornado's support for non-blocking requests.
 See the "chat" template for an example.
 
-_Toto's event system supports sending events across multiple instances both on the same machine and in a distributed
-system. Run your server with --help for more configuration options_
+Toto's event system supports sending events across multiple instances both on the same machine and in a distributed
+system. Run your server with --help for more configuration options.
 
 Daemonization
 =============
