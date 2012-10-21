@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>The Toto web server &mdash; Toto 0.9.5 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.9.5 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -26,7 +26,9 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
-    <link rel="prev" title="Overview" href="overview.html" /> 
+    <link rel="up" title="The Toto web server" href="web.html" />
+    <link rel="next" title="Method Decorators" href="invocation.html" />
+    <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
     <div class="related">
@@ -39,9 +41,13 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="invocation.html" title="Method Decorators"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="web.html" title="The Toto web server"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" accesskey="U">The Toto web server</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -51,7 +57,7 @@
           <div class="body">
             
   <div class="section" id="module-toto.server">
-<span id="the-toto-web-server"></span><h1>The Toto web server<a class="headerlink" href="#module-toto.server" title="Permalink to this headline">¶</a></h1>
+<span id="servers-handlers-and-sessions"></span><h1>Servers, Handlers and Sessions<a class="headerlink" href="#module-toto.server" title="Permalink to this headline">¶</a></h1>
 <p>The Toto server and handler classes are designed to simplify most of the boilerplate that comes with
 building web services so you can focus on the important parts specific to your application.</p>
 <p>Most of the time you&#8217;ll only need this script to start your server:</p>
@@ -93,7 +99,7 @@ building web services so you can focus on the important parts specific to your a
 <dd><p>The handler is responsible for processing all requests to the server. An instance
 will be initialized for each incoming request and will handle authentication, session
 management and method delegation for you.</p>
-<p>You can set the module to use for method delegation via the &#8216;method_module&#8217; parameter.
+<p>You can set the module to use for method delegation via the <tt class="docutils literal"><span class="pre">method_module</span></tt> parameter.
 Methods are modules that contain an invoke function:</p>
 <div class="highlight-python"><pre>def invoke(handler, parameters)</pre>
 </div>
@@ -122,10 +128,10 @@ respectively.</p>
 <dl class="method">
 <dt id="toto.handler.TotoHandler.respond">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">respond</tt><big>(</big><em>result=None</em>, <em>error=None</em>, <em>batch_results=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.respond"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.respond" title="Permalink to this definition">¶</a></dt>
-<dd><p>Respond to the request with the given result or error object (the batch_results parameter
+<dd><p>Respond to the request with the given result or error object (the <tt class="docutils literal"><span class="pre">batch_results</span></tt> parameter
 is for internal use only and not intendented to be supplied manually). Responses will be
-serialized according to the response_type propery. The default serialization is
-application/json. Other supported protocols are:</p>
+serialized according to the <tt class="docutils literal"><span class="pre">response_type</span></tt> propery. The default serialization is
+&#8220;application/json&#8221;. Other supported protocols are:</p>
 <ul class="simple">
 <li>application/bson - requires pymongo</li>
 <li>application/msgpack - requires msgpack-python</li>
@@ -137,15 +143,15 @@ application/json. Other supported protocols are:</p>
 <dt id="toto.handler.TotoHandler.respond_raw">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">respond_raw</tt><big>(</big><em>body</em>, <em>content_type</em>, <em>finish=True</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.respond_raw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.respond_raw" title="Permalink to this definition">¶</a></dt>
 <dd><p>Respond raw is used by respond to send the response to the client. You can pass a string as the body parameter
-and it will be written directly to the response stream. The response content-type header will be set to content_type.
-Use finish to specify whether or not the response stream should be closed after body is written. Use finish=False
-to send the response in multiple calls to respond_raw.</p>
+and it will be written directly to the response stream. The response &#8220;content-type&#8221; header will be set to <tt class="docutils literal"><span class="pre">content_type</span></tt>.
+Use finish to specify whether or not the response stream should be closed after body is written. Use <tt class="docutils literal"><span class="pre">finish=False</span></tt>
+to send the response in multiple calls to <tt class="docutils literal"><span class="pre">respond_raw</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="toto.handler.TotoHandler.on_connection_close">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">on_connection_close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.on_connection_close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.on_connection_close" title="Permalink to this definition">¶</a></dt>
-<dd><p>You should not call this method directly, but if you implement an on_connection_close function in a
+<dd><p>You should not call this method directly, but if you implement an <tt class="docutils literal"><span class="pre">on_connection_close()</span></tt> function in a
 method module (where you defined invoke) it will be called when the connection closes if that method was
 invoked. E.G.:</p>
 <div class="highlight-python"><pre>def invoke(handler, parameters):
@@ -164,8 +170,8 @@ def on_connection_close(handler):
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">register_event_handler</tt><big>(</big><em>event_name</em>, <em>handler</em>, <em>run_on_main_loop=True</em>, <em>deregister_on_finish=False</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.register_event_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.register_event_handler" title="Permalink to this definition">¶</a></dt>
 <dd><p>If using Toto&#8217;s event framework, this method makes it easy to register an event callback tied to the
 current connection and handler. Event handlers registered via this method will not be called once this handler
-has finished (connection closed). The deregister_on_finish parameter will cause this handler to be explicitly
-deregisted as part of the handler.on_finish event. Otherwise, event handlers are only cleaned up when the
+has finished (connection closed). The <tt class="docutils literal"><span class="pre">deregister_on_finish</span></tt> parameter will cause this handler to be explicitly
+deregisted as part of the <tt class="docutils literal"><span class="pre">handler.on_finish</span></tt> event. Otherwise, event handlers are only cleaned up when the
 associated event is received.</p>
 <p>The return value can be used to manually deregister the event handler at a later point.</p>
 </dd></dl>
@@ -173,7 +179,7 @@ associated event is received.</p>
 <dl class="method">
 <dt id="toto.handler.TotoHandler.deregister_event_handler">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">deregister_event_handler</tt><big>(</big><em>sig</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.deregister_event_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.deregister_event_handler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Pass the value returned from register_event_handler to deregister an active event handler.</p>
+<dd><p>Pass the value returned from <tt class="docutils literal"><span class="pre">register_event_handler</span></tt> to deregister an active event handler.</p>
 </dd></dl>
 
 </div>
@@ -183,15 +189,15 @@ associated event is received.</p>
 <dl class="method">
 <dt id="toto.handler.TotoHandler.create_session">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.create_session" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a new session for the given user id and password (or an anonymous session if user_id is None).
-After this method is called, the session will be available via self.session.</p>
+<dd><p>Create a new session for the given user id and password (or an anonymous session if <tt class="docutils literal"><span class="pre">user_id</span></tt> is <tt class="docutils literal"><span class="pre">None</span></tt>).
+After this method is called, the session will be available via <tt class="docutils literal"><span class="pre">self.session</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="toto.handler.TotoHandler.retrieve_session">
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">retrieve_session</tt><big>(</big><em>session_id=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.retrieve_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.retrieve_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
-in self.session. Alternatively, pass a session_id to this function to retrieve that session explicitly.</p>
+in <tt class="docutils literal"><span class="pre">self.session</span></tt>. Alternatively, pass a <tt class="docutils literal"><span class="pre">session_id</span></tt> to this function to retrieve that session explicitly.</p>
 </dd></dl>
 
 <div class="section" id="the-totosession-class">
@@ -199,7 +205,7 @@ in self.session. Alternatively, pass a session_id to this function to retrieve t
 <dl class="class">
 <dt id="toto.session.TotoSession">
 <em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSession</tt><big>(</big><em>db</em>, <em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession" title="Permalink to this definition">¶</a></dt>
-<dd><p>Instances of TotoSession provide dictionary-like access to current session variables, and the current
+<dd><p>Instances of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> provide dictionary-like access to current session variables, and the current
 account (if authenticated).</p>
 </dd></dl>
 
@@ -219,7 +225,7 @@ account (if authenticated).</p>
 <dt id="toto.session.TotoSession.get_account">
 <tt class="descclassname">TotoSession.</tt><tt class="descname">get_account</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.get_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.get_account" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load the account associated with this session (if authenticated). Session properties are
-pickled to a binary string and stored as the &#8216;state&#8217; field, so you don&#8217;t need to configure your database to handle them in
+pickled to a binary string and stored as the <tt class="docutils literal"><span class="pre">TotoSession.state</span></tt> property, so you don&#8217;t need to configure your database to handle them in
 advance.</p>
 </dd></dl>
 
@@ -261,7 +267,7 @@ by passing all the keys you want to load as arguments to this method first.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">The Toto web server</a><ul>
+<li><a class="reference internal" href="#">Servers, Handlers and Sessions</a><ul>
 <li><a class="reference internal" href="#server">Server</a></li>
 <li><a class="reference internal" href="#handler">Handler</a><ul>
 <li><a class="reference internal" href="#response-paths">Response paths</a></li>
@@ -278,8 +284,11 @@ by passing all the keys you want to load as arguments to this method first.</p>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="overview.html"
-                        title="previous chapter">Overview</a></p>
+  <p class="topless"><a href="web.html"
+                        title="previous chapter">The Toto web server</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="invocation.html"
+                        title="next chapter">Method Decorators</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/server.txt"
@@ -312,9 +321,13 @@ by passing all the keys you want to load as arguments to this method first.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="invocation.html" title="Method Decorators"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="web.html" title="The Toto web server"
              >previous</a> |</li>
-        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" >The Toto web server</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

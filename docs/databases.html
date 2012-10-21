@@ -1,0 +1,190 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Database Connections &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
+    <link rel="up" title="The Toto web server" href="web.html" />
+    <link rel="prev" title="Method Decorators" href="invocation.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="invocation.html" title="Method Decorators"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" accesskey="U">The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-toto.dbconnection">
+<span id="database-connections"></span><h1>Database Connections<a class="headerlink" href="#module-toto.dbconnection" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="toto.dbconnection.DBConnection">
+<em class="property">class </em><tt class="descclassname">toto.dbconnection.</tt><tt class="descname">DBConnection</tt><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Toto uses subclasses of DBConnection to support session and account storage as well as general
+access to the backing database. Usually, direct access to the underlying database driver will
+be available via the <tt class="docutils literal"><span class="pre">DBConnection.db</span></tt> property.</p>
+<p>Currently, toto provides the following <tt class="docutils literal"><span class="pre">DBConnection</span></tt> drivers:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">toto.mongodbconnection.MongoDBConnection</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">toto.mysqldbconnection.MySQLdbConnection</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">toto.postgresconnection.PostgresConnection</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">toto.redisconnection.RedisConnection</span></tt></li>
+</ul>
+</dd></dl>
+
+<div class="section" id="accounts-and-sessions">
+<h2>Accounts and Sessions<a class="headerlink" href="#accounts-and-sessions" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.create_account">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">create_account</tt><big>(</big><em>user_id</em>, <em>password</em>, <em>additional_values={}</em>, <em>**values</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_account" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an account for the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>. Optionally set additional account
+values by passing them as keyword arguments (the <tt class="docutils literal"><span class="pre">additional_values</span></tt> parameter is deprecated).</p>
+<p>Note: if your database uses a predefined schema, make sure to create the appropriate columns
+before passing additional arguments to <tt class="docutils literal"><span class="pre">create_account</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.create_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new session for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>, or an anonymous
+session if anonymous sessions are enabled. This method returns a subclass of <tt class="docutils literal"><span class="pre">TotoSession</span></tt>
+designed for the current backing database.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.retrieve_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">retrieve_session</tt><big>(</big><em>session_id</em>, <em>hmac_data=None</em>, <em>data=None</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.retrieve_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.retrieve_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve an existing session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>. Pass the request body and the value
+of the <tt class="docutils literal"><span class="pre">x-toto-hmac</span></tt> header as <tt class="docutils literal"><span class="pre">data</span></tt> and <tt class="docutils literal"><span class="pre">hmac_data</span></tt> respectively to verify an authenticated request.
+If <tt class="docutils literal"><span class="pre">hmac_data</span></tt> and <tt class="docutils literal"><span class="pre">data</span></tt> are both <tt class="docutils literal"><span class="pre">None</span></tt>, HMAC verification will be skipped. This method returns a
+subclasses of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> designed for the current backing database.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.remove_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">remove_session</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.remove_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.remove_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invalidate the session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.clear_sessions">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">clear_sessions</tt><big>(</big><em>user_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.clear_sessions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.clear_sessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>If implemented, invalidates all sessions tied to the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.change_password">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">change_password</tt><big>(</big><em>user_id</em>, <em>password</em>, <em>new_password</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.change_password"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.change_password" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates the password for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> to match
+<tt class="docutils literal"><span class="pre">new_password</span></tt> for all future requests.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.generate_password">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">generate_password</tt><big>(</big><em>user_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.generate_password"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.generate_password" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a new password for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and makes it active
+for all future requests. The new password will be returned. This method is designed to
+support &#8220;forgot password&#8221; functionality.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Database Connections</a><ul>
+<li><a class="reference internal" href="#accounts-and-sessions">Accounts and Sessions</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="invocation.html"
+                        title="previous chapter">Method Decorators</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/databases.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="invocation.html" title="Method Decorators"
+             >previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" >The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

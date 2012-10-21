@@ -1,0 +1,228 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Method Decorators &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
+    <link rel="up" title="The Toto web server" href="web.html" />
+    <link rel="prev" title="Servers, Handlers and Sessions" href="server.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="Servers, Handlers and Sessions"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" accesskey="U">The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-toto.invocation">
+<span id="method-decorators"></span><h1>Method Decorators<a class="headerlink" href="#module-toto.invocation" title="Permalink to this headline">¶</a></h1>
+<p><tt class="docutils literal"><span class="pre">toto.invocation</span></tt> contains many decorators that may be applied to the <tt class="docutils literal"><span class="pre">invoke(handler,</span> <span class="pre">parameters)</span></tt> functions in
+method modules in order to modify their behavior.</p>
+<dl class="function">
+<dt id="toto.invocation.asynchronous">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">asynchronous</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#asynchronous"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.asynchronous" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions with the <tt class="docutils literal"><span class="pre">&#64;asynchronous</span></tt> decorator will not cause the request
+handler to finish when they return. Use this decorator to support long running
+operations like tasks sent to workers or long polling.</p>
+</dd></dl>
+
+<div class="section" id="sessions">
+<h2>Sessions<a class="headerlink" href="#sessions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="toto.invocation.authenticated">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">authenticated</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#authenticated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.authenticated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;authenticated</span></tt> decorator will attempt to
+load the current session (either referenced by the x-toto-session-id request header or cookie).
+If no session is found, or if the current session is anonymous, a &#8220;Not authorized&#8221;
+error will be returned to the client.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.anonymous_session">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">anonymous_session</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#anonymous_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.anonymous_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;anonymous_session</span></tt> decorator will attempt to load
+the current session (either referenced by the x-toto-session-id request headers or cookie).
+If no session is found, an anonymous session will be created.</p>
+<p>Note: If the user was previously authenticated, the authenticated session
+will be loaded.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.optionally_authenticated">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">optionally_authenticated</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#optionally_authenticated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.optionally_authenticated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;optionally_authenticated</span></tt> decorator will
+attempt to load the current session (either referenced by the x-toto-session-id request header or cookie).
+If no session is found, the request proceeds as usual.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.authenticated_with_parameter">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">authenticated_with_parameter</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#authenticated_with_parameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.authenticated_with_parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;authenticated_with_parameter</span></tt> decorator will
+behave like functions decorated with <tt class="docutils literal"><span class="pre">&#64;authenticated</span></tt> but will use the session_id
+parameter to find the current session instead of the x-toto-session-id header or cookie.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="toto.invocation.requires">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">requires</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#requires"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.requires" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;requires</span></tt> decorator will error if any of the parameters
+passed to the decorator are missing. The following example will error if either &#8220;param1&#8221; or &#8220;param2&#8221;
+is not included in the request:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@requires</span><span class="p">(</span><span class="s">&#39;param1&#39;</span><span class="p">,</span> <span class="s">&#39;param2&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+  <span class="k">pass</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.default_parameters">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">default_parameters</tt><big>(</big><em>defaults</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#default_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.default_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;default_parameters</span></tt> decorator will set missing parameters according to the
+dictionary passed as the <tt class="docutils literal"><span class="pre">defaults</span></tt> argument.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="response">
+<h2>Response<a class="headerlink" href="#response" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="toto.invocation.raw_response">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">raw_response</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#raw_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.raw_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;raw_response</span></tt> decorator will not be serialized before response
+to the client. This can be used to send text, html or other binary data without the usual JSON (or other)
+processing. The <tt class="docutils literal"><span class="pre">handler.response_type</span></tt> property will be used to set the response &#8220;Content-Type&#8221; header.
+By default this will be &#8220;application/octet-stream&#8221;.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.jsonp">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">jsonp</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#jsonp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.jsonp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;jsonp</span></tt> decorator will return a wrapper response that will
+call a client-side javascript function. This decorator requires a &#8220;jsonp&#8221; parameter set to the name of the javascript
+callback function to be passed with the request.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation.error_redirect">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">error_redirect</tt><big>(</big><em>redirect_map</em>, <em>default=None</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#error_redirect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.error_redirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;error_redirect</span></tt> decorator will redirect according to the <tt class="docutils literal"><span class="pre">redirect_map</span></tt>
+dictionary. <tt class="docutils literal"><span class="pre">redirect_map</span></tt> should consist of <tt class="docutils literal"><span class="pre">status_code</span></tt>, <tt class="docutils literal"><span class="pre">url</span></tt> pairs. This decorator will check the <tt class="docutils literal"><span class="pre">code</span></tt>
+then <tt class="docutils literal"><span class="pre">status_code</span></tt> properties of the raised error for matches in the redirect map before falling back to the usual
+error behavior. The optional <tt class="docutils literal"><span class="pre">default</span></tt> parameter can be used to specify a url to redirect to if there are no matches
+in <tt class="docutils literal"><span class="pre">redirect_map</span></tt>.</p>
+<p>The following code will redirect to &#8220;not_found.html&#8221; on 404, and &#8220;error.html&#8221; otherwise:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="nd">@error_redirect</span><span class="p">({</span><span class="s">&#39;404&#39;</span><span class="p">:</span> <span class="s">&#39;not_found.html&#39;</span><span class="p">},</span> <span class="s">&#39;error.html&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+  <span class="k">pass</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Method Decorators</a><ul>
+<li><a class="reference internal" href="#sessions">Sessions</a></li>
+<li><a class="reference internal" href="#parameters">Parameters</a></li>
+<li><a class="reference internal" href="#response">Response</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="server.html"
+                        title="previous chapter">Servers, Handlers and Sessions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/invocation.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="Servers, Handlers and Sessions"
+             >previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" >The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

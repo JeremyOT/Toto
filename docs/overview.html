@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
-    <link rel="next" title="The Toto web server" href="server.html" />
+    <link rel="next" title="The Toto web server" href="web.html" />
     <link rel="prev" title="Toto Documentation" href="index.html" /> 
   </head>
   <body>
@@ -40,7 +40,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="server.html" title="The Toto web server"
+          <a href="web.html" title="The Toto web server"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Toto Documentation"
@@ -163,9 +163,8 @@ above call is <cite>http://service.com/service/a/b/c</cite>.
 and sent to the client. Methods that return None can be used the send any data and must be
 handled accordingly.</p>
 </div>
-</div>
 <div class="section" id="events">
-<h1>Events<a class="headerlink" href="#events" title="Permalink to this headline">¶</a></h1>
+<h2>Events<a class="headerlink" href="#events" title="Permalink to this headline">¶</a></h2>
 <p>Sometimes you may need to send events from one request to another. Toto&#8217;s <cite>toto.events.EventManager</cite> makes this easy.</p>
 <p>To send an event use <cite>EventManager.instance().send(&#8216;eventname&#8217;, args)</cite>. EventManager uses python&#8217;s <cite>cPickle</cite> module
 for serialization so you can pass anything cPickle can handle as <cite>args</cite>.</p>
@@ -177,7 +176,7 @@ See the &#8220;chat&#8221; template for an example.</p>
 system. Run your server with &#8211;help for more configuration options.</p>
 </div>
 <div class="section" id="daemonization">
-<h1>Daemonization<a class="headerlink" href="#daemonization" title="Permalink to this headline">¶</a></h1>
+<h2>Daemonization<a class="headerlink" href="#daemonization" title="Permalink to this headline">¶</a></h2>
 <p>The Toto server can be run as a daemon by passing the argument <cite>&#8211;start</cite>. To stop any running processes pass
 <cite>&#8211;stop</cite>. This will stop any processes that share the specified pid file format (default <cite>toto.pid</cite>). The
 <cite>&#8211;processes=&lt;n&gt;</cite> option may be used to specify the number of server instances to run. Multiple instances will be run
@@ -186,9 +185,10 @@ will run one process per cpu as detected by Python&#8217;s <cite>multiprocessing
 be viewed from <cite>&#8211;help</cite>.</p>
 </div>
 <div class="section" id="clients">
-<h1>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h1>
+<h2>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h2>
 <p>To help you get started, JavaScript and iOS client libraries are in development at <a class="reference external" href="https://github.com/JeremyOT/TotoClient-JS">https://github.com/JeremyOT/TotoClient-JS</a>
 and <a class="reference external" href="https://github.com/JeremyOT/TotoClient-iOS">https://github.com/JeremyOT/TotoClient-iOS</a> respectively.</p>
+</div>
 </div>
 
 
@@ -206,18 +206,18 @@ and <a class="reference external" href="https://github.com/JeremyOT/TotoClient-i
 <li><a class="reference internal" href="#configuration">Configuration</a></li>
 <li><a class="reference internal" href="#methods">Methods</a></li>
 <li><a class="reference internal" href="#requests">Requests</a></li>
-</ul>
-</li>
 <li><a class="reference internal" href="#events">Events</a></li>
 <li><a class="reference internal" href="#daemonization">Daemonization</a></li>
 <li><a class="reference internal" href="#clients">Clients</a></li>
+</ul>
+</li>
 </ul>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
                         title="previous chapter">Toto Documentation</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="server.html"
+  <p class="topless"><a href="web.html"
                         title="next chapter">The Toto web server</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
@@ -251,7 +251,7 @@ and <a class="reference external" href="https://github.com/JeremyOT/TotoClient-i
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="server.html" title="The Toto web server"
+          <a href="web.html" title="The Toto web server"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="Toto Documentation"

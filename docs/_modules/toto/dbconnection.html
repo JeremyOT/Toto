@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.dbconnection &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
+    <link rel="up" title="toto" href="../toto.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" accesskey="U">toto</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.dbconnection</h1><div class="highlight"><pre>
+<div class="viewcode-block" id="DBConnection"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection">[docs]</a><span class="k">class</span> <span class="nc">DBConnection</span><span class="p">():</span>
+  <span class="sd">&#39;&#39;&#39;Toto uses subclasses of DBConnection to support session and account storage as well as general</span>
+<span class="sd">    access to the backing database (usually via the db property).</span>
+
+<span class="sd">    Currently, toto provides the following DBConnection drivers:</span>
+
+<span class="sd">    *``toto.mongodbconnection.MongoDBConnection``</span>
+<span class="sd">    *``toto.mysqldbconnection.MySQLdbConnection``</span>
+<span class="sd">    *``toto.postgresconnection.PostgresConnection``</span>
+<span class="sd">    *``toto.redisconnection.RedisConnection``</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="DBConnection.create_account"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_account">[docs]</a>  <span class="k">def</span> <span class="nf">create_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">additional_values</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">values</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create an account for the given user_id and password. Optionally set additional account</span>
+<span class="sd">      values by passing them as keyword arguments (the additional_values parameter is deprecated).</span>
+
+<span class="sd">      Note: if your database uses a predefined schema, make sure to create the appropriate columns</span>
+<span class="sd">      before passing additional arguments to create_account.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.create_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Create a new session for the account with the given user_id and password, or an anonymous</span>
+<span class="sd">      session if anonymous sessions are enabled. This method returns a subclass of TotoSession</span>
+<span class="sd">      designed for the current backing database.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.retrieve_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.retrieve_session">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">hmac_data</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Retrieve an existing session with the given session_id. Pass the request body and the value</span>
+<span class="sd">    of the x-toto-hmac header as data and hmac_data respectively to verify an authenticated request.</span>
+<span class="sd">    If hmac_data and data are both None, HMAC verification will be skipped. This method returns a</span>
+<span class="sd">    subclasses of TotoSession designed for the current backing database.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.remove_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.remove_session">[docs]</a>  <span class="k">def</span> <span class="nf">remove_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Invalidate the session with the given session_id.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.clear_sessions"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.clear_sessions">[docs]</a>  <span class="k">def</span> <span class="nf">clear_sessions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;If implemented, invalidates all sessions tied to the account with the given user_id.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="DBConnection.change_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.change_password">[docs]</a>  <span class="k">def</span> <span class="nf">change_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">new_password</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Updates the password for the account with the given user_id and password to match</span>
+<span class="sd">    new_password for all future requests.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.generate_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.generate_password">[docs]</a>  <span class="k">def</span> <span class="nf">generate_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Generates a new password for the account with the given user_id and makes it active</span>
+<span class="sd">    for all future requests. The new password will be returned. This method is designed to</span>
+<span class="sd">    support &quot;forgot password&quot; functionality.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" >toto</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

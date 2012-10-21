@@ -1,0 +1,224 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Events &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
+    <link rel="up" title="The Toto web server" href="web.html" />
+    <link rel="next" title="Toto Services" href="service.html" />
+    <link rel="prev" title="Task Queues" href="tasks.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="service.html" title="Toto Services"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="tasks.html" title="Task Queues"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" accesskey="U">The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-toto.events">
+<span id="events"></span><h1>Events<a class="headerlink" href="#module-toto.events" title="Permalink to this headline">¶</a></h1>
+<p>Toto&#8217;s event framework is used to allow external events to affect client requests, or to run scheduled tasks
+after a specified signal is received. It can be used to send messages to active requests, even between multiple
+server processes. The event framework can also be used outside of Toto to send messages to running Toto servers.</p>
+<dl class="class">
+<dt id="toto.events.EventManager">
+<em class="property">class </em><tt class="descclassname">toto.events.</tt><tt class="descname">EventManager</tt><big>(</big><em>address=None</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instances will listen on <tt class="docutils literal"><span class="pre">address</span></tt> for incoming events.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="toto.events.EventManager.instance">
+<em class="property">static </em><tt class="descclassname">EventManager.</tt><tt class="descname">instance</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the shared instance of <tt class="docutils literal"><span class="pre">EventManager</span></tt>, instantiating on the first call.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.start_listening">
+<tt class="descclassname">EventManager.</tt><tt class="descname">start_listening</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.start_listening"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.start_listening" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts listening for incoming events on <tt class="docutils literal"><span class="pre">EventManager.address</span></tt>.</p>
+</dd></dl>
+
+<div class="section" id="remote-servers">
+<h2>Remote Servers<a class="headerlink" href="#remote-servers" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="toto.events.EventManager.register_server">
+<tt class="descclassname">EventManager.</tt><tt class="descname">register_server</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.register_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.register_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a server located at <tt class="docutils literal"><span class="pre">address</span></tt>. This server will now be included in the
+recipient list whenever <tt class="docutils literal"><span class="pre">send()</span></tt> is called.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.remove_server">
+<tt class="descclassname">EventManager.</tt><tt class="descname">remove_server</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.remove_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.remove_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove the server located at <tt class="docutils literal"><span class="pre">address</span></tt> from the recipient list for all
+future calls to <tt class="docutils literal"><span class="pre">send()</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.remove_all_servers">
+<tt class="descclassname">EventManager.</tt><tt class="descname">remove_all_servers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.remove_all_servers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.remove_all_servers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clear the recipient list for all future calls to <tt class="docutils literal"><span class="pre">send</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.refresh_server_queue">
+<tt class="descclassname">EventManager.</tt><tt class="descname">refresh_server_queue</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.refresh_server_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.refresh_server_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reload and shuffle the registered server queue used for round-robin load
+balancing of non-broadcast events.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="handlers">
+<h2>Handlers<a class="headerlink" href="#handlers" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="toto.events.EventManager.register_handler">
+<tt class="descclassname">EventManager.</tt><tt class="descname">register_handler</tt><big>(</big><em>event_name</em>, <em>event_handler</em>, <em>run_on_main_loop=False</em>, <em>request_handler=None</em>, <em>persist=False</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.register_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.register_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register <tt class="docutils literal"><span class="pre">event_handler</span></tt> to run when <tt class="docutils literal"><span class="pre">event_name</span></tt> is received. Handlers are meant to respond to
+a single event matching <tt class="docutils literal"><span class="pre">event_name</span></tt> only. If <tt class="docutils literal"><span class="pre">run_on_main_loop</span></tt> is <tt class="docutils literal"><span class="pre">True</span></tt> the handler will be executed
+on Tornado&#8217;s main <tt class="docutils literal"><span class="pre">IOLoop</span></tt> (required if the handler will write to a response stream). If <tt class="docutils literal"><span class="pre">request_handler</span></tt>
+is set, <tt class="docutils literal"><span class="pre">event_handler</span></tt> will not fire once <tt class="docutils literal"><span class="pre">request_handler</span></tt> has finished. Set <tt class="docutils literal"><span class="pre">persist</span></tt> to <tt class="docutils literal"><span class="pre">True</span></tt>
+to automatically requeue <tt class="docutils literal"><span class="pre">event_handler</span></tt> each time it is executed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.remove_handler">
+<tt class="descclassname">EventManager.</tt><tt class="descname">remove_handler</tt><big>(</big><em>handler_sig</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.remove_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.remove_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable and remove the handler matching <tt class="docutils literal"><span class="pre">handler_sig</span></tt>.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="transmission">
+<h2>Transmission<a class="headerlink" href="#transmission" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="toto.events.EventManager.send_to_server">
+<tt class="descclassname">EventManager.</tt><tt class="descname">send_to_server</tt><big>(</big><em>address</em>, <em>event_name</em>, <em>event_args</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.send_to_server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.send_to_server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a message with <tt class="docutils literal"><span class="pre">event_name</span></tt> and <tt class="docutils literal"><span class="pre">event_args</span></tt> only
+to the server listening at <tt class="docutils literal"><span class="pre">address</span></tt>. <tt class="docutils literal"><span class="pre">address</span></tt> must have
+previously been passed to <tt class="docutils literal"><span class="pre">register_server</span></tt>. This is more
+efficient than <tt class="docutils literal"><span class="pre">send</span></tt> if you only intent to send the event
+to a single server and know the address in advance.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.events.EventManager.send">
+<tt class="descclassname">EventManager.</tt><tt class="descname">send</tt><big>(</big><em>event_name</em>, <em>event_args</em>, <em>broadcast=True</em><big>)</big><a class="reference internal" href="_modules/toto/events.html#EventManager.send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.events.EventManager.send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a message with <tt class="docutils literal"><span class="pre">event_name</span></tt> and <tt class="docutils literal"><span class="pre">event_args</span></tt> to
+all servers previously registered with <tt class="docutils literal"><span class="pre">register_server()</span></tt>.
+If <tt class="docutils literal"><span class="pre">broadcast</span></tt> is false, the event will be sent to only
+a single server. Non-broadcast events are round-robin load
+balanced between registered servers.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Events</a><ul>
+<li><a class="reference internal" href="#remote-servers">Remote Servers</a></li>
+<li><a class="reference internal" href="#handlers">Handlers</a></li>
+<li><a class="reference internal" href="#transmission">Transmission</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="tasks.html"
+                        title="previous chapter">Task Queues</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="service.html"
+                        title="next chapter">Toto Services</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/events.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="service.html" title="Toto Services"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="tasks.html" title="Task Queues"
+             >previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" >The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

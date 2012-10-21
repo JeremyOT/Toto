@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.invocation &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
+    <link rel="up" title="toto" href="../toto.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" accesskey="U">toto</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.invocation</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;toto.invocation contains decorators that may be applied to the ``invoke(handler, parameters)`` functions in</span>
+<span class="sd">  method modules in order to modify their behavior.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">exceptions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">traceback</span> <span class="kn">import</span> <span class="n">format_exc</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This is a list of all attributes that may be added by a decorator,</span>
+<span class="sd">it is used to allow decorators to be order agnostic.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">invocation_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;asynchronous&quot;</span><span class="p">,]</span>
+
+<span class="k">def</span> <span class="nf">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">invocation_attributes</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+      <span class="nb">setattr</span><span class="p">(</span><span class="n">wrapper</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">a</span><span class="p">))</span>
+
+<div class="viewcode-block" id="asynchronous"><a class="viewcode-back" href="../../invocation.html#toto.invocation.asynchronous">[docs]</a><span class="k">def</span> <span class="nf">asynchronous</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions with the ``@asynchronous`` decorator will not cause the request</span>
+<span class="sd">  handler to finish when they return. Use this decorator to support long running</span>
+<span class="sd">  operations like tasks sent to workers or long polling.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="n">fn</span><span class="o">.</span><span class="n">asynchronous</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="k">return</span> <span class="n">fn</span>
+</div>
+<div class="viewcode-block" id="anonymous_session"><a class="viewcode-back" href="../../invocation.html#toto.invocation.anonymous_session">[docs]</a><span class="k">def</span> <span class="nf">anonymous_session</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@anonymous_session`` decorator will attempt to load</span>
+<span class="sd">  the current session (either referenced by the x-toto-session-id request headers or cookie).</span>
+<span class="sd">  If no session is found, an anonymous session will be created.</span>
+
+<span class="sd">  Note: If the user was previously authenticated, the authenticated session</span>
+<span class="sd">  will be loaded.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+      <span class="n">handler</span><span class="o">.</span><span class="n">create_session</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="authenticated"><a class="viewcode-back" href="../../invocation.html#toto.invocation.authenticated">[docs]</a><span class="k">def</span> <span class="nf">authenticated</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@authenticated`` decorator will attempt to</span>
+<span class="sd">  load the current session (either referenced by the x-toto-session-id request header or cookie).</span>
+<span class="sd">  If no session is found, or if the current session is anonymous, a &quot;Not authorized&quot;</span>
+<span class="sd">  error will be returned to the client.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">user_id</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_NOT_AUTHORIZED</span><span class="p">,</span> <span class="s">&quot;Not authorized&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="optionally_authenticated"><a class="viewcode-back" href="../../invocation.html#toto.invocation.optionally_authenticated">[docs]</a><span class="k">def</span> <span class="nf">optionally_authenticated</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@optionally_authenticated`` decorator will</span>
+<span class="sd">  attempt to load the current session (either referenced by the x-toto-session-id request header or cookie).</span>
+<span class="sd">  If no session is found, the request proceeds as usual.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="authenticated_with_parameter"><a class="viewcode-back" href="../../invocation.html#toto.invocation.authenticated_with_parameter">[docs]</a><span class="k">def</span> <span class="nf">authenticated_with_parameter</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@authenticated_with_parameter`` decorator will</span>
+<span class="sd">  behave like functions decorated with ``@authenticated`` but will use the session_id</span>
+<span class="sd">  parameter to find the current session instead of the x-toto-session-id header or cookie.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s">&#39;session_id&#39;</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+      <span class="n">handler</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">])</span>
+      <span class="k">del</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_NOT_AUTHORIZED</span><span class="p">,</span> <span class="s">&quot;Not authorized&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="requires"><a class="viewcode-back" href="../../invocation.html#toto.invocation.requires">[docs]</a><span class="k">def</span> <span class="nf">requires</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@requires`` decorator will error if any of the parameters</span>
+<span class="sd">  passed to the decorator are missing. The following example will error if either &quot;param1&quot; or &quot;param2&quot;</span>
+<span class="sd">  is not included in the request::</span>
+<span class="sd">    </span>
+<span class="sd">    @requires(&#39;param1&#39;, &#39;param2&#39;)</span>
+<span class="sd">    def invoke(handler, parameters):</span>
+<span class="sd">      pass</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="n">required_parameters</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+  <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+      <span class="n">missing_parameters</span> <span class="o">=</span> <span class="n">required_parameters</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">missing_parameters</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_PARAMS</span><span class="p">,</span> <span class="s">&quot;Missing parameters: &quot;</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_parameters</span><span class="p">))</span>
+      <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+  <span class="k">return</span> <span class="n">decorator</span>
+</div>
+<div class="viewcode-block" id="raw_response"><a class="viewcode-back" href="../../invocation.html#toto.invocation.raw_response">[docs]</a><span class="k">def</span> <span class="nf">raw_response</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@raw_response`` decorator will not be serialized before response</span>
+<span class="sd">  to the client. This can be used to send text, html or other binary data without the usual JSON (or other)</span>
+<span class="sd">  processing. The ``handler.response_type`` property will be used to set the response &quot;Content-Type&quot; header.</span>
+<span class="sd">  By default this will be &quot;application/octet-stream&quot;.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">response_type</span> <span class="o">=</span> <span class="s">&#39;application/octet-stream&#39;</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">),</span> <span class="n">handler</span><span class="o">.</span><span class="n">response_type</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="jsonp"><a class="viewcode-back" href="../../invocation.html#toto.invocation.jsonp">[docs]</a><span class="k">def</span> <span class="nf">jsonp</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@jsonp`` decorator will return a wrapper response that will</span>
+<span class="sd">  call a client-side javascript function. This decorator requires a &quot;jsonp&quot; parameter set to the name of the javascript</span>
+<span class="sd">  callback function to be passed with the request.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+    <span class="n">callback</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;jsonp&#39;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;jsonp&#39;</span><span class="p">]</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">))),</span> <span class="s">&#39;text/javascript&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="k">return</span> <span class="n">wrapper</span>
+</div>
+<div class="viewcode-block" id="error_redirect"><a class="viewcode-back" href="../../invocation.html#toto.invocation.error_redirect">[docs]</a><span class="k">def</span> <span class="nf">error_redirect</span><span class="p">(</span><span class="n">redirect_map</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@error_redirect`` decorator will redirect according to the ``redirect_map``</span>
+<span class="sd">  dictionary. ``redirect_map`` should consist of ``status_code``, ``url`` pairs. This decorator will check the ``code``</span>
+<span class="sd">  then ``status_code`` properties of the raised error for matches in the redirect map before falling back to the usual</span>
+<span class="sd">  error behavior. The optional ``default`` parameter can be used to specify a url to redirect to if there are no matches</span>
+<span class="sd">  in ``redirect_map``.</span>
+
+<span class="sd">  The following code will redirect to &quot;not_found.html&quot; on 404, and &quot;error.html&quot; otherwise::</span>
+<span class="sd">    </span>
+<span class="sd">    @error_redirect({&#39;404&#39;: &#39;not_found.html&#39;}, &#39;error.html&#39;)</span>
+<span class="sd">    def invoke(handler, parameters):</span>
+<span class="sd">      pass</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">format_exc</span><span class="p">())</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s">&#39;code&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">)</span> <span class="ow">in</span> <span class="n">redirect_map</span><span class="p">:</span>
+          <span class="n">handler</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">redirect_map</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">)])</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s">&#39;status_code&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span> <span class="ow">in</span> <span class="n">redirect_map</span><span class="p">:</span>
+          <span class="n">handler</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">redirect_map</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">status_code</span><span class="p">)])</span>
+        <span class="k">elif</span> <span class="n">default</span><span class="p">:</span>
+          <span class="n">handler</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">raise</span>
+    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+  <span class="k">return</span> <span class="n">decorator</span>
+</div>
+<div class="viewcode-block" id="default_parameters"><a class="viewcode-back" href="../../invocation.html#toto.invocation.default_parameters">[docs]</a><span class="k">def</span> <span class="nf">default_parameters</span><span class="p">(</span><span class="n">defaults</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@default_parameters`` decorator will set missing parameters according to the</span>
+<span class="sd">  dictionary passed as the ``defaults`` argument.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">defaults</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+          <span class="n">parameters</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="n">p</span><span class="p">]</span>
+      <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+  <span class="k">return</span> <span class="n">decorator</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" >toto</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

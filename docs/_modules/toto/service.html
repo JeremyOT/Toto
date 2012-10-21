@@ -1,0 +1,246 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.service &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
+    <link rel="up" title="toto" href="../toto.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" accesskey="U">toto</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.service</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;The Toto package comes with tools that can help make server maintanence and other tasks a little easier.</span>
+<span class="sd">  Namely, ``TotoService`` can be used to write general processes that take advantage of some of the features</span>
+<span class="sd">  of ``TotoServer`` and ``TotoWorker`` like process creation/management and the Toto events system.</span>
+
+<span class="sd">  Like ``TotoServer``, subclasses of ``TotoService`` can be run with the ``--start`` (or ``--stop--)  and ``--processes`` options</span>
+<span class="sd">  to run the service as a daemon process or run multiple instances simultaneously.</span>
+<span class="sd">  </span>
+<span class="sd">  To run a subclass of ``TotoService`` create a script like this::</span>
+
+<span class="sd">    from toto.service import TotoService</span>
+
+<span class="sd">    class MyServiceSubclass(TotoService):</span>
+
+<span class="sd">      def main_loop(self):</span>
+<span class="sd">        while 1:</span>
+<span class="sd">          #run some job continuously</span>
+
+<span class="sd">    MyServiceSubclass(&#39;conf_file.conf&#39;).run()</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tornado</span>
+<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Process</span><span class="p">,</span> <span class="n">cpu_count</span>
+
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;daemon&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;start|stop|restart&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;processes&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of daemon processes to run&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;pidfile&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;toto.daemon.pid&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The path to the pidfile for daemon processes will be named &lt;path&gt;.&lt;num&gt;.pid (toto.daemon.pid -&gt; toto.daemon.0.pid)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;remote_event_receivers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;A comma separated list of remote event address that this event manager should connect to. e.g.: &#39;tcp://192.168.1.2:8889&#39;&quot;</span><span class="p">,</span> <span class="n">multiple</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;event_init_module&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If defined, this module&#39;s &#39;invoke&#39; function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;start&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;stop&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;restart&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=start for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;nodaemon&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Alias for daemon=&#39;&#39; for command line usage - overrides daemon setting.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;debug&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;event_port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8999</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The address to listen to event connections on - due to message queuing, servers use the next higher port as well&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)&quot;</span><span class="p">)</span>
+
+<span class="c">#convert p to the absolute path, insert &quot;.i&quot; before the last &quot;.&quot; or at the end of the path</span>
+<span class="k">def</span> <span class="nf">pid_path_with_id</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+  <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+  <span class="n">components</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="n">f</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
+  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">components</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">f</span> <span class="o">+=</span> <span class="s">&quot;.&quot;</span> <span class="o">+</span> <span class="n">components</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TotoService"><a class="viewcode-back" href="../../service.html#toto.service.TotoService">[docs]</a><span class="k">class</span> <span class="nc">TotoService</span><span class="p">():</span>
+  <span class="sd">&#39;&#39;&#39;Subclass ``TotoService`` to create a process that you can easily daemonise and that</span>
+<span class="sd">  can interact with Toto&#39;s event system.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__load_options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">conf_file</span><span class="p">:</span>
+      <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">parse_config_file</span><span class="p">(</span><span class="n">conf_file</span><span class="p">)</span>
+    <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">parse_command_line</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">start</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">stop</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;stop&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">restart</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;restart&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">nodaemon</span><span class="p">:</span>
+      <span class="n">options</span><span class="p">[</span><span class="s">&#39;daemon&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">log_file_prefix</span><span class="p">:</span>
+      <span class="n">root_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+      <span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">root_logger</span><span class="o">.</span><span class="n">handlers</span><span class="p">]:</span>
+        <span class="n">root_logger</span><span class="o">.</span><span class="n">removeHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__load_options</span><span class="p">(</span><span class="n">conf_file</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__run_service</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">start_server_process</span><span class="p">(</span><span class="n">pidfile</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">main_loop</span><span class="p">()</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pidfile</span><span class="p">)</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">cpu_count</span><span class="p">()</span>
+    <span class="n">processes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pidfiles</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="ow">and</span> <span class="p">[</span><span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+      <span class="n">proc</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">start_server_process</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">pidfiles</span> <span class="ow">and</span> <span class="n">pidfiles</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+      <span class="n">proc</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="n">processes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">proc</span><span class="p">)</span>
+      <span class="n">proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">print</span> <span class="s">&quot;Starting </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> process</span><span class="si">%s</span><span class="s">.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;es&#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span><span class="p">:</span>
+      <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
+      <span class="k">for</span> <span class="n">proc</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pidfiles</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+          <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">proc</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">:</span>
+      <span class="n">proc</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TotoService.run"><a class="viewcode-back" href="../../service.html#toto.service.TotoService.run">[docs]</a>  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+    <span class="sd">&#39;&#39;&#39;Start the service. Depending on the initialization options, this may run more than one</span>
+<span class="sd">    service process.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span><span class="p">:</span>
+      <span class="kn">import</span> <span class="nn">multiprocessing</span>
+      <span class="kn">import</span> <span class="nn">signal</span><span class="o">,</span> <span class="nn">re</span>
+
+      <span class="n">pattern</span> <span class="o">=</span> <span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">r&#39;\d+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">r&#39;\.&#39;</span><span class="p">)</span>
+      <span class="n">piddir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;restart&#39;</span><span class="p">:</span>
+        <span class="n">existing_pidfiles</span> <span class="o">=</span> <span class="p">[</span><span class="n">pidfile</span> <span class="k">for</span> <span class="n">pidfile</span> <span class="ow">in</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">piddir</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span> <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)))</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">pidfile</span> <span class="ow">in</span> <span class="n">existing_pidfiles</span><span class="p">:</span>
+          <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="k">try</span><span class="p">:</span>
+              <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+              <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">print</span> <span class="s">&quot;Stopped </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">pid</span><span class="p">)</span>
+          <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pidfile</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;restart&#39;</span><span class="p">:</span>
+        <span class="n">existing_pidfiles</span> <span class="o">=</span> <span class="p">[</span><span class="n">pidfile</span> <span class="k">for</span> <span class="n">pidfile</span> <span class="ow">in</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">piddir</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span> <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)))</span> <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">pidfile</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">existing_pidfiles</span><span class="p">:</span>
+          <span class="k">print</span> <span class="s">&quot;Not starting </span><span class="si">%s</span><span class="s">, pidfile</span><span class="si">%s</span><span class="s"> exist</span><span class="si">%s</span><span class="s"> at </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;s&#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;s&#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">))</span>
+          <span class="k">return</span>
+        <span class="n">pidfile</span> <span class="o">=</span> <span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c">#fork and only continue on child process</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">():</span>
+          <span class="c">#detach from controlling terminal</span>
+          <span class="n">os</span><span class="o">.</span><span class="n">setsid</span><span class="p">()</span>
+          <span class="c">#fork again and write pid to pidfile from parent, run server on child</span>
+          <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">()</span>
+          <span class="k">if</span> <span class="n">pid</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+              <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pid</span><span class="p">))</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__run_service</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">,</span> <span class="s">&#39;stop&#39;</span><span class="p">,</span> <span class="s">&#39;restart&#39;</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;Invalid daemon option: &quot;</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span>
+
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__run_service</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="TotoService.main_loop"><a class="viewcode-back" href="../../service.html#toto.service.TotoService.main_loop">[docs]</a>  <span class="k">def</span> <span class="nf">main_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Subclass ``TotoService`` and override ``main_loop()`` with your desired functionality.&#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../toto.html" >toto</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

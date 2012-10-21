@@ -6,13 +6,11 @@
 Toto Documentation
 ==================
 
-Contents:
-
 .. toctree::
-   :titlesonly:
    
    overview
-   server
+   web
+   service
 
 
 Indices and tables

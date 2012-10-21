@@ -1,5 +1,5 @@
-The Toto web server
-===================
+Servers, Handlers and Sessions
+==============================
 
 .. automodule:: toto.server
 
