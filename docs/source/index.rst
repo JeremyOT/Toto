@@ -6,10 +6,7 @@
 Toto Documentation
 ==================
 
-Contents:
-
 .. toctree::
-   :titlesonly:
    
    overview
    web

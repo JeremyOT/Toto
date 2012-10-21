@@ -118,7 +118,7 @@ and sent to the client. Methods that return None can be used the send any data a
 handled accordingly.
 
 Events
-======
+------
 Sometimes you may need to send events from one request to another. Toto's `toto.events.EventManager` makes this easy.
 
 To send an event use `EventManager.instance().send('eventname', args)`. EventManager uses python's `cPickle` module
@@ -133,7 +133,7 @@ Toto's event system supports sending events across multiple instances both on th
 system. Run your server with --help for more configuration options.
 
 Daemonization
-=============
+-------------
 The Toto server can be run as a daemon by passing the argument `--start`. To stop any running processes pass
 `--stop`. This will stop any processes that share the specified pid file format (default `toto.pid`). The
 `--processes=<n>` option may be used to specify the number of server instances to run. Multiple instances will be run
@@ -142,6 +142,6 @@ will run one process per cpu as detected by Python's `multiprocessing` module. A
 be viewed from `--help`.
 
 Clients
-=======
+-------
 To help you get started, JavaScript and iOS client libraries are in development at https://github.com/JeremyOT/TotoClient-JS
 and https://github.com/JeremyOT/TotoClient-iOS respectively.

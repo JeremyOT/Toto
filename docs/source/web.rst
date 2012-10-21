@@ -6,3 +6,6 @@ The Toto web server
 
    server
    invocation
+   databases
+   exceptions
+   tasks
