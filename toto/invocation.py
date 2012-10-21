@@ -1,4 +1,4 @@
-'''toto.invocation contains decorators that may be applied to the ``invoke(handler, parameters)`` functions in
+'''``toto.invocation`` contains many decorators that may be applied to the ``invoke(handler, parameters)`` functions in
   method modules in order to modify their behavior.
 '''
 
