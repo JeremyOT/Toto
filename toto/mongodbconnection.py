@@ -9,6 +9,7 @@ import hmac
 import hashlib
 import cPickle as pickle
 import toto.secret as secret
+from dbconnection import DBConnection
 
 class MongoDBSession(TotoSession):
   _account = None
@@ -34,7 +35,7 @@ class MongoDBSession(TotoSession):
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': pickle.dumps(self.state)}})
 
-class MongoDBConnection():
+class MongoDBConnection(DBConnection):
 
   def _ensure_indexes(self):
     session_indexes = self.db.sessions.index_information()
@@ -78,7 +79,7 @@ class MongoDBConnection():
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data, data):
+  def retrieve_session(self, session_id, hmac_data=None, data=None):
     session_data = self.db.sessions.find_one({'session_id': session_id, 'expires': {'$gt': time()}})
     if not session_data:
       return None

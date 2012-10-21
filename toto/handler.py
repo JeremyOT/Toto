@@ -226,8 +226,8 @@ class TotoHandler(RequestHandler):
     serialized according to the ``response_type`` propery. The default serialization is
     "application/json". Other supported protocols are:
 
-    - application/bson - requires pymongo
-    - application/msgpack - requires msgpack-python
+    * application/bson - requires pymongo
+    * application/msgpack - requires msgpack-python
 
     The response will also contain any available session information.
     '''

@@ -11,6 +11,7 @@ import hashlib
 import random
 import string
 import cPickle as pickle
+from dbconnection import DBConnection
 
 class MySQLdbSession(TotoSession):
   _account = None
@@ -49,7 +50,7 @@ class MySQLdbSession(TotoSession):
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)
 
-class MySQLdbConnection():
+class MySQLdbConnection(DBConnection):
 
   def create_tables(self):
     if not self.db.get('''show tables like "account"'''):
@@ -104,7 +105,7 @@ class MySQLdbConnection():
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data, data):
+  def retrieve_session(self, session_id, hmac_data=None, data=None):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", session_id, time())
     if not session_data:
       return None

@@ -9,6 +9,7 @@ import hmac
 import hashlib
 import cPickle as pickle
 import toto.secret as secret
+from dbconnection import DBConnection
 
 def _account_key(user_id):
   return 'account:%s' % user_id
@@ -40,7 +41,7 @@ class RedisSession(TotoSession):
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.hset(_session_key(self.session_id), 'state', pickle.dumps(self.state))
 
-class RedisConnection():
+class RedisConnection(DBConnection):
   
   def __init__(self, host='localhost', port=6379, database=0, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = redis.Redis(host=host, port=port, db=database)
@@ -77,7 +78,7 @@ class RedisConnection():
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data, data):
+  def retrieve_session(self, session_id, hmac_data=None, data=None):
     session_key = _session_key(session_id)
     session_data = self.db.hgetall(session_key)
     if not session_data:

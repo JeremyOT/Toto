@@ -12,8 +12,8 @@ import hmac
 import hashlib
 import random
 import string
+from dbconnection import DBConnection
 
-"""Add convenience method "get" to the connection pool"""
 def pg_get(self, query, parameters=None):
   conn = self.getconn()
   cur = conn.cursor()
@@ -23,7 +23,6 @@ def pg_get(self, query, parameters=None):
   return result and dict(izip((d[0] for d in cur.description), result))
 ThreadedConnectionPool.get = pg_get
 
-"""Add convenience method "execute" to the connection pool"""
 def pg_execute(self, query, parameters=None):
   conn = self.getconn()
   cur = conn.cursor()
@@ -32,7 +31,6 @@ def pg_execute(self, query, parameters=None):
   self.putconn(conn)
 ThreadedConnectionPool.execute = pg_execute
 
-"""Add convenience method "query" to the connection pool"""
 def pg_query(self, query, parameters=None):
   conn = self.getconn()
   cur = conn.cursor()
@@ -81,7 +79,7 @@ class PostgresSession(TotoSession):
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     self._db.execute("update session set state = %s where session_id = %s", (pickle.dumps(self.state), self.session_id))
 
-class PostgresConnection():
+class PostgresConnection(DBConnection):
 
   def create_tables(self):
     if not self.db.get("select table_name from information_schema.tables where table_schema = 'public' and table_name = 'account'"):
@@ -132,7 +130,7 @@ class PostgresConnection():
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data, data):
+  def retrieve_session(self, session_id, hmac_data=None, data=None):
     session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", (session_id, time()))
     if not session_data:
       return None
