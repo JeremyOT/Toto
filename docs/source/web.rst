@@ -9,3 +9,4 @@ The Toto web server
    databases
    exceptions
    tasks
+   events
