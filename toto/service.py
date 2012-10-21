@@ -1,3 +1,23 @@
+'''The Toto package comes with tools that can help make server maintanence and other tasks a little easier.
+  Namely, ``TotoService`` can be used to write general processes that take advantage of some of the features
+  of ``TotoServer`` and ``TotoWorker`` like process creation/management and the Toto events system.
+
+  Like ``TotoServer``, subclasses of ``TotoService`` can be run with the ``--start`` (or ``--stop--)  and ``--processes`` options
+  to run the service as a daemon process or run multiple instances simultaneously.
+  
+  To run a subclass of ``TotoService`` create a script like this::
+
+    from toto.service import TotoService
+
+    class MyServiceSubclass(TotoService):
+
+      def main_loop(self):
+        while 1:
+          #run some job continuously
+
+    MyServiceSubclass('conf_file.conf').run()
+'''
+
 import os
 import tornado
 from tornado.options import define, options
@@ -5,7 +25,7 @@ import logging
 from multiprocessing import Process, cpu_count
 
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
-define("processes", default=-1, help="The number of daemon processes to run")
+define("processes", default=1, help="The number of daemon processes to run")
 define("pidfile", default="toto.daemon.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.daemon.pid -> toto.daemon.0.pid)")
 define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
 define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
@@ -27,6 +47,9 @@ def pid_path_with_id(p, i):
   return os.path.join(d, f)
 
 class TotoService():
+  '''Subclass ``TotoService`` to create a process that you can easily daemonise and that
+  can interact with Toto's event system.
+  '''
 
   def __load_options(self, conf_file=None, **kwargs):
     for k in kwargs:
@@ -75,6 +98,9 @@ class TotoService():
       proc.join()
 
   def run(self): 
+    '''Start the service. Depending on the initialization options, this may run more than one
+    service process.
+    '''
     if options.daemon:
       import multiprocessing
       import signal, re
@@ -120,5 +146,5 @@ class TotoService():
       self.__run_service()
 
   def main_loop(self):
-    print 'Subclass TotoService and override main_loop with your desired functionality/'
-    pass
+    '''Subclass ``TotoService`` and override ``main_loop()`` with your desired functionality.'''
+    raise NotImplementedError()

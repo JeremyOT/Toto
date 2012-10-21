@@ -10,6 +10,7 @@ Toto Documentation
    
    overview
    web
+   service
 
 
 Indices and tables
