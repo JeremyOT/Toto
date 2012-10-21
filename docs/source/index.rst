@@ -12,7 +12,7 @@ Contents:
    :titlesonly:
    
    overview
-   server
+   web
 
 
 Indices and tables

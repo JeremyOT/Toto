@@ -56,7 +56,7 @@ class TotoAccount(object):
     raise Exception("Unimplemented operation: _save_property")
 
 class TotoSession(object):
-  '''Instances of TotoSession provide dictionary-like access to current session variables, and the current
+  '''Instances of ``TotoSession`` provide dictionary-like access to current session variables, and the current
   account (if authenticated).
   '''
   def __init__(self, db, session_data):
@@ -69,7 +69,7 @@ class TotoSession(object):
 
   def get_account(self, *args):
     '''Load the account associated with this session (if authenticated). Session properties are
-    pickled to a binary string and stored as the 'state' field, so you don't need to configure your database to handle them in
+    pickled to a binary string and stored as the ``TotoSession.state`` property, so you don't need to configure your database to handle them in
     advance.
     '''
     raise Exception("Unimplemented operation: get_account")

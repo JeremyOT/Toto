@@ -19,7 +19,7 @@ class TotoHandler(RequestHandler):
   will be initialized for each incoming request and will handle authentication, session
   management and method delegation for you.
   
-  You can set the module to use for method delegation via the 'method_module' parameter.
+  You can set the module to use for method delegation via the ``method_module`` parameter.
   Methods are modules that contain an invoke function::
 
     def invoke(handler, parameters)
@@ -59,11 +59,10 @@ class TotoHandler(RequestHandler):
     self.registered_event_handlers = []
     self.__active_methods = []
 
-  """
-    Runtime method configuration
-  """
   @classmethod
   def configure(cls):
+    """Runtime method configuration.
+    """
     #Method configuration
     if options.event_mode != 'off':
       from toto.events import EventManager
@@ -116,12 +115,11 @@ class TotoHandler(RequestHandler):
       cls.error_info = error_info
     cls.__method_root = __import__(options.method_module)
       
-  """
-    The default method_select "both" (or any unsupported value) will
-    call this method. The class method configure() will update this
-    to a more efficient method according to the tornado.options
-  """
   def __get_method_path(self, path, body):
+    """The default method_select "both" (or any unsupported value) will
+    call this method. The class method ``configure()`` will update this
+    to a more efficient method according to ``tornado.options``.
+    """
     if path:
       return path.split('/')
     elif body and 'method' in body:
@@ -156,10 +154,6 @@ class TotoHandler(RequestHandler):
     except Exception as e:
       error = self.error_info(e)
     return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
-
-  """
-    Request handlers
-  """
 
   def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
@@ -226,15 +220,11 @@ class TotoHandler(RequestHandler):
     elif finish_by_default and not self._finished:
       self.finish()
 
-  """
-    End request handlers
-  """
-
   def respond(self, result=None, error=None, batch_results=None):
-    '''Respond to the request with the given result or error object (the batch_results parameter
+    '''Respond to the request with the given result or error object (the ``batch_results`` parameter
     is for internal use only and not intendented to be supplied manually). Responses will be
-    serialized according to the response_type propery. The default serialization is
-    application/json. Other supported protocols are:
+    serialized according to the ``response_type`` propery. The default serialization is
+    "application/json". Other supported protocols are:
 
     - application/bson - requires pymongo
     - application/msgpack - requires msgpack-python
@@ -262,9 +252,9 @@ class TotoHandler(RequestHandler):
 
   def respond_raw(self, body, content_type, finish=True):
     '''Respond raw is used by respond to send the response to the client. You can pass a string as the body parameter
-    and it will be written directly to the response stream. The response content-type header will be set to content_type.
-    Use finish to specify whether or not the response stream should be closed after body is written. Use finish=False
-    to send the response in multiple calls to respond_raw.
+    and it will be written directly to the response stream. The response "content-type" header will be set to ``content_type``.
+    Use finish to specify whether or not the response stream should be closed after body is written. Use ``finish=False``
+    to send the response in multiple calls to ``respond_raw``.
     '''
     self.add_header('content-type', content_type)
     self.write(body)
@@ -272,7 +262,7 @@ class TotoHandler(RequestHandler):
       self.finish()
 
   def on_connection_close(self):
-    '''You should not call this method directly, but if you implement an on_connection_close function in a
+    '''You should not call this method directly, but if you implement an ``on_connection_close()`` function in a
     method module (where you defined invoke) it will be called when the connection closes if that method was
     invoked. E.G.::
 
@@ -290,8 +280,8 @@ class TotoHandler(RequestHandler):
   def register_event_handler(self, event_name, handler, run_on_main_loop=True, deregister_on_finish=False):
     '''If using Toto's event framework, this method makes it easy to register an event callback tied to the
     current connection and handler. Event handlers registered via this method will not be called once this handler
-    has finished (connection closed). The deregister_on_finish parameter will cause this handler to be explicitly
-    deregisted as part of the handler.on_finish event. Otherwise, event handlers are only cleaned up when the
+    has finished (connection closed). The ``deregister_on_finish`` parameter will cause this handler to be explicitly
+    deregisted as part of the ``handler.on_finish`` event. Otherwise, event handlers are only cleaned up when the
     associated event is received.
 
     The return value can be used to manually deregister the event handler at a later point.
@@ -302,21 +292,21 @@ class TotoHandler(RequestHandler):
     return sig
 
   def deregister_event_handler(self, sig):
-    '''Pass the value returned from register_event_handler to deregister an active event handler.
+    '''Pass the value returned from ``register_event_handler`` to deregister an active event handler.
     '''
     TotoHandler.event_manager.instance().remove_handler(sig)
     self.registered_event_handlers.remove(sig)
 
   def create_session(self, user_id=None, password=None):
-    '''Create a new session for the given user id and password (or an anonymous session if user_id is None).
-    After this method is called, the session will be available via self.session.
+    '''Create a new session for the given user id and password (or an anonymous session if ``user_id`` is ``None``).
+    After this method is called, the session will be available via ``self.session``.
     '''
     self.session = self.db_connection.create_session(user_id, password)
     return self.session
 
   def retrieve_session(self, session_id=None):
     '''Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
-    in self.session. Alternatively, pass a session_id to this function to retrieve that session explicitly.
+    in ``self.session``. Alternatively, pass a ``session_id`` to this function to retrieve that session explicitly.
     '''
     if not self.session or (session_id and self.session.session_id != session_id):
       headers = self.request.headers
