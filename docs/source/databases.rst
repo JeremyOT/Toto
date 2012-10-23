@@ -1,4 +1,5 @@
 .. currentmodule:: toto.dbconnection
+
 Database Connections
 ====================
 

@@ -12,7 +12,7 @@ import json
 This is a list of all attributes that may be added by a decorator,
 it is used to allow decorators to be order agnostic.
 """
-invocation_attributes = ["asynchronous",]
+invocation_attributes = ['asynchronous', '__doc__', '__repr__']
 
 def __copy_attributes(fn, wrapper):
   for a in invocation_attributes:

@@ -10,3 +10,4 @@ The Toto web server
    exceptions
    tasks
    events
+   methods
