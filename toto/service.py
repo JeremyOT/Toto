@@ -73,11 +73,12 @@ class TotoService():
         root_logger.removeHandler(handler)
     self.__load_options(conf_file, **kwargs)
 
-  def __run_service(self):
+  def __run_service(self, pidfile=None):
 
     def start_server_process(pidfile):
       self.main_loop()
-      os.remove(pidfile)
+      if pidfile:
+        os.remove(pidfile)
     count = options.processes if options.processes >= 0 else cpu_count()
     processes = []
     pidfiles = options.daemon and [pid_path_with_id(options.pidfile, i) for i in xrange(1, count + 1)] or []
@@ -96,6 +97,8 @@ class TotoService():
         i += 1
     for proc in processes:
       proc.join()
+    if pidfile:
+      os.remove(pidfile)
 
   def run(self): 
     '''Start the service. Depending on the initialization options, this may run more than one
@@ -137,7 +140,7 @@ class TotoService():
             with open(pidfile, 'w') as f:
               f.write(str(pid))
           else:
-            self.__run_service()
+            self.__run_service(pidfile)
 
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
