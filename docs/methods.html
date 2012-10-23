@@ -1,0 +1,183 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Built-in Methods &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="index.html" />
+    <link rel="up" title="The Toto web server" href="web.html" />
+    <link rel="next" title="Toto Services" href="service.html" />
+    <link rel="prev" title="Events" href="events.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="service.html" title="Toto Services"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="events.html" title="Events"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" accesskey="U">The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-toto.methods">
+<span id="built-in-methods"></span><h1>Built-in Methods<a class="headerlink" href="#module-toto.methods" title="Permalink to this headline">¶</a></h1>
+<p>Toto includes some built-in methods to support frequently used functionality.
+These methods can be included in your method module by importing them into the
+module scope like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c">#main methods module __init__.py</span>
+<span class="kn">import</span> <span class="nn">toto.methods.account.create</span> <span class="kn">as</span> <span class="nn">account_create</span>
+
+<span class="c">#method.account module</span>
+<span class="kn">import</span> <span class="nn">toto.methods.account.create</span> <span class="kn">as</span> <span class="nn">create</span>
+</pre></div>
+</div>
+<p>In the above examples, Toto&#8217;s built in <tt class="docutils literal"><span class="pre">account.create</span></tt> method can be called from
+your method module as <tt class="docutils literal"><span class="pre">account_create</span></tt> and <tt class="docutils literal"><span class="pre">account.create</span></tt> respecively.</p>
+<dl class="function">
+<dt id="toto.methods.client_error.invoke">
+<tt class="descclassname">toto.methods.client_error.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/client_error.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.client_error.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenince method for writing browser errors
+to Toto&#8217;s server log. It works with the <tt class="docutils literal"><span class="pre">registerErrorHandler()</span></tt> method in <tt class="docutils literal"><span class="pre">toto.js</span></tt>.</p>
+<p>The &#8220;client_error&#8221; parameter should be set to the string to be written to Toto&#8217;s log.
+Currently, the &#8220;client_type&#8221; parameter must be set to &#8220;browser_js&#8221; for an event
+to be written. Otherwise, this method has no effect.</p>
+<p>Requires: <tt class="docutils literal"><span class="pre">client_error</span></tt>, <tt class="docutils literal"><span class="pre">client_type</span></tt></p>
+</dd></dl>
+
+<div class="section" id="module-toto.methods.account">
+<span id="accounts"></span><h2>Accounts<a class="headerlink" href="#module-toto.methods.account" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">methods.account</span></tt> module provides simple implementations of
+common methods around account creation and management.</p>
+<dl class="function">
+<dt id="toto.methods.account.create.invoke">
+<tt class="descclassname">toto.methods.account.create.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/create.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.create.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> if no account
+matching the <tt class="docutils literal"><span class="pre">user_id</span></tt> exists. Any other parameters will be added as
+additional properties of the account. If using a database with a predefined
+schema, make sure they match existing columns, otherwise an error will be
+returned.</p>
+<p>Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.methods.account.login.invoke">
+<tt class="descclassname">toto.methods.account.login.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/login.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.login.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a new session for the account matching <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>. If no
+mathcing account is found, a &#8220;User not found&#8221; error will be returned.</p>
+<p>Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.methods.account.logout.invoke">
+<tt class="descclassname">toto.methods.account.logout.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/logout.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.logout.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invalidates the current authenticated session. If the request is
+not authenticated, a &#8220;Not authorized&#8221; error will be returned.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Built-in Methods</a><ul>
+<li><a class="reference internal" href="#module-toto.methods.account">Accounts</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="events.html"
+                        title="previous chapter">Events</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="service.html"
+                        title="next chapter">Toto Services</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/methods.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="service.html" title="Toto Services"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="events.html" title="Events"
+             >previous</a> |</li>
+        <li><a href="index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="web.html" >The Toto web server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

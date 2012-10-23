@@ -1,0 +1,112 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.methods.client_error &mdash; Toto 0.9.5 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.9.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 0.9.5 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for toto.methods.client_error</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">toto.invocation</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="nd">@requires</span><span class="p">(</span><span class="s">&#39;client_error&#39;</span><span class="p">,</span> <span class="s">&#39;client_type&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="invoke"><a class="viewcode-back" href="../../../methods.html#toto.methods.client_error.invoke">[docs]</a><span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A convenince method for writing browser errors</span>
+<span class="sd">  to Toto&#39;s server log. It works with the ``registerErrorHandler()`` method in ``toto.js``.</span>
+
+<span class="sd">  The &quot;client_error&quot; parameter should be set to the string to be written to Toto&#39;s log.</span>
+<span class="sd">  Currently, the &quot;client_type&quot; parameter must be set to &quot;browser_js&quot; for an event</span>
+<span class="sd">  to be written. Otherwise, this method has no effect.</span>
+
+<span class="sd">  Requires: ``client_error``, ``client_type``</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">if</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;client_type&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;browser_js&#39;</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s">&#39;logged&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+  <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="s">&#39;client_error&#39;</span><span class="p">]))</span>
+  <span class="k">return</span> <span class="p">{</span><span class="s">&#39;logged&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

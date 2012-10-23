@@ -26,7 +26,7 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <link rel="top" title="Toto 0.9.5 documentation" href="../../index.html" />
-    <link rel="up" title="toto" href="../toto.html" /> 
+    <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -39,8 +39,7 @@
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
-          <li><a href="../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../toto.html" accesskey="U">toto</a> &raquo;</li> 
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -110,11 +109,6 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">__queued_servers</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">__queued_servers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__remote_servers</span><span class="o">.</span><span class="n">itervalues</span><span class="p">())</span>
     <span class="n">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__queued_servers</span><span class="p">)</span>
-</div>
-<div class="viewcode-block" id="EventManager.remove_handler"><a class="viewcode-back" href="../../events.html#toto.events.EventManager.remove_handler">[docs]</a>  <span class="k">def</span> <span class="nf">remove_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler_sig</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Disable and remove the handler matching ``handler_sig``.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">__handlers</span><span class="p">[</span><span class="n">handler_sig</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">handler_sig</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
   </div>
 <div class="viewcode-block" id="EventManager.register_handler"><a class="viewcode-back" href="../../events.html#toto.events.EventManager.register_handler">[docs]</a>  <span class="k">def</span> <span class="nf">register_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_handler</span><span class="p">,</span> <span class="n">run_on_main_loop</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">request_handler</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">persist</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Register ``event_handler`` to run when ``event_name`` is received. Handlers are meant to respond to</span>
@@ -128,6 +122,11 @@
     <span class="n">handler_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="n">event_handler</span><span class="p">,</span> <span class="n">run_on_main_loop</span><span class="p">,</span> <span class="n">request_handler</span><span class="p">,</span> <span class="n">persist</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">__handlers</span><span class="p">[</span><span class="n">event_name</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">handler_tuple</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">event_name</span><span class="p">,</span> <span class="n">handler_tuple</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="EventManager.remove_handler"><a class="viewcode-back" href="../../events.html#toto.events.EventManager.remove_handler">[docs]</a>  <span class="k">def</span> <span class="nf">remove_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler_sig</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Disable and remove the handler matching ``handler_sig``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__handlers</span><span class="p">[</span><span class="n">handler_sig</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">handler_sig</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
   </div>
 <div class="viewcode-block" id="EventManager.start_listening"><a class="viewcode-back" href="../../events.html#toto.events.EventManager.start_listening">[docs]</a>  <span class="k">def</span> <span class="nf">start_listening</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Starts listening for incoming events on ``EventManager.address``.</span>
@@ -234,8 +233,7 @@
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li><a href="../../index.html">Toto 0.9.5 documentation</a> &raquo;</li>
-          <li><a href="../index.html" >Module code</a> &raquo;</li>
-          <li><a href="../toto.html" >toto</a> &raquo;</li> 
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
