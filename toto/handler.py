@@ -148,7 +148,9 @@ class TotoHandler(RequestHandler):
     error = None
     method = None
     try:
-      method = self.__get_method(self.__get_method_path(path, request_body))
+      method_path = self.__get_method_path(path, request_body)
+      logging.info(method_path)
+      method = self.__get_method(method_path)
       self.__active_methods.append(method)
       result = method.invoke(self, parameters)
     except Exception as e:
