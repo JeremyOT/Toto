@@ -75,7 +75,8 @@ class TotoService():
 
   def __run_service(self, pidfile=None):
 
-    def start_server_process(pidfile):
+    def start_server_process(pidfile, service_id=0):
+      self.service_id = service_id
       self.main_loop()
       if pidfile:
         os.remove(pidfile)
@@ -83,7 +84,7 @@ class TotoService():
     processes = []
     pidfiles = options.daemon and [pid_path_with_id(options.pidfile, i) for i in xrange(1, count + 1)] or []
     for i in xrange(count):
-      proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i],))
+      proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i], i))
       proc.daemon = True
       processes.append(proc)
       proc.start()
