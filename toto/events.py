@@ -92,9 +92,9 @@ class EventManager():
         event_args = event['args']
         if event_name in self.__handlers:
           handlers = self.__handlers[event_name]
-          persistent_handlers = set()
-          while handlers:
-            handler = handlers.pop()
+          for handler in list(handlers):
+            if not handler[3]:
+              handler = handlers.remove(handler)
             try:
               if handler[2] and handler[2]._finished:
                 continue
@@ -104,9 +104,6 @@ class EventManager():
                 handler[0](event_args)
             except Exception as e:
               logging.error(format_exc())
-            if handler[3]:
-              persistent_handlers.add(handler)
-          handlers |= persistent_handlers
     self.__thread = Thread(target=receive)
     self.__thread.daemon = True
     self.__thread.start()
