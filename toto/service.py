@@ -98,6 +98,7 @@ class TotoService():
         i += 1
     for proc in processes:
       proc.join()
+    self.finish()
     if pidfile:
       os.remove(pidfile)
 
@@ -152,3 +153,12 @@ class TotoService():
   def main_loop(self):
     '''Subclass ``TotoService`` and override ``main_loop()`` with your desired functionality.'''
     raise NotImplementedError()
+
+  def finish(self):
+    '''Override this method in a ``TotoService`` subclass and it will be called after all service processes
+    have exited (after each ``main_loop()`` has returned).
+
+    Note: This method will only be called once and only after all child processes have finished. If any
+    processes hang this method will not be called.'''
+    pass
+
