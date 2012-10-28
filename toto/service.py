@@ -83,6 +83,7 @@ class TotoService():
     count = options.processes if options.processes >= 0 else cpu_count()
     processes = []
     pidfiles = options.daemon and [pid_path_with_id(options.pidfile, i) for i in xrange(1, count + 1)] or []
+    self.prepare()
     for i in xrange(count):
       proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i], i))
       proc.daemon = True
@@ -149,6 +150,12 @@ class TotoService():
 
     else:
       self.__run_service()
+
+  def prepare(self):
+    '''Override this method in a ``TotoService`` subclass and it will be called before any service processes
+    are created. You can set instance variables here and they will be available in ``main_loop()`` but be
+    careful that any retained objects are safe to access across processes'''
+    pass
 
   def main_loop(self):
     '''Subclass ``TotoService`` and override ``main_loop()`` with your desired functionality.'''
