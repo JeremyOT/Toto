@@ -99,9 +99,9 @@ class EventManager():
               if handler[2] and handler[2]._finished:
                 continue
               if handler[1]:
-                handler[0](event_args)
-              else:
                 IOLoop.instance().add_callback(lambda: handler[0](event_args))
+              else:
+                handler[0](event_args)
             except Exception as e:
               logging.error(format_exc())
             if handler[3]:
