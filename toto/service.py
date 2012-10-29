@@ -117,15 +117,19 @@ class TotoService():
       if options.daemon == 'stop' or options.daemon == 'restart':
         existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
         for pidfile in existing_pidfiles:
-          with open(pidfile, 'r') as f:
-            pid = int(f.read())
+          try:
+            with open(pidfile, 'r') as f:
+              pid = int(f.read())
             try:
               os.kill(pid, signal.SIGTERM)
             except OSError as e:
               if e.errno != 3:
                 raise
             print "Stopped %s %s" % (self.__class__.__name__, pid)
-          os.remove(pidfile)
+            os.remove(pidfile)
+          except IOError as e:
+            if e.errno != 2:
+              raise
 
       if options.daemon == 'start' or options.daemon == 'restart':
         existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
