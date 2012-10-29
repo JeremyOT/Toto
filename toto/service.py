@@ -127,7 +127,7 @@ class TotoService():
                 raise
             print "Stopped %s %s" % (self.__class__.__name__, pid)
             os.remove(pidfile)
-          except IOError as e:
+          except (OSError, IOError) as e:
             if e.errno != 2:
               raise
 
