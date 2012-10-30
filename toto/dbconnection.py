@@ -1,4 +1,4 @@
-class DBConnection():
+class DBConnection(object):
   '''Toto uses subclasses of DBConnection to support session and account storage as well as general
     access to the backing database. Usually, direct access to the underlying database driver will
     be available via the ``DBConnection.db`` property.
@@ -57,3 +57,40 @@ class DBConnection():
     support "forgot password" functionality.
     '''
     raise NotImplementedError()
+
+from tornado.options import define, options
+
+define("database", metavar='mysql|mongodb|redis|postgres|none', default="mongodb", help="the database driver to use")
+define("db_host", default='localhost', help="The host to use for database connections.")
+define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
+define("mysql_database", type=str, help="Main MySQL schema name")
+define("mysql_user", type=str, help="Main MySQL user")
+define("mysql_password", type=str, help="Main MySQL user password")
+define("postgres_database", type=str, help="Main Postgres database name")
+define("postgres_user", type=str, help="Main Postgres user")
+define("postgres_password", type=str, help="Main Postgres user password")
+define("postgres_min_connections", type=int, default=1, help="The minimum number of connections to keep in the Postgres connection pool")
+define("postgres_max_connections", type=int, default=100, help="The maximum number of connections to keep in the Postgres connection pool")
+define("mongodb_database", default="toto_server", help="MongoDB database")
+define("redis_database", default=0, help="Redis DB")
+define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire")
+define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire")
+define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request")
+define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
+
+def configured_connection():  
+    if options.database == "mongodb":
+      from mongodbconnection import MongoDBConnection
+      return MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+    elif options.database == "redis":
+      from redisconnection import RedisConnection
+      return RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+    elif options.database == "mysql":
+      from mysqldbconnection import MySQLdbConnection
+      return MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+    elif options.database == 'postgres':
+      from postgresconnection import PostgresConnection
+      return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password,  options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
+    else:
+      from fakeconnection import FakeConnection
+      return FakeConnection() 

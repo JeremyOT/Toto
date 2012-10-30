@@ -15,6 +15,7 @@ from traceback import format_exc
 define("worker_compression_module", type=str, help="The module to use for compressing and decompressing messages to workers. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. Only the default instance will be affected")
 define("worker_serialization_module", type=str, help="The module to use for serializing and deserializing messages to workers. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. Only the default instance will be affected")
 define("worker_retry_ms", default=10000, help="The default worker (instance()) will wait at least this many milliseconds before retrying a request")
+define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 class WorkerConnection(object):
 

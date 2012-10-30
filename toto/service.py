@@ -27,15 +27,11 @@ from multiprocessing import Process, cpu_count
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
 define("processes", default=1, help="The number of daemon processes to run")
 define("pidfile", default="toto.daemon.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.daemon.pid -> toto.daemon.0.pid)")
-define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
-define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
 define("start", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
 define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
-define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
-define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path_with_id(p, i):
@@ -46,12 +42,12 @@ def pid_path_with_id(p, i):
     f += "." + components[1]
   return os.path.join(d, f)
 
-class TotoService():
+class TotoService(object):
   '''Subclass ``TotoService`` to create a process that you can easily daemonise and that
   can interact with Toto's event system.
   '''
 
-  def __load_options(self, conf_file=None, **kwargs):
+  def _load_options(self, conf_file=None, **kwargs):
     for k in kwargs:
       options[k].set(kwargs[k])
     if conf_file:
@@ -71,7 +67,7 @@ class TotoService():
       root_logger = logging.getLogger()
       for handler in [h for h in root_logger.handlers]:
         root_logger.removeHandler(handler)
-    self.__load_options(conf_file, **kwargs)
+    self._load_options(conf_file, **kwargs)
 
   def __run_service(self, pidfile=None):
 

@@ -19,42 +19,20 @@ from tornado.options import define, options
 from handler import TotoHandler
 from sockets import TotoSocketHandler
 from clientsideworker import ClientSideWorkerSocketHandler
+from toto.service import TotoService
+from dbconnection import configured_connection
 import logging
 
-define("database", metavar='mysql|mongodb|redis|none', default="mongodb", help="the database driver to use")
-define("db_host", default='localhost', help="The host to use for database connections.")
-define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
-define("mysql_database", type=str, help="Main MySQL schema name")
-define("mysql_user", type=str, help="Main MySQL user")
-define("mysql_password", type=str, help="Main MySQL user password")
-define("postgres_database", type=str, help="Main Postgres database name")
-define("postgres_user", type=str, help="Main Postgres user")
-define("postgres_password", type=str, help="Main Postgres user password")
-define("postgres_min_connections", type=int, default=1, help="The minimum number of connections to keep in the Postgres connection pool")
-define("postgres_max_connections", type=int, default=100, help="The maximum number of connections to keep in the Postgres connection pool")
-define("mongodb_database", default="toto_server", help="MongoDB database")
-define("redis_database", default=0, help="Redis DB")
 define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.")
-define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
-define("processes", default=1, help="The number of daemon processes to run, pass 0 to run one per cpu")
-define("pidfile", default="toto.pid", help="The path to the pidfile for daemon processes will be named <path>.<num>.pid (toto.pid -> toto.0.pid)")
 define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain")
 define("method_module", default='methods', help="The root module to use for method lookup")
-define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
-define("session_ttl", default=24*60*60*365, help="The number of seconds after creation a session should expire")
-define("anon_session_ttl", default=24*60*60, help="The number of seconds after creation an anonymous session should expire")
-define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request")
-define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
 define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
 define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
+define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
 define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
-define("start", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
-define("stop", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
-define("restart", default=False, help="Alias for daemon=start for command line usage - overrides daemon setting.")
-define("nodaemon", default=False, help="Alias for daemon='' for command line usage - overrides daemon setting.")
+define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
 define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
-define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False")
 define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set")
 define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com'")
@@ -64,10 +42,8 @@ define("socket_method_module", default=None, type=str, help="The root module to 
 define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods")
 define("socket_path", default='websocket', help="The path to use for websocket connections")
 define("client_side_worker_path", default="", help="The path to use for client side worker connections - functionality will be disabled if this is not set.")
-define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
-define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
-class TotoServer():
+class TotoServer(TotoService):
   '''Instances can be configured in three ways:
 
   1. (Most common) Pass the path to a config file as the first parameter to the constructor.
@@ -79,26 +55,11 @@ class TotoServer():
   Keyword args, config file, command line
   '''
 
-  def __load_options(self, conf_file=None, **kwargs):
-    for k in kwargs:
-      options[k].set(kwargs[k])
-    if conf_file:
-      tornado.options.parse_config_file(conf_file)
-    tornado.options.parse_command_line()
-    if options.start:
-      options['daemon'].set('start')
-    elif options.stop:
-      options['daemon'].set('stop')
-    elif options.restart:
-      options['daemon'].set('restart')
-    elif options.nodaemon:
-      options['daemon'].set('')
-
   def __init__(self, conf_file=None, **kwargs):
     module_options = {'method_module', 'socket_method_module', 'event_init_module'}
     function_options = {'startup_function', 'socket_opened_method', 'socket_closed_method'}
     original_argv, sys.argv = sys.argv, [i for i in sys.argv if i.strip('-').split('=')[0] in module_options]
-    self.__load_options(conf_file, **{i: kwargs[i] for i in kwargs if i in module_options})
+    self._load_options(conf_file, **{i: kwargs[i] for i in kwargs if i in module_options})
     modules = {getattr(options, i) for i in module_options if getattr(options, i)}
     for module in modules:
       __import__(module)
@@ -107,11 +68,7 @@ class TotoServer():
       __import__(module)
     sys.argv = original_argv
     #clear root logger handlers to prevent duplicate logging if user has specified a log file
-    if options.log_file_prefix:
-      root_logger = logging.getLogger()
-      for handler in [h for h in root_logger.handlers]:
-        root_logger.removeHandler(handler)
-    self.__load_options(conf_file, **kwargs)
+    super(TotoServer, self).__init__(conf_file, **kwargs)
     #clear method_module references so we can fully reload with new options
     for module in modules:
       for i in (m for m in sys.modules.keys() if m.startswith(module)):
@@ -129,23 +86,8 @@ class TotoServer():
       ClientSideWorkerSocketHandler.configure()
     tornado.options.define = define
 
-  def __run_server(self, port, index=0):
-    db_connection = None
-    if options.database == "mongodb":
-      from mongodbconnection import MongoDBConnection
-      db_connection = MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
-    elif options.database == "redis":
-      from redisconnection import RedisConnection
-      db_connection = RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
-    elif options.database == "mysql":
-      from mysqldbconnection import MySQLdbConnection
-      db_connection = MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
-    elif options.database == 'postgres':
-      from postgresconnection import PostgresConnection
-      db_connection = PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password,  options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
-    else:
-      from fakeconnection import FakeConnection
-      db_connection = FakeConnection()
+  def main_loop(self):
+    db_connection = configured_connection()
   
     application_settings = {}
     if options.cookie_secret:
@@ -161,7 +103,7 @@ class TotoServer():
     if not options.event_mode == 'off':
       from toto.events import EventManager
       event_manager = EventManager.instance()
-      event_manager.address = 'tcp://*:%s' % (options.event_port + index)
+      event_manager.address = 'tcp://*:%s' % (options.event_port + self.service_id)
       event_manager.start_listening()
       for i in xrange(options.processes > 0 and options.processes or multiprocessing.cpu_count()):
         event_manager.register_server('tcp://127.0.0.1:%s' % (options.event_port + i))
@@ -179,67 +121,8 @@ class TotoServer():
     if options.startup_function:
       startup_path = options.startup_function.rsplit('.')
       __import__(startup_path[0]).__dict__[startup_path[1]](db_connection=db_connection, application=application)
-
+  
+    port = options.port + self.service_id
     application.listen(port)
     print "Starting server on port %s" % port
     IOLoop.instance().start()
-
-  def run(self): 
-    '''Start the server and run with the current configuration'''
-    if options.daemon:
-      import multiprocessing
-      #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
-      def path_with_id(p, i):
-        (d, f) = os.path.split(os.path.abspath(p))
-        components = f.rsplit('.', 1)
-        f = '%s.%s' % (components[0], i)
-        if len(components) > 1:
-          f += "." + components[1]
-        return os.path.join(d, f)
-
-      count = options.processes > 0 and options.processes or multiprocessing.cpu_count()
-      if options.daemon == 'stop' or options.daemon == 'restart':
-        import signal, re
-        pattern = path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
-        piddir = os.path.dirname(pattern)
-        for fn in os.listdir(os.path.dirname(pattern)):
-          pidfile = os.path.join(piddir, fn)
-          if re.match(pattern, pidfile):
-            with open(pidfile, 'r') as f:
-              pid = int(f.read())
-              try:
-                os.kill(pid, signal.SIGTERM)
-              except OSError as e:
-                if e.errno != 3:
-                  raise
-              print "Stopped server %s" % pid 
-            os.remove(pidfile)
-
-      if options.daemon == 'start' or options.daemon == 'restart':
-        import sys
-        def run_daemon_server(port, pidfile, index):
-          #fork and only continue on child process
-          if not os.fork():
-            #detach from controlling terminal
-            os.setsid()
-            #fork again and write pid to pidfile from parent, run server on child
-            pid = os.fork()
-            if pid:
-              with open(pidfile, 'w') as f:
-                f.write(str(pid))
-            else:
-              self.__run_server(port, index)
-
-        for i in xrange(count):
-          pidfile = path_with_id(options.pidfile, i)
-          if os.path.exists(pidfile):
-            print "Skipping %d, pidfile exists at %s" % (i, pidfile)
-            continue
-
-          p = multiprocessing.Process(target=run_daemon_server, args=(options.port + i, pidfile, i))
-          p.start()
-      if options.daemon not in ('start', 'stop', 'restart'):
-        print "Invalid daemon option: " + options.daemon
-
-    else:
-      self.__run_server(options.port)
