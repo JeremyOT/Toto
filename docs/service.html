@@ -52,11 +52,10 @@
             
   <div class="section" id="module-toto.service">
 <span id="toto-services"></span><h1>Toto Services<a class="headerlink" href="#module-toto.service" title="Permalink to this headline">¶</a></h1>
-<p>The Toto package comes with tools that can help make server maintanence and other tasks a little easier.
-Namely, <tt class="docutils literal"><span class="pre">TotoService</span></tt> can be used to write general processes that take advantage of some of the features
-of <tt class="docutils literal"><span class="pre">TotoServer</span></tt> and <tt class="docutils literal"><span class="pre">TotoWorker</span></tt> like process creation/management and the Toto events system.</p>
-<p>Like <tt class="docutils literal"><span class="pre">TotoServer</span></tt>, subclasses of <tt class="docutils literal"><span class="pre">TotoService</span></tt> can be run with the <tt class="docutils literal"><span class="pre">--start</span></tt> (or <tt class="docutils literal"><span class="pre">--stop--)</span>&nbsp; <span class="pre">and</span> <span class="pre">``--processes</span></tt> options
-to run the service as a daemon process or run multiple instances simultaneously.</p>
+<p><tt class="docutils literal"><span class="pre">TotoService</span></tt> can be used to write general processes that take advantage of the process creation/management features
+used by <tt class="docutils literal"><span class="pre">TotoServer</span></tt> and <tt class="docutils literal"><span class="pre">TotoWorker</span></tt> - the two built in subclasses of <tt class="docutils literal"><span class="pre">TotoService</span></tt>.  <tt class="docutils literal"><span class="pre">TotoService</span></tt> subclasses can be
+run with the <tt class="docutils literal"><span class="pre">--start</span></tt> (or <tt class="docutils literal"><span class="pre">--stop</span></tt>)  and <tt class="docutils literal"><span class="pre">--processes</span></tt> options
+to start the service as a daemon process or run multiple instances simultaneously.</p>
 <p>To run a subclass of <tt class="docutils literal"><span class="pre">TotoService</span></tt> create a script like this:</p>
 <div class="highlight-python"><pre>from toto.service import TotoService
 
@@ -71,8 +70,8 @@ MyServiceSubclass('conf_file.conf').run()</pre>
 <dl class="class">
 <dt id="toto.service.TotoService">
 <em class="property">class </em><tt class="descclassname">toto.service.</tt><tt class="descname">TotoService</tt><big>(</big><em>conf_file=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/toto/service.html#TotoService"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.TotoService" title="Permalink to this definition">¶</a></dt>
-<dd><p>Subclass <tt class="docutils literal"><span class="pre">TotoService</span></tt> to create a process that you can easily daemonise and that
-can interact with Toto&#8217;s event system.</p>
+<dd><p>Subclass <tt class="docutils literal"><span class="pre">TotoService</span></tt> to create a service that can be easily daemonised or
+ran in multiple processes simultaneously.</p>
 </dd></dl>
 
 <dl class="method">
@@ -86,6 +85,23 @@ service process.</p>
 <dt id="toto.service.TotoService.main_loop">
 <tt class="descclassname">TotoService.</tt><tt class="descname">main_loop</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/service.html#TotoService.main_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.TotoService.main_loop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subclass <tt class="docutils literal"><span class="pre">TotoService</span></tt> and override <tt class="docutils literal"><span class="pre">main_loop()</span></tt> with your desired functionality.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.service.TotoService.prepare">
+<tt class="descclassname">TotoService.</tt><tt class="descname">prepare</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/service.html#TotoService.prepare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.TotoService.prepare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Override this method in a <tt class="docutils literal"><span class="pre">TotoService</span></tt> subclass and it will be called before any service processes
+are created. You can set instance variables here and they will be available in <tt class="docutils literal"><span class="pre">main_loop()</span></tt> but be
+careful that any retained objects are safe to access across processes</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.service.TotoService.finish">
+<tt class="descclassname">TotoService.</tt><tt class="descname">finish</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/service.html#TotoService.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.TotoService.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Override this method in a <tt class="docutils literal"><span class="pre">TotoService</span></tt> subclass and it will be called after all service processes
+have exited (after each <tt class="docutils literal"><span class="pre">main_loop()</span></tt> has returned).</p>
+<p>Note: This method will only be called once and only after all child processes have finished. If any
+processes hang, this method will not be called.</p>
 </dd></dl>
 
 </div>
