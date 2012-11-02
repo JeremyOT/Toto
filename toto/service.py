@@ -1,9 +1,7 @@
-'''The Toto package comes with tools that can help make server maintanence and other tasks a little easier.
-  Namely, ``TotoService`` can be used to write general processes that take advantage of some of the features
-  of ``TotoServer`` and ``TotoWorker`` like process creation/management and the Toto events system.
-
-  Like ``TotoServer``, subclasses of ``TotoService`` can be run with the ``--start`` (or ``--stop--)  and ``--processes`` options
-  to run the service as a daemon process or run multiple instances simultaneously.
+'''``TotoService`` can be used to write general processes that take advantage of the process creation/management features
+  used by ``TotoServer`` and ``TotoWorker`` - the two built in subclasses of ``TotoService``.  ``TotoService`` subclasses can be
+  run with the ``--start`` (or ``--stop``)  and ``--processes`` options
+  to start the service as a daemon process or run multiple instances simultaneously.
   
   To run a subclass of ``TotoService`` create a script like this::
 
@@ -43,8 +41,8 @@ def pid_path_with_id(p, i):
   return os.path.join(d, f)
 
 class TotoService(object):
-  '''Subclass ``TotoService`` to create a process that you can easily daemonise and that
-  can interact with Toto's event system.
+  '''Subclass ``TotoService`` to create a service that can be easily daemonised or
+  ran in multiple processes simultaneously.
   '''
 
   def _load_options(self, conf_file=None, **kwargs):
@@ -166,6 +164,6 @@ class TotoService(object):
     have exited (after each ``main_loop()`` has returned).
 
     Note: This method will only be called once and only after all child processes have finished. If any
-    processes hang this method will not be called.'''
+    processes hang, this method will not be called.'''
     pass
 
