@@ -116,20 +116,25 @@ def raw_response(fn):
   __copy_attributes(fn, wrapper)
   return wrapper
 
-def jsonp(fn):
+def jsonp(callback_name='jsonp'):
   '''Invoke functions marked with the ``@jsonp`` decorator will return a wrapper response that will
   call a client-side javascript function. This decorator requires a "jsonp" parameter set to the name of the javascript
   callback function to be passed with the request. If no "jsonp" parameter is passed, the request will respond
-  as like any other Toto request.
+  like any other Toto request. The decorator can be applied with an optional ``callback_name`` argument to
+  specify a parameter to use instead of "jsonp", e.g.::
+  
+    @jsonp('callback')
+    def invoke(handler, parameters):
+      #do stuff
+  
+  Will allow JSONP requests that call the function specified by "callback" in their response. Applying the
+  decorator without the ``callback_name`` parameter will use the default "jsonp"::
+
+    @jsonp
+    def invoke(handler, parameters):
+      #do stuff
 
   Note: JSONP requests will only be affected by decorators before ``@jsonp`` in the decorator chain.
-  '''
-  return jsonp_with_parameter('jsonp')(fn)
-
-def jsonp_with_parameter(callback_name):
-  '''Behaves the same as ``@jsonp`` but allows a custom name for the JSONP callback to be passed to
-  the decorator. ``callback_name`` will be treated exactly like the "jsonp" parameter when used
-  with the ``@jsonp`` decorator.
   '''
   def decorator(fn):
     def wrapper(handler, parameters):
@@ -142,7 +147,12 @@ def jsonp_with_parameter(callback_name):
         return fn(handler, parameters)
     __copy_attributes(fn, wrapper)
     return wrapper
-  return decorator
+
+  if isinstance(callback_name, basestring):
+    return decorator
+  fn = callback_name
+  callback_name = 'jsonp'
+  return decorator(fn)
 
 def error_redirect(redirect_map, default=None):
   '''Invoke functions marked with the ``@error_redirect`` decorator will redirect according to the ``redirect_map``
