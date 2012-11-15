@@ -49,12 +49,10 @@
           <div class="body">
             
   <h1>Source code for toto.service</h1><div class="highlight"><pre>
-<span class="sd">&#39;&#39;&#39;The Toto package comes with tools that can help make server maintanence and other tasks a little easier.</span>
-<span class="sd">  Namely, ``TotoService`` can be used to write general processes that take advantage of some of the features</span>
-<span class="sd">  of ``TotoServer`` and ``TotoWorker`` like process creation/management and the Toto events system.</span>
-
-<span class="sd">  Like ``TotoServer``, subclasses of ``TotoService`` can be run with the ``--start`` (or ``--stop--)  and ``--processes`` options</span>
-<span class="sd">  to run the service as a daemon process or run multiple instances simultaneously.</span>
+<span class="sd">&#39;&#39;&#39;``TotoService`` can be used to write general processes that take advantage of the process creation/management features</span>
+<span class="sd">  used by ``TotoServer`` and ``TotoWorker`` - the two built in subclasses of ``TotoService``.  ``TotoService`` subclasses can be</span>
+<span class="sd">  run with the ``--start`` (or ``--stop``)  and ``--processes`` options</span>
+<span class="sd">  to start the service as a daemon process or run multiple instances simultaneously.</span>
 <span class="sd">  </span>
 <span class="sd">  To run a subclass of ``TotoService`` create a script like this::</span>
 
@@ -94,8 +92,8 @@
   <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 
 <div class="viewcode-block" id="TotoService"><a class="viewcode-back" href="../../service.html#toto.service.TotoService">[docs]</a><span class="k">class</span> <span class="nc">TotoService</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-  <span class="sd">&#39;&#39;&#39;Subclass ``TotoService`` to create a process that you can easily daemonise and that</span>
-<span class="sd">  can interact with Toto&#39;s event system.</span>
+  <span class="sd">&#39;&#39;&#39;Subclass ``TotoService`` to create a service that can be easily daemonised or</span>
+<span class="sd">  ran in multiple processes simultaneously.</span>
 <span class="sd">  &#39;&#39;&#39;</span>
 
   <span class="k">def</span> <span class="nf">_load_options</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conf_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -217,7 +215,7 @@
 <span class="sd">    have exited (after each ``main_loop()`` has returned).</span>
 
 <span class="sd">    Note: This method will only be called once and only after all child processes have finished. If any</span>
-<span class="sd">    processes hang this method will not be called.&#39;&#39;&#39;</span>
+<span class="sd">    processes hang, this method will not be called.&#39;&#39;&#39;</span>
     <span class="k">pass</span>
 </pre></div></div></div>
 

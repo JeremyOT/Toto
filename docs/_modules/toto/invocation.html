@@ -170,16 +170,43 @@
 <div class="viewcode-block" id="jsonp"><a class="viewcode-back" href="../../invocation.html#toto.invocation.jsonp">[docs]</a><span class="k">def</span> <span class="nf">jsonp</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@jsonp`` decorator will return a wrapper response that will</span>
 <span class="sd">  call a client-side javascript function. This decorator requires a &quot;jsonp&quot; parameter set to the name of the javascript</span>
-<span class="sd">  callback function to be passed with the request.</span>
+<span class="sd">  callback function to be passed with the request. If no &quot;jsonp&quot; parameter is passed, the request will respond</span>
+<span class="sd">  like any other Toto request. The decorator can be applied with an optional ``callback_name`` argument to</span>
+<span class="sd">  specify a parameter to use instead of &quot;jsonp&quot;. E.g. use::</span>
+<span class="sd">  </span>
+<span class="sd">    @jsonp(&#39;callback&#39;)</span>
+<span class="sd">    def invoke(handler, parameters):</span>
+<span class="sd">      #do stuff</span>
+<span class="sd">  </span>
+<span class="sd">  To allow JSONP requests that will use call the function specified by &quot;callback&quot; in their response, or::</span>
+
+<span class="sd">    @jsonp</span>
+<span class="sd">    def invoke(handler, parameters):</span>
+<span class="sd">      #do stuff</span>
+<span class="sd">  </span>
+<span class="sd">  To use the default &quot;jsonp&quot; parameter.</span>
+
+<span class="sd">  Note: JSONP requests will only be affected by decorators before ``@jsonp`` in the decorator chain.</span>
 <span class="sd">  &#39;&#39;&#39;</span>
-  <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
-    <span class="n">callback</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;jsonp&#39;</span><span class="p">]</span>
-    <span class="k">del</span> <span class="n">parameters</span><span class="p">[</span><span class="s">&#39;jsonp&#39;</span><span class="p">]</span>
-    <span class="n">handler</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">))),</span> <span class="s">&#39;text/javascript&#39;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="bp">None</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
-  <span class="k">return</span> <span class="n">wrapper</span>
+  <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+      <span class="n">callback</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">callback_name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">parameters</span><span class="p">[</span><span class="n">callback_name</span><span class="p">]</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">))),</span> <span class="s">&#39;text/javascript&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+  <span class="k">return</span> <span class="n">jsonp_with_parameter</span><span class="p">(</span><span class="s">&#39;jsonp&#39;</span><span class="p">)(</span><span class="n">fn</span><span class="p">)</span>
 </div>
+<span class="k">def</span> <span class="nf">jsonp_with_parameter</span><span class="p">(</span><span class="n">callback_name</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Behaves the same as ``@jsonp`` but allows a custom name for the JSONP callback to be passed to</span>
+<span class="sd">  the decorator. ``callback_name`` will be treated exactly like the &quot;jsonp&quot; parameter when used</span>
+<span class="sd">  with the ``@jsonp`` decorator.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
 <div class="viewcode-block" id="error_redirect"><a class="viewcode-back" href="../../invocation.html#toto.invocation.error_redirect">[docs]</a><span class="k">def</span> <span class="nf">error_redirect</span><span class="p">(</span><span class="n">redirect_map</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Invoke functions marked with the ``@error_redirect`` decorator will redirect according to the ``redirect_map``</span>
 <span class="sd">  dictionary. ``redirect_map`` should consist of ``status_code``, ``url`` pairs. This decorator will check the ``code``</span>

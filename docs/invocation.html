@@ -145,7 +145,20 @@ By default this will be &#8220;application/octet-stream&#8221;.</p>
 <tt class="descclassname">toto.invocation.</tt><tt class="descname">jsonp</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#jsonp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.jsonp" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;jsonp</span></tt> decorator will return a wrapper response that will
 call a client-side javascript function. This decorator requires a &#8220;jsonp&#8221; parameter set to the name of the javascript
-callback function to be passed with the request.</p>
+callback function to be passed with the request. If no &#8220;jsonp&#8221; parameter is passed, the request will respond
+like any other Toto request. The decorator can be applied with an optional <tt class="docutils literal"><span class="pre">callback_name</span></tt> argument to
+specify a parameter to use instead of &#8220;jsonp&#8221;, e.g.:</p>
+<div class="highlight-python"><pre>@jsonp('callback')
+def invoke(handler, parameters):
+  #do stuff</pre>
+</div>
+<p>Will allow JSONP requests that call the function specified by &#8220;callback&#8221; in their response. Applying the
+decorator without the <tt class="docutils literal"><span class="pre">callback_name</span></tt> parameter will use the default &#8220;jsonp&#8221;:</p>
+<div class="highlight-python"><pre>@jsonp
+def invoke(handler, parameters):
+  #do stuff</pre>
+</div>
+<p>Note: JSONP requests will only be affected by decorators before <tt class="docutils literal"><span class="pre">&#64;jsonp</span></tt> in the decorator chain.</p>
 </dd></dl>
 
 <dl class="function">
