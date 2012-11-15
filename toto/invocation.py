@@ -124,16 +124,25 @@ def jsonp(fn):
 
   Note: JSONP requests will only be affected by decorators before ``@jsonp`` in the decorator chain.
   '''
-  def wrapper(handler, parameters):
-    callback = parameters.get('jsonp', None)
-    if callback:
-      del parameters['jsonp']
-      handler.respond_raw('%s(%s)' % (callback, json.dumps(fn(handler, parameters))), 'text/javascript')
-      return None
-    else:
-      return fn(handler, parameters)
-  __copy_attributes(fn, wrapper)
-  return wrapper
+  return jsonp_with_parameter('jsonp')(fn)
+
+def jsonp_with_parameter(callback_name):
+  '''Behaves the same as ``@jsonp`` but allows a custom name for the JSONP callback to be passed to
+  the decorator. ``callback_name`` will be treated exactly like the "jsonp" parameter when used
+  with the ``@jsonp`` decorator.
+  '''
+  def decorator(fn):
+    def wrapper(handler, parameters):
+      callback = parameters.get(callback_name, None)
+      if callback:
+        del parameters[callback_name]
+        handler.respond_raw('%s(%s)' % (callback, json.dumps(fn(handler, parameters))), 'text/javascript')
+        return None
+      else:
+        return fn(handler, parameters)
+    __copy_attributes(fn, wrapper)
+    return wrapper
+  return decorator
 
 def error_redirect(redirect_map, default=None):
   '''Invoke functions marked with the ``@error_redirect`` decorator will redirect according to the ``redirect_map``
