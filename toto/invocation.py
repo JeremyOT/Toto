@@ -119,13 +119,19 @@ def raw_response(fn):
 def jsonp(fn):
   '''Invoke functions marked with the ``@jsonp`` decorator will return a wrapper response that will
   call a client-side javascript function. This decorator requires a "jsonp" parameter set to the name of the javascript
-  callback function to be passed with the request.
+  callback function to be passed with the request. If no "jsonp" parameter is passed, the request will respond
+  as like any other Toto request.
+
+  Note: JSONP requests will only be affected by decorators before ``@jsonp`` in the decorator chain.
   '''
   def wrapper(handler, parameters):
-    callback = parameters['jsonp']
-    del parameters['jsonp']
-    handler.respond_raw('%s(%s)' % (callback, json.dumps(fn(handler, parameters))), 'text/javascript')
-    return None
+    callback = parameters.get('jsonp', None)
+    if callback:
+      del parameters['jsonp']
+      handler.respond_raw('%s(%s)' % (callback, json.dumps(fn(handler, parameters))), 'text/javascript')
+      return None
+    else:
+      return fn(handler, parameters)
   __copy_attributes(fn, wrapper)
   return wrapper
 
