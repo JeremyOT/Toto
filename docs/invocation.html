@@ -142,7 +142,7 @@ By default this will be &#8220;application/octet-stream&#8221;.</p>
 
 <dl class="function">
 <dt id="toto.invocation.jsonp">
-<tt class="descclassname">toto.invocation.</tt><tt class="descname">jsonp</tt><big>(</big><em>fn</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#jsonp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.jsonp" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">jsonp</tt><big>(</big><em>callback_name='jsonp'</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#jsonp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation.jsonp" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invoke functions marked with the <tt class="docutils literal"><span class="pre">&#64;jsonp</span></tt> decorator will return a wrapper response that will
 call a client-side javascript function. This decorator requires a &#8220;jsonp&#8221; parameter set to the name of the javascript
 callback function to be passed with the request. If no &#8220;jsonp&#8221; parameter is passed, the request will respond
