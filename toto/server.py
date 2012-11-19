@@ -17,8 +17,6 @@ from tornado.web import *
 from tornado.ioloop import *
 from tornado.options import define, options
 from handler import TotoHandler
-from sockets import TotoSocketHandler
-from clientsideworker import ClientSideWorkerSocketHandler
 from toto.service import TotoService
 from dbconnection import configured_connection
 import logging
@@ -81,8 +79,10 @@ class TotoServer(TotoService):
     self.__event_init = options.event_init_module and __import__(options.event_init_module) or None
     TotoHandler.configure()
     if options.use_web_sockets:
+      from sockets import TotoSocketHandler
       TotoSocketHandler.configure()
     if options.client_side_worker_path:
+      from clientsideworker import ClientSideWorkerSocketHandler
       ClientSideWorkerSocketHandler.configure()
     tornado.options.define = define
 

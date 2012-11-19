@@ -21,8 +21,8 @@ setup(
   platforms=['OS X', 'Linux'],
   url='https://github.com/JeremyOT/Toto',
   packages=['toto','toto.methods','toto.methods.account'],
-  requires=['tornado(>=2.1)','pbkdf2(>=1.3)','pyzmq(>=2.2.0)'],
-  install_requires=['tornado>=2.1','pbkdf2>=1.3','pyzmq>=2.2.0'],
+  requires=['tornado(>=2.1)',],
+  install_requires=['tornado>=2.1',],
   provides=['toto',],
   scripts=['scripts/toto-create',],
   description='A Tornado based framework designed to accelerate web service development',
@@ -31,3 +31,20 @@ setup(
   package_data={'toto': template_files}
   )
 
+print """
+*****************************************************************************
+
+By default, Toto will not connect to a database. Connect to a database with
+the --database option. Database functionality requires the following modules:
+
+  pbkdf2>=1.3
+
+  MySQL: MySQL-python>=1.2.3
+  Redis: redis>=2.4.12, hiredis>=0.1.1 (optional)
+  Postres: psycopg2>=2.4.5
+  MongoDB: pymongo>=2.1
+
+Toto's events framework requires pyzmq>=2.2.0
+
+*****************************************************************************
+"""

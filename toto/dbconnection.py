@@ -60,7 +60,7 @@ class DBConnection(object):
 
 from tornado.options import define, options
 
-define("database", metavar='mysql|mongodb|redis|postgres|none', default="mongodb", help="the database driver to use")
+define("database", metavar='mysql|mongodb|redis|postgres|none', default="none", help="the database driver to use")
 define("db_host", default='localhost', help="The host to use for database connections.")
 define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
 define("mysql_database", type=str, help="Main MySQL schema name")
