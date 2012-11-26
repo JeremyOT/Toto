@@ -33,8 +33,8 @@ define("debug", default=False, help="Set this to true to prevent Toto from nicel
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
 def pid_path(i):
-  '''A function method that is used to generate PID files for daemonized TotoServices. Child processes with PID files
-  matching the paths returned by this function will be killed when the server daemon process is stopped with the
+  '''Used to generate PID files for daemonized TotoServices. Child processes with PID files
+  matching the paths returned by this function will be killed with SIGTERM when the server daemon process is stopped using the
   ``--stop`` or ``--daemon=stop`` arguments::
 
     proc = Process()
