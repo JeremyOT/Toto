@@ -10,3 +10,9 @@ Toto Services
   .. automethod:: TotoService.main_loop
   .. automethod:: TotoService.prepare
   .. automethod:: TotoService.finish
+
+  Utility Functions
+  -----------------
+
+  .. autofunction:: process_count
+  .. autofunction:: pid_path

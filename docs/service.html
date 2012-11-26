@@ -104,6 +104,31 @@ have exited (after each <tt class="docutils literal"><span class="pre">main_loop
 processes hang, this method will not be called.</p>
 </dd></dl>
 
+<div class="section" id="utility-functions">
+<h2>Utility Functions<a class="headerlink" href="#utility-functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="toto.service.process_count">
+<tt class="descclassname">toto.service.</tt><tt class="descname">process_count</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/service.html#process_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.process_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of service processes that will run with the current configuration. This will match
+the <tt class="docutils literal"><span class="pre">--processes=n</span></tt> option if n &gt;= 0. Otherwise <tt class="docutils literal"><span class="pre">multiprocessing.cpu_count()</span></tt> will be used.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.service.pid_path">
+<tt class="descclassname">toto.service.</tt><tt class="descname">pid_path</tt><big>(</big><em>i</em><big>)</big><a class="reference internal" href="_modules/toto/service.html#pid_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.service.pid_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to generate PID files for daemonized TotoServices. Child processes with PID files
+matching the paths returned by this function will be killed with SIGTERM when the server daemon process is stopped using the
+<tt class="docutils literal"><span class="pre">--stop</span></tt> or <tt class="docutils literal"><span class="pre">--daemon=stop</span></tt> arguments:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">proc</span> <span class="o">=</span> <span class="n">Process</span><span class="p">()</span>
+<span class="n">proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pid_path</span><span class="p">(</span><span class="n">process_count</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+  <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">pid</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Note that <tt class="docutils literal"><span class="pre">i</span></tt> must be an integer.</p>
+</dd></dl>
+
+</div>
 </div>
 
 
@@ -112,6 +137,14 @@ processes hang, this method will not be called.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Toto Services</a><ul>
+<li><a class="reference internal" href="#utility-functions">Utility Functions</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="methods.html"
                         title="previous chapter">Built-in Methods</a></p>

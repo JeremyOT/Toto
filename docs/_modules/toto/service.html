@@ -83,14 +83,32 @@
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;debug&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line&quot;</span><span class="p">)</span>
 
 <span class="c">#convert p to the absolute path, insert &quot;.i&quot; before the last &quot;.&quot; or at the end of the path</span>
-<span class="k">def</span> <span class="nf">pid_path_with_id</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
-  <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+<div class="viewcode-block" id="pid_path"><a class="viewcode-back" href="../../service.html#toto.service.pid_path">[docs]</a><span class="k">def</span> <span class="nf">pid_path</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A function method that is used to generate PID files for daemonized TotoServices. Child processes with PID files</span>
+<span class="sd">  matching the paths returned by this function will be killed when the server daemon process is stopped with the</span>
+<span class="sd">  ``--stop`` or ``--daemon=stop`` arguments::</span>
+
+<span class="sd">    proc = Process()</span>
+<span class="sd">    proc.start()</span>
+<span class="sd">    with open(pid_path(process_count() + 1), &#39;wb&#39;) as f:</span>
+<span class="sd">      f.write(str(proc.pid))</span>
+<span class="sd">  </span>
+<span class="sd">  Note that ``i`` must be an integer.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">))</span>
   <span class="n">components</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
   <span class="n">f</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span>
   <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">components</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
     <span class="n">f</span> <span class="o">+=</span> <span class="s">&quot;.&quot;</span> <span class="o">+</span> <span class="n">components</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
   <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="process_count"><a class="viewcode-back" href="../../service.html#toto.service.process_count">[docs]</a><span class="k">def</span> <span class="nf">process_count</span><span class="p">():</span>
+  <span class="sd">&#39;&#39;&#39;Returns the number of service processes that will run with the current configuration. This will match</span>
+<span class="sd">  the ``--processes=n`` option if n &gt;= 0. Otherwise ``multiprocessing.cpu_count()`` will be used.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">return</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">cpu_count</span><span class="p">()</span>
 
+</div>
 <div class="viewcode-block" id="TotoService"><a class="viewcode-back" href="../../service.html#toto.service.TotoService">[docs]</a><span class="k">class</span> <span class="nc">TotoService</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Subclass ``TotoService`` to create a service that can be easily daemonised or</span>
 <span class="sd">  ran in multiple processes simultaneously.</span>
@@ -125,9 +143,9 @@
       <span class="bp">self</span><span class="o">.</span><span class="n">main_loop</span><span class="p">()</span>
       <span class="k">if</span> <span class="n">pidfile</span><span class="p">:</span>
         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pidfile</span><span class="p">)</span>
-    <span class="n">count</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">processes</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">cpu_count</span><span class="p">()</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">process_count</span><span class="p">()</span>
     <span class="n">processes</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">pidfiles</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="ow">and</span> <span class="p">[</span><span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="n">pidfiles</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="ow">and</span> <span class="p">[</span><span class="n">pid_path</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="p">[]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
       <span class="n">proc</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">start_server_process</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">pidfiles</span> <span class="ow">and</span> <span class="n">pidfiles</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">))</span>
@@ -156,7 +174,7 @@
       <span class="kn">import</span> <span class="nn">multiprocessing</span>
       <span class="kn">import</span> <span class="nn">signal</span><span class="o">,</span> <span class="nn">re</span>
 
-      <span class="n">pattern</span> <span class="o">=</span> <span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="s">r&#39;\d+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">r&#39;\.&#39;</span><span class="p">)</span>
+      <span class="n">pattern</span> <span class="o">=</span> <span class="n">pid_path</span><span class="p">(</span><span class="s">r&#39;\d+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="s">r&#39;\.&#39;</span><span class="p">)</span>
       <span class="n">piddir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
 
       <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">daemon</span> <span class="o">==</span> <span class="s">&#39;restart&#39;</span><span class="p">:</span>
@@ -181,7 +199,7 @@
         <span class="k">if</span> <span class="n">existing_pidfiles</span><span class="p">:</span>
           <span class="k">print</span> <span class="s">&quot;Not starting </span><span class="si">%s</span><span class="s">, pidfile</span><span class="si">%s</span><span class="s"> exist</span><span class="si">%s</span><span class="s"> at </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;s&#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="s">&#39;s&#39;</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">existing_pidfiles</span><span class="p">))</span>
           <span class="k">return</span>
-        <span class="n">pidfile</span> <span class="o">=</span> <span class="n">pid_path_with_id</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">pidfile</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">pidfile</span> <span class="o">=</span> <span class="n">pid_path</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="c">#fork and only continue on child process</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">fork</span><span class="p">():</span>
           <span class="c">#detach from controlling terminal</span>

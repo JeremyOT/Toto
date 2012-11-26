@@ -68,8 +68,6 @@
 <span class="kn">from</span> <span class="nn">tornado.ioloop</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
 <span class="kn">from</span> <span class="nn">handler</span> <span class="kn">import</span> <span class="n">TotoHandler</span>
-<span class="kn">from</span> <span class="nn">sockets</span> <span class="kn">import</span> <span class="n">TotoSocketHandler</span>
-<span class="kn">from</span> <span class="nn">clientsideworker</span> <span class="kn">import</span> <span class="n">ClientSideWorkerSocketHandler</span>
 <span class="kn">from</span> <span class="nn">toto.service</span> <span class="kn">import</span> <span class="n">TotoService</span>
 <span class="kn">from</span> <span class="nn">dbconnection</span> <span class="kn">import</span> <span class="n">configured_connection</span>
 <span class="kn">import</span> <span class="nn">logging</span>
@@ -132,8 +130,10 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">__event_init</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">event_init_module</span> <span class="ow">and</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">event_init_module</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">None</span>
     <span class="n">TotoHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">use_web_sockets</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">sockets</span> <span class="kn">import</span> <span class="n">TotoSocketHandler</span>
       <span class="n">TotoSocketHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">client_side_worker_path</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">clientsideworker</span> <span class="kn">import</span> <span class="n">ClientSideWorkerSocketHandler</span>
       <span class="n">ClientSideWorkerSocketHandler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
     <span class="n">tornado</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">define</span> <span class="o">=</span> <span class="n">define</span>
 
