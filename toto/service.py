@@ -32,13 +32,31 @@ define("nodaemon", default=False, help="Alias for daemon='' for command line usa
 define("debug", default=False, help="Set this to true to prevent Toto from nicely formatting generic errors. With debug=True, errors will print to the command line")
 
 #convert p to the absolute path, insert ".i" before the last "." or at the end of the path
-def pid_path_with_id(p, i):
-  (d, f) = os.path.split(os.path.abspath(p))
+def pid_path(i):
+  '''A function method that is used to generate PID files for daemonized TotoServices. Child processes with PID files
+  matching the paths returned by this function will be killed when the server daemon process is stopped with the
+  ``--stop`` or ``--daemon=stop`` arguments::
+
+    proc = Process()
+    proc.start()
+    with open(pid_path(process_count() + 1), 'wb') as f:
+      f.write(str(proc.pid))
+  
+  Note that ``i`` must be an integer.
+  '''
+  (d, f) = os.path.split(os.path.abspath(options.pidfile))
   components = f.rsplit('.', 1)
   f = '%s.%s' % (components[0], i)
   if len(components) > 1:
     f += "." + components[1]
   return os.path.join(d, f)
+
+def process_count():
+  '''Returns the number of service processes that will run with the current configuration. This will match
+  the ``--processes=n`` option if n >= 0. Otherwise ``multiprocessing.cpu_count()`` will be used.
+  '''
+  return options.processes if options.processes >= 0 else cpu_count()
+
 
 class TotoService(object):
   '''Subclass ``TotoService`` to create a service that can be easily daemonised or
@@ -74,9 +92,9 @@ class TotoService(object):
       self.main_loop()
       if pidfile:
         os.remove(pidfile)
-    count = options.processes if options.processes >= 0 else cpu_count()
+    count = process_count()
     processes = []
-    pidfiles = options.daemon and [pid_path_with_id(options.pidfile, i) for i in xrange(1, count + 1)] or []
+    pidfiles = options.daemon and [pid_path(i) for i in xrange(1, count + 1)] or []
     self.prepare()
     for i in xrange(count):
       proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i], i))
@@ -105,7 +123,7 @@ class TotoService(object):
       import multiprocessing
       import signal, re
 
-      pattern = pid_path_with_id(options.pidfile, r'\d+').replace('.', r'\.')
+      pattern = pid_path(r'\d+').replace('.', r'\.')
       piddir = os.path.dirname(pattern)
 
       if options.daemon == 'stop' or options.daemon == 'restart':
@@ -130,7 +148,7 @@ class TotoService(object):
         if existing_pidfiles:
           print "Not starting %s, pidfile%s exist%s at %s" % (self.__class__.__name__, len(existing_pidfiles) > 1 and 's' or '', len(existing_pidfiles) == 1 and 's' or '', ', '.join(existing_pidfiles))
           return
-        pidfile = pid_path_with_id(options.pidfile, 0)
+        pidfile = pid_path(0)
         #fork and only continue on child process
         if not os.fork():
           #detach from controlling terminal

@@ -10,7 +10,7 @@ import sys
 import time
 from threading import Thread
 from multiprocessing import Process, cpu_count
-from toto.service import TotoService
+from toto.service import TotoService, process_count, pid_path
 from toto.dbconnection import configured_connection
 
 define("method_module", default='methods', help="The root module to use for method lookup")
@@ -57,11 +57,15 @@ class TotoWorkerService(TotoService):
     self.balancer = None
     if options.worker_address:
       self.balancer = ProcessDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+      self.balancer.daemon = True
       self.balancer.bind_in(options.worker_address)
       self.balancer.bind_out(options.worker_socket_address)
       self.balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER')
       self.balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
       self.balancer.start()
+      if options.daemon:
+        with open(pid_path(process_count() + 1), 'wb') as f:
+          f.write(str(self.balancer.launcher.pid))
     count = options.processes if options.processes >= 0 else cpu_count()
     if count == 0:
       print 'Starting load balancer. Listening on "%s". Routing to "%s"' % (options.worker_address, options.worker_socket_address)
