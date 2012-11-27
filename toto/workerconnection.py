@@ -115,10 +115,9 @@ class WorkerConnection(object):
       logging.error(format_exc())
     self.log_error = instancemethod(log_error, self)
 
-  _instance = None
   @classmethod
   def instance(cls):
-    if not cls._instance:
+    if not hasattr(cls, '_instance'):
       cls._instance = cls(options.worker_address, retry_ms=options.worker_retry_ms, compression=options.worker_compression_module and __import__(options.worker_compression_module), serialization=options.worker_serialization_module and __import__(options.worker_serialization_module))
     return cls._instance
 

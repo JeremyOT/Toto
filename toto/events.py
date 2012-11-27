@@ -94,12 +94,12 @@ class EventManager():
           handlers = self.__handlers[event_name]
           for handler in list(handlers):
             if not handler[3]:
-              handler = handlers.remove(handler)
+              handlers.remove(handler)
             try:
               if handler[2] and handler[2]._finished:
                 continue
               if handler[1]:
-                IOLoop.instance().add_callback(lambda: handler[0](event_args))
+                (lambda h: IOLoop.instance().add_callback(lambda: h[0](event_args)))(handler)
               else:
                 handler[0](event_args)
             except Exception as e:
@@ -137,11 +137,10 @@ class EventManager():
     for socket in self.__queued_servers:
       socket.send(event_data)
 
-  _instance = None
-  @staticmethod
-  def instance():
+  @classmethod
+  def instance(cls):
     '''Returns the shared instance of ``EventManager``, instantiating on the first call.
     '''
-    if not EventManager._instance:
-      EventManager._instance = EventManager()
-    return EventManager._instance
+    if not hasattr(cls, '_instance'):
+      cls._instance = cls()
+    return cls._instance
