@@ -13,7 +13,7 @@ for (path, dirs, files) in os.walk('templates'):
 
 setup(
   name='Toto',
-  version='0.9.6',
+  version='0.9.7',
   author='JeremyOT',
   author_email='',
   download_url='https://github.com/JeremyOT/Toto/zipball/master',
@@ -44,7 +44,7 @@ the --database option. Database functionality requires the following modules:
   Postres: psycopg2>=2.4.5
   MongoDB: pymongo>=2.1
 
-Toto's events framework requires pyzmq>=2.2.0
+Toto's event and worker frameworks require pyzmq>=2.2.0
 
 *****************************************************************************
 """
