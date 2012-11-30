@@ -8,8 +8,6 @@ from collections import deque
 import logging
 import traceback
 
-_task_queues = {}
-
 class TaskQueue():
   '''Instances will run up to ``thread_count`` tasks at a time
   whenever there are tasks in the queue.
@@ -64,15 +62,17 @@ class TaskQueue():
     queued tasks/'''
     return len(self.threads) + len(self.tasks)
 
-  @staticmethod
-  def instance(name, thread_count=1):
+  @classmethod
+  def instance(cls, name, thread_count=1):
     '''A convenience method for accessing shared instances of ``TaskQueue``.
     If ``name`` references an existing instance created with this method,
     that instance will be returned. Otherwise, a new ``TaskQueue`` will be
     instantiated with ``thread_count`` threads and stored under ``name``.
     '''
+    if not hasattr(cls, '_task_queues'):
+      cls._task_queues = {}
     try:
-      return _task_queues[name]
+      return cls._task_queues[name]
     except KeyError:
-      _task_queues[name] = TaskQueue(thread_count)
-      return _task_queues[name]
+      cls._task_queues[name] = cls(thread_count)
+      return cls._task_queues[name]
