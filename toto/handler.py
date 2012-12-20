@@ -46,7 +46,7 @@ class TotoHandler(RequestHandler):
   respectively.
   '''
 
-  SUPPORTED_METHODS = ["POST", "OPTIONS", "GET"]
+  SUPPORTED_METHODS = {"POST", "OPTIONS", "GET"}
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
   def initialize(self, db_connection):
