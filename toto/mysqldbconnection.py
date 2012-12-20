@@ -52,12 +52,12 @@ class MySQLdbSession(TotoSession):
 
 class MySQLdbConnection(DBConnection):
 
-  def create_tables(self):
+  def create_tables(self, database):
     if not self.db.get('''show tables like "account"'''):
       self.db.execute('''create table if not exists `account` (
         `account_id` int(8) unsigned not null auto_increment,
         `password` char(48) default null,
-        `user_id` varchar(45) not null,
+        `user_id` varchar(191) not null,
         primary key (`account_id`),
         unique key `user_id_unique` (`user_id`),
         index `user_id_password` (`user_id`, `password`)
@@ -75,7 +75,7 @@ class MySQLdbConnection(DBConnection):
 
   def __init__(self, host, database, username, password, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = Connection(host, database, username, password)
-    self.create_tables()
+    self.create_tables(database)
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
     self.session_renew = session_renew or self.session_ttl
