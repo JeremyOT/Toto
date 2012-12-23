@@ -64,7 +64,7 @@ class TotoWorkerService(TotoService):
       self.balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
       self.balancer.start()
       if options.daemon:
-        with open(pid_path(process_count() + 1), 'wb') as f:
+        with open(pid_path(0), 'wb') as f:
           f.write(str(self.balancer.launcher.pid))
     count = options.processes if options.processes >= 0 else cpu_count()
     if count == 0:

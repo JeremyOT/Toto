@@ -94,7 +94,7 @@ class TotoService(object):
         os.remove(pidfile)
     count = process_count()
     processes = []
-    pidfiles = options.daemon and [pid_path(i) for i in xrange(1, count + 1)] or []
+    pidfiles = options.daemon and [pid_path(i) for i in xrange(2, count + 2)] or []
     self.prepare()
     for i in xrange(count):
       proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i], i))
@@ -148,7 +148,7 @@ class TotoService(object):
         if existing_pidfiles:
           print "Not starting %s, pidfile%s exist%s at %s" % (self.__class__.__name__, len(existing_pidfiles) > 1 and 's' or '', len(existing_pidfiles) == 1 and 's' or '', ', '.join(existing_pidfiles))
           return
-        pidfile = pid_path(0)
+        pidfile = pid_path(1)
         #fork and only continue on child process
         if not os.fork():
           #detach from controlling terminal
