@@ -58,7 +58,7 @@ class TotoHandler(RequestHandler):
     self.body = None
     self.registered_event_handlers = []
     self.__active_methods = []
-    self.head_request = False
+    self.headers_only = False
 
   @classmethod
   def configure(cls):
@@ -144,7 +144,6 @@ class TotoHandler(RequestHandler):
       e = TotoException(ERROR_SERVER, repr(e))
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       return e.__dict__
-      
 
   def invoke_method(self, path, request_body, parameters, finish_by_default=True):
     result = None
@@ -171,7 +170,7 @@ class TotoHandler(RequestHandler):
   
   @tornado.web.asynchronous
   def head(self, path=None):
-    self.head_request = True
+    self.headers_only = True
     self.get(path)
 
   @tornado.web.asynchronous
@@ -265,7 +264,7 @@ class TotoHandler(RequestHandler):
     to send the response in multiple calls to ``respond_raw``.
     '''
     self.add_header('content-type', content_type)
-    if not self.head_request:
+    if not self.headers_only:
       self.write(body)
     if finish:
       self.finish()
