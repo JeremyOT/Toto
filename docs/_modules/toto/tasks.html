@@ -59,8 +59,6 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
 
-<span class="n">_task_queues</span> <span class="o">=</span> <span class="p">{}</span>
-
 <div class="viewcode-block" id="TaskQueue"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue">[docs]</a><span class="k">class</span> <span class="nc">TaskQueue</span><span class="p">():</span>
   <span class="sd">&#39;&#39;&#39;Instances will run up to ``thread_count`` tasks at a time</span>
 <span class="sd">  whenever there are tasks in the queue.</span>
@@ -115,18 +113,20 @@
 <span class="sd">    queued tasks/&#39;&#39;&#39;</span>
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span>
 </div>
-  <span class="nd">@staticmethod</span>
-<div class="viewcode-block" id="TaskQueue.instance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.instance">[docs]</a>  <span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TaskQueue.instance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.instance">[docs]</a>  <span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;A convenience method for accessing shared instances of ``TaskQueue``.</span>
 <span class="sd">    If ``name`` references an existing instance created with this method,</span>
 <span class="sd">    that instance will be returned. Otherwise, a new ``TaskQueue`` will be</span>
 <span class="sd">    instantiated with ``thread_count`` threads and stored under ``name``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="s">&#39;_task_queues&#39;</span><span class="p">):</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">try</span><span class="p">:</span>
-      <span class="k">return</span> <span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+      <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-      <span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">TaskQueue</span><span class="p">(</span><span class="n">thread_count</span><span class="p">)</span>
-      <span class="k">return</span> <span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div></div>
+      <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">thread_count</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div></div>
 </pre></div>
 
           </div>

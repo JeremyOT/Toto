@@ -21,6 +21,12 @@ Servers, Handlers and Sessions
   .. automethod:: toto.handler.TotoHandler.respond
   .. automethod:: toto.handler.TotoHandler.respond_raw
   .. automethod:: toto.handler.TotoHandler.on_connection_close
+  .. attribute::  toto.handler.TotoHandler.headers_only
+    
+    Will be set to ``True`` if the handler is expected to send only response headers. By default,
+    this will only be set for "HEAD" requests. When ``True``, ``respond()`` and ``respond_raw()``
+    will not write a body. Check this property in method implementations to avoid performing
+    unnecessary work when a body is not required.
 
   Event Framework
   ^^^^^^^^^^^^^^^

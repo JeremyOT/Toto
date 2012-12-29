@@ -97,7 +97,7 @@
 <span class="sd">  respectively.</span>
 <span class="sd">  &#39;&#39;&#39;</span>
 
-  <span class="n">SUPPORTED_METHODS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;OPTIONS&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">]</span>
+  <span class="n">SUPPORTED_METHODS</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;OPTIONS&quot;</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;HEAD&quot;</span><span class="p">}</span>
   <span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">allow_origin</span>
 
   <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_connection</span><span class="p">):</span>
@@ -109,6 +109,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">__active_methods</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">head_request</span> <span class="o">=</span> <span class="bp">False</span>
 
   <span class="nd">@classmethod</span>
   <span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
@@ -220,6 +221,11 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-expose-headers&#39;</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span><span class="p">)</span>
   
   <span class="nd">@tornado.web.asynchronous</span>
+  <span class="k">def</span> <span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">head_request</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+  <span class="nd">@tornado.web.asynchronous</span>
   <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="n">parameters</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="c"># Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1</span>
@@ -310,7 +316,8 @@
 <span class="sd">    to send the response in multiple calls to ``respond_raw``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;content-type&#39;</span><span class="p">,</span> <span class="n">content_type</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_request</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">finish</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
 </div>

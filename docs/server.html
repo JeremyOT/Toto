@@ -163,6 +163,15 @@ def on_connection_close(handler):
 </div>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="toto.server.toto.handler.TotoHandler.headers_only">
+<tt class="descclassname">toto.handler.TotoHandler.</tt><tt class="descname">headers_only</tt><a class="headerlink" href="#toto.server.toto.handler.TotoHandler.headers_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>Will be set to <tt class="docutils literal"><span class="pre">True</span></tt> if the handler is expected to send only response headers. By default,
+this will only be set for &#8220;HEAD&#8221; requests. When <tt class="docutils literal"><span class="pre">True</span></tt>, <tt class="docutils literal"><span class="pre">respond()</span></tt> and <tt class="docutils literal"><span class="pre">respond_raw()</span></tt>
+will not write a body. Check this property in method implementations to avoid performing
+unnecessary work when a body is not required.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="event-framework">
 <h3>Event Framework<a class="headerlink" href="#event-framework" title="Permalink to this headline">¶</a></h3>
