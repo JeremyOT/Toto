@@ -46,7 +46,7 @@ class TotoHandler(RequestHandler):
   respectively.
   '''
 
-  SUPPORTED_METHODS = {"POST", "OPTIONS", "GET"}
+  SUPPORTED_METHODS = {"POST", "OPTIONS", "GET", "HEAD"}
   ACCESS_CONTROL_ALLOW_ORIGIN = options.allow_origin
 
   def initialize(self, db_connection):
@@ -58,6 +58,7 @@ class TotoHandler(RequestHandler):
     self.body = None
     self.registered_event_handlers = []
     self.__active_methods = []
+    self.head_request = False
 
   @classmethod
   def configure(cls):
@@ -169,6 +170,11 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
   
   @tornado.web.asynchronous
+  def head(self, path=None):
+    self.head_request = True
+    self.get(path)
+
+  @tornado.web.asynchronous
   def get(self, path=None):
     parameters = {}
     # Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1
@@ -259,7 +265,8 @@ class TotoHandler(RequestHandler):
     to send the response in multiple calls to ``respond_raw``.
     '''
     self.add_header('content-type', content_type)
-    self.write(body)
+    if not self.head_request:
+      self.write(body)
     if finish:
       self.finish()
 
