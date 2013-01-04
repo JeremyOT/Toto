@@ -18,9 +18,10 @@
 
 import os
 import tornado
-from tornado.options import define, options
 import logging
+from tornado.options import define, options
 from multiprocessing import Process, cpu_count
+from time import sleep
 
 define("daemon", metavar='start|stop|restart', help="Start, stop or restart this script as a daemon process. Use this setting in conf files, the shorter start, stop, restart aliases as command line arguments. Requires the multiprocessing module.")
 define("processes", default=1, help="The number of daemon processes to run")
@@ -94,7 +95,7 @@ class TotoService(object):
         os.remove(pidfile)
     count = process_count()
     processes = []
-    pidfiles = options.daemon and [pid_path(i) for i in xrange(2, count + 2)] or []
+    pidfiles = options.daemon and [pid_path(i) for i in xrange(1, count + 1)] or []
     self.prepare()
     for i in xrange(count):
       proc = Process(target=start_server_process, args=(pidfiles and pidfiles[i], i))
@@ -125,9 +126,15 @@ class TotoService(object):
 
       pattern = pid_path(r'\d+').replace('.', r'\.')
       piddir = os.path.dirname(pattern)
+      master_pidfile = pid_path('master')
 
       if options.daemon == 'stop' or options.daemon == 'restart':
         existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
+        try:
+          with open(master_pidfile, 'rb') as f:
+            master_pid = int(f.read())
+        except:
+          master_pid = 0
         for pidfile in existing_pidfiles:
           try:
             with open(pidfile, 'r') as f:
@@ -142,13 +149,23 @@ class TotoService(object):
           except (OSError, IOError) as e:
             if e.errno != 2:
               raise
+        if not existing_pidfiles and master_pid:
+          try:
+            os.kill(master_pid, signal.SIGTERM)
+          except OSError as e:
+            if e.errno != 3:
+              raise
+          os.remove(master_pidfile)
+          print 'Force stopped %s %s' % (self.__class__.__name__, master_pid)
+        else:
+          while os.path.exists(master_pidfile):
+            sleep(0.01)
 
       if options.daemon == 'start' or options.daemon == 'restart':
-        existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern, pidfile)]
+        existing_pidfiles = [pidfile for pidfile in (os.path.join(piddir, fn) for fn in os.listdir(os.path.dirname(pattern))) if re.match(pattern.replace(r'\d', r'[\w\d]'), pidfile)]
         if existing_pidfiles:
           print "Not starting %s, pidfile%s exist%s at %s" % (self.__class__.__name__, len(existing_pidfiles) > 1 and 's' or '', len(existing_pidfiles) == 1 and 's' or '', ', '.join(existing_pidfiles))
           return
-        pidfile = pid_path(1)
         #fork and only continue on child process
         if not os.fork():
           #detach from controlling terminal
@@ -156,10 +173,10 @@ class TotoService(object):
           #fork again and write pid to pidfile from parent, run server on child
           pid = os.fork()
           if pid:
-            with open(pidfile, 'w') as f:
+            with open(master_pidfile, 'w') as f:
               f.write(str(pid))
           else:
-            self.__run_service(pidfile)
+            self.__run_service(master_pidfile)
 
       if options.daemon not in ('start', 'stop', 'restart'):
         print "Invalid daemon option: " + options.daemon
@@ -181,7 +198,6 @@ class TotoService(object):
     '''Override this method in a ``TotoService`` subclass and it will be called after all service processes
     have exited (after each ``main_loop()`` has returned).
 
-    Note: This method will only be called once and only after all child processes have finished. If any
-    processes hang, this method will not be called.'''
+    Note: This method will only be called once and only after all child processes have finished.'''
     pass
 
