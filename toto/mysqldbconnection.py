@@ -3,6 +3,8 @@ from toto.exceptions import *
 from toto.session import *
 from time import time, mktime
 from datetime import datetime
+from dbconnection import DBConnection
+from uuid import uuid4
 import toto.secret as secret
 import base64
 import uuid
@@ -11,7 +13,6 @@ import hashlib
 import random
 import string
 import cPickle as pickle
-from dbconnection import DBConnection
 
 class MySQLdbSession(TotoSession):
   _account = None
@@ -54,27 +55,28 @@ class MySQLdbConnection(DBConnection):
 
   def create_tables(self, database):
     if not self.db.get('''show tables like "account"'''):
-      self.db.execute('''create table if not exists `account` (
-        `account_id` int(8) unsigned not null auto_increment,
-        `password` char(48) default null,
+      self.db.execute(''.join(['''create table if not exists `account` (''',
+        self.uuid_account_id and '''`account_id` binary(16) not null,''' or '''`account_id` int(8) unsigned not null auto_increment,''',
+        '''`password` char(48) default null,
         `user_id` varchar(191) not null,
         primary key (`account_id`),
         unique key `user_id_unique` (`user_id`),
         index `user_id_password` (`user_id`, `password`)
-      )''')
+      )''']))
     if not self.db.get('''show tables like "session"'''):
-      self.db.execute('''create table if not exists `session` (
-        `session_id` char(32) not null,
-        `account_id` int(8) unsigned not null,
-        `expires` double not null,
+      self.db.execute(''.join(['''create table if not exists `session` (
+        `session_id` char(32) not null,''',
+        self.uuid_account_id and '''`account_id` binary(16) not null,''' or '''`account_id` int(8) unsigned not null,''',
+        '''`expires` double not null,
         `state` blob,
         primary key (`session_id`),
         index (`expires`),
         foreign key (`account_id`) references `account`(`account_id`)
-      )''')
+      )''']))
 
-  def __init__(self, host, database, username, password, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host, database, username, password, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0, uuid_account_id=False):
     self.db = Connection(host, database, username, password)
+    self.uuid_account_id = uuid_account_id
     self.create_tables(database)
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
@@ -85,9 +87,12 @@ class MySQLdbConnection(DBConnection):
     user_id = user_id.lower()
     if self.db.get("select account_id from account where user_id = %s", user_id):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
+    additional_values.pop('account_id', None)
     values.update(additional_values)
     values['user_id'] = user_id
     values['password'] = secret.password_hash(password)
+    if self.uuid_account_id:
+      values['account_id'] = uuid4().bytes
     self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
   def create_session(self, user_id=None, password=None):
