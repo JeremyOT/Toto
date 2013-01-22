@@ -109,11 +109,11 @@ class TotoHandler(RequestHandler):
       import traceback
       def error_info(self, e):
         if isinstance(e , TotoException):
-          logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
+          logging.error('%s\n%s\nHeaders: %s\n' % (e, traceback.format_exc(), repr(self.request.headers)))
           return e.__dict__
         else:
-          logging.error('%s\nHeaders: %s\n' % (traceback.format_exc(), repr(self.request.headers)))
-          return TotoException(ERROR_SERVER, repr(e)).__dict__
+          logging.error('%s\n%s\nHeaders: %s\n' % (e, traceback.format_exc(), repr(self.request.headers)))
+          return TotoException(ERROR_SERVER, str(e)).__dict__
       cls.error_info = error_info
     cls.__method_root = __import__(options.method_module)
       
@@ -141,7 +141,7 @@ class TotoHandler(RequestHandler):
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       return e.__dict__
     else:
-      e = TotoException(ERROR_SERVER, repr(e))
+      e = TotoException(ERROR_SERVER, str(e))
       logging.error("TotoException: %s Value: %s" % (e.code, e.value))
       return e.__dict__
 
@@ -213,10 +213,9 @@ class TotoHandler(RequestHandler):
     batch_results = {}
     for k, v in ((i, requests[i]) for i in request_keys):
       (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False)
-      batch_results[k] = error is not None and {'error': error} or {'result': result}
+      batch_results[k] = error is not None and {'error': isinstance(error, dict) and error or self.error_info(error)} or {'result': result}
     self.respond(batch_results=batch_results)
 
-  
   def process_request(self, path, request_body, parameters, finish_by_default=True):
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
@@ -237,12 +236,23 @@ class TotoHandler(RequestHandler):
     * application/msgpack - requires msgpack-python
 
     The response will also contain any available session information.
+    
+    To help with error handling in asynchronous methods, calling ``handler.respond(error=<your_error>)`` with a caught
+    exception will trigger a normal Toto error response, log the error and finish the request. This is the same basic
+    flow that is used internally when exceptions are raised from synchronous method calls.
+
+    The "error" property of the response is derived from the ``error`` parameter in the following ways:
+
+    1. If ``error`` is an instance of ``TotoException``, "error" will be a dictionary with "value" and "code" keys matching those of the ``TotoException``.
+    2. In all other cases, ``error`` is first converted to a ``TotoException`` with ``code = <ERROR_SERVER>`` and ``value = str(error)`` before following (1.).
+
+    To send custom error information, pass an instance of ``TotoException`` with ``value = <some_json_serializable_object>``.
     '''
     response = {}
     if result is not None:
       response['result'] = result
     if error:
-      response['error'] = error
+      response['error'] = isinstance(error, dict) and error or self.error_info(error)
     if batch_results:
       response['batch'] = batch_results
     if self.session:
