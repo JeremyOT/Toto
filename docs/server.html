@@ -133,6 +133,15 @@ serialized according to the <tt class="docutils literal"><span class="pre">respo
 <li>application/msgpack - requires msgpack-python</li>
 </ul>
 <p>The response will also contain any available session information.</p>
+<p>To help with error handling in asynchronous methods, calling <tt class="docutils literal"><span class="pre">handler.respond(error=&lt;your_error&gt;)</span></tt> with a caught
+exception will trigger a normal Toto error response, log the error and finish the request. This is the same basic
+flow that is used internally when exceptions are raised from synchronous method calls.</p>
+<p>The &#8220;error&#8221; property of the response is derived from the <tt class="docutils literal"><span class="pre">error</span></tt> parameter in the following ways:</p>
+<ol class="arabic simple">
+<li>If <tt class="docutils literal"><span class="pre">error</span></tt> is an instance of <tt class="docutils literal"><span class="pre">TotoException</span></tt>, &#8220;error&#8221; will be a dictionary with &#8220;value&#8221; and &#8220;code&#8221; keys matching those of the <tt class="docutils literal"><span class="pre">TotoException</span></tt>.</li>
+<li>In all other cases, <tt class="docutils literal"><span class="pre">error</span></tt> is first converted to a <tt class="docutils literal"><span class="pre">TotoException</span></tt> with <tt class="docutils literal"><span class="pre">code</span> <span class="pre">=</span> <span class="pre">&lt;ERROR_SERVER&gt;</span></tt> and <tt class="docutils literal"><span class="pre">value</span> <span class="pre">=</span> <span class="pre">str(error)</span></tt> before following (1.).</li>
+</ol>
+<p>To send custom error information, pass an instance of <tt class="docutils literal"><span class="pre">TotoException</span></tt> with <tt class="docutils literal"><span class="pre">value</span> <span class="pre">=</span> <span class="pre">&lt;some_json_serializable_object&gt;</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
