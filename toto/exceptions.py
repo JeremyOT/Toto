@@ -31,6 +31,6 @@ class TotoException(Exception):
     self.value = value
     self.code = code
   def __str__(self):
-    return json.dumps(self.__dict__)
+    return str(self.__dict__)
   def __repr__(self):
     return repr(self.__dict__)
