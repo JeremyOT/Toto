@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.handler &mdash; Toto 0.9.9 documentation</title>
+    <title>toto.handler &mdash; Toto 0.9.10 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.9.9',
+        VERSION:     '0.9.10',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.9.9 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.9.10 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.9.9 documentation</span></a></h1>
+          <span>Toto 0.9.10 documentation</span></a></h1>
         <h2 class="heading"><span>toto.handler</span></h2>
       </div>
       <div class="topnav">
@@ -137,7 +137,7 @@
       <span class="n">set_cookie</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">secure_cookies</span> <span class="ow">and</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_secure_cookie</span> <span class="ow">or</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_cookie</span>
       <span class="n">get_cookie</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">secure_cookies</span> <span class="ow">and</span> <span class="n">cls</span><span class="o">.</span><span class="n">get_secure_cookie</span> <span class="ow">or</span> <span class="n">cls</span><span class="o">.</span><span class="n">get_cookie</span>
       <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="n">verify_password</span><span class="p">)</span>
         <span class="n">set_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;toto-session-id&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="n">expires_days</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span> <span class="o">/</span> <span class="p">(</span><span class="mf">24.0</span> <span class="o">*</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">)),</span> <span class="n">domain</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">cookie_domain</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
       <span class="n">cls</span><span class="o">.</span><span class="n">create_session</span> <span class="o">=</span> <span class="n">create_session</span>
