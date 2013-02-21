@@ -89,7 +89,7 @@ class TotoHandler(RequestHandler):
       set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
       get_cookie = options.secure_cookies and cls.get_secure_cookie or cls.get_cookie
       def create_session(self, user_id=None, password=None, verify_password=True):
-        self.session = self.db_connection.create_session(user_id, password, verify_password=True)
+        self.session = self.db_connection.create_session(user_id, password, verify_password=verify_password)
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
