@@ -95,12 +95,12 @@ class MySQLdbConnection(DBConnection):
       values['account_id'] = uuid4().bytes
     self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
-  def create_session(self, user_id=None, password=None):
+  def create_session(self, user_id=None, password=None, verify_password=True):
     if not user_id:
       user_id = ''
     user_id = user_id.lower()
     account = user_id and self.db.get("select * from account where user_id = %s", user_id)
-    if user_id and (not account or not secret.verify_password(password, account['password'])):
+    if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     self.db.execute("delete from session where account_id = %s and expires <= %s", account['account_id'], time())

@@ -88,8 +88,8 @@ class TotoHandler(RequestHandler):
       import math
       set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
       get_cookie = options.secure_cookies and cls.get_secure_cookie or cls.get_cookie
-      def create_session(self, user_id=None, password=None):
-        self.session = self.db_connection.create_session(user_id, password)
+      def create_session(self, user_id=None, password=None, verify_password=True):
+        self.session = self.db_connection.create_session(user_id, password, verify_password=True)
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
@@ -315,11 +315,14 @@ class TotoHandler(RequestHandler):
     TotoHandler.event_manager.instance().remove_handler(sig)
     self.registered_event_handlers.remove(sig)
 
-  def create_session(self, user_id=None, password=None):
+  def create_session(self, user_id=None, password=None, verify_password=True):
     '''Create a new session for the given user id and password (or an anonymous session if ``user_id`` is ``None``).
-    After this method is called, the session will be available via ``self.session``.
+    After this method is called, the session will be available via ``self.session``. As with the
+    ``db_connection.create_session()`` method, you may pass ``verify_password=False`` to create a session without
+    checking the password. This can be used to implement alternative authentication methods like Facebook, Twitter
+    and Google+.
     '''
-    self.session = self.db_connection.create_session(user_id, password)
+    self.session = self.db_connection.create_session(user_id, password, verify_password)
     return self.session
 
   def retrieve_session(self, session_id=None):

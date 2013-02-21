@@ -20,10 +20,12 @@ class DBConnection(object):
     '''
     raise NotImplementedError()
 
-  def create_session(self, user_id=None, password=None):
+  def create_session(self, user_id=None, password=None, verify_password=True):
     '''Create a new session for the account with the given ``user_id`` and ``password``, or an anonymous
       session if anonymous sessions are enabled. This method returns a subclass of ``TotoSession``
-      designed for the current backing database.
+      designed for the current backing database. Pass ``verify_password=False`` to create a session
+      without checking the password. This feature can be used to implement alternative authentication
+      methods like Facebook, Twitter or Google+.
     '''
     raise NotImplementedError()
 

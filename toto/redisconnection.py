@@ -60,13 +60,13 @@ class RedisConnection(DBConnection):
     values['password'] = secret.password_hash(password)
     self.db.hmset(account_key, values)
 
-  def create_session(self, user_id=None, password=None):
+  def create_session(self, user_id=None, password=None, verify_password=True):
     user_id = user_id.lower()
     if not user_id:
       user_id = ''
     account_key = _account_key(user_id)
     account = user_id and password and self.db.hmget(account_key, 'user_id', 'password')
-    if user_id and (account[0] != user_id or not secret.verify_password(password, account[1])):
+    if user_id and (account[0] != user_id or (verify_password and not secret.verify_password(password, account[1]))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     ttl = (user_id and self.session_ttl or self.anon_session_ttl)
