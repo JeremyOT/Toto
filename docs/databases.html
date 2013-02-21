@@ -81,10 +81,12 @@ before passing additional arguments to <tt class="docutils literal"><span class=
 
 <dl class="method">
 <dt id="toto.dbconnection.DBConnection.create_session">
-<tt class="descclassname">DBConnection.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_session" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">DBConnection.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em>, <em>verify_password=True</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new session for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>, or an anonymous
 session if anonymous sessions are enabled. This method returns a subclass of <tt class="docutils literal"><span class="pre">TotoSession</span></tt>
-designed for the current backing database.</p>
+designed for the current backing database. Pass <tt class="docutils literal"><span class="pre">verify_password=False</span></tt> to create a session
+without checking the password. This feature can be used to implement alternative authentication
+methods like Facebook, Twitter or Google+.</p>
 </dd></dl>
 
 <dl class="method">

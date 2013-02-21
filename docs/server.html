@@ -202,9 +202,12 @@ associated event is received.</p>
 <h2>Sessions<a class="headerlink" href="#sessions" title="Permalink to this headline">¶</a></h2>
 <dl class="method">
 <dt id="toto.handler.TotoHandler.create_session">
-<tt class="descclassname">TotoHandler.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.create_session" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">TotoHandler.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em>, <em>verify_password=True</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.create_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new session for the given user id and password (or an anonymous session if <tt class="docutils literal"><span class="pre">user_id</span></tt> is <tt class="docutils literal"><span class="pre">None</span></tt>).
-After this method is called, the session will be available via <tt class="docutils literal"><span class="pre">self.session</span></tt>.</p>
+After this method is called, the session will be available via <tt class="docutils literal"><span class="pre">self.session</span></tt>. As with the
+<tt class="docutils literal"><span class="pre">db_connection.create_session()</span></tt> method, you may pass <tt class="docutils literal"><span class="pre">verify_password=False</span></tt> to create a session without
+checking the password. This can be used to implement alternative authentication methods like Facebook, Twitter
+and Google+.</p>
 </dd></dl>
 
 <dl class="method">

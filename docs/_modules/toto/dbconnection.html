@@ -68,10 +68,12 @@
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
 </div>
-<div class="viewcode-block" id="DBConnection.create_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="DBConnection.create_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Create a new session for the account with the given ``user_id`` and ``password``, or an anonymous</span>
 <span class="sd">      session if anonymous sessions are enabled. This method returns a subclass of ``TotoSession``</span>
-<span class="sd">      designed for the current backing database.</span>
+<span class="sd">      designed for the current backing database. Pass ``verify_password=False`` to create a session</span>
+<span class="sd">      without checking the password. This feature can be used to implement alternative authentication</span>
+<span class="sd">      methods like Facebook, Twitter or Google+.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
 </div>
