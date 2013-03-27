@@ -14,14 +14,14 @@ from traceback import format_exc
 
 define("worker_compression_module", type=str, help="The module to use for compressing and decompressing messages to workers. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. Only the default instance will be affected")
 define("worker_serialization_module", type=str, help="The module to use for serializing and deserializing messages to workers. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. Only the default instance will be affected")
-define("worker_timeout_ms", default=10000, help="The default worker (instance()) will wait at least this many milliseconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.")
+define("worker_timeout", default=10.0, help="The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.")
 define("worker_auto_retry", default=False, help="If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.")
 define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 class WorkerConnection(object):
   """Use a ``WorkerConnection`` to make RPCs to the remote worker service or worker/router specified by ``address``. RPC retries
-     and timeouts will happen by at most every ``abs(timeout_ms)`` milliseconds when a periodic callback runs through all active
-     messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout_ms`` must not be
+     and timeouts will happen by at most every ``abs(timeout)`` seconds when a periodic callback runs through all active
+     messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout`` must not be
      ``0``.
 
      Optionally pass any object or module with ``compress`` and ``decompress`` methods as the ``compression`` parameter to
@@ -35,14 +35,14 @@ class WorkerConnection(object):
      congestion in your worker service. Use with caution.
   """
 
-  def __init__(self, address, timeout_ms=10000, compression=None, serialization=None, auto_retry=False):
+  def __init__(self, address, timeout=10.0, compression=None, serialization=None, auto_retry=False):
     self.address = address
     self.message_address = 'inproc://WorkerConnection%s' % id(self)
     self.__context = zmq.Context()
     self.__queue_socket = self.__context.socket(zmq.PUSH)
     self.__queue_socket.bind(self.message_address)
     self.__thread = None
-    self.__timeout_ms = timeout_ms
+    self.__timeout = timeout
     self.__callbacks = {}
     self.__queued_messages = {}
     self.__message_auto_retry = {}
@@ -54,21 +54,21 @@ class WorkerConnection(object):
     self.compress = compression and compression.compress or (lambda x: x)
     self.decompress = compression and compression.decompress or (lambda x: x)
 
-  def invoke(self, method, parameters, callback=None, timeout_ms=0, auto_retry=None):
+  def invoke(self, method, parameters, callback=None, timeout=0, auto_retry=None):
     """Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
-       current ``WorkerConnection`` but ``timeout_ms`` and ``auto_retry`` can be used for invocation specific behavior.
+       current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.
 
-       Note: ``callback`` will be invoked with ``{'error': 'timeout'}`` on ``timeout_ms`` if ``auto_retry`` is false. Invocations
+       Note: ``callback`` will be invoked with ``{'error': 'timeout'}`` on ``timeout`` if ``auto_retry`` is false. Invocations
        set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for
        critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative
-       values of ``timeout_ms`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default
-       values of ``timeout_ms`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.
+       values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default
+       values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.
 
-       Alternativly, you can invoke methods with ``WorkerConnection.<module>.<method>(parameters, callback=None, timeout_ms=0, auto_retry=None)``
+       Alternativly, you can invoke methods with ``WorkerConnection.<module>.<method>(parameters, callback=None, timeout=0, auto_retry=None)``
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
     """
-    self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout_ms, auto_retry)
+    self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout, auto_retry)
   
   def __len__(self):
     return len(self.__queued_messages)
@@ -76,14 +76,14 @@ class WorkerConnection(object):
   def __getattr__(self, path):
     return WorkerInvocation(path, self)
 
-  def _queue_message(self, message, callback=None, timeout_ms=0, auto_retry=None):
+  def _queue_message(self, message, callback=None, timeout=0, auto_retry=None):
     if not self.__ioloop:
       self.start()
     message_id = str(uuid4())
     if callback:
       self.__callbacks[message_id] = callback
-    if timeout_ms != 0:
-      self.__message_timeouts[message_id] = timeout_ms
+    if timeout != 0:
+      self.__message_timeouts[message_id] = timeout
     if auto_retry is not None:
       self.__message_auto_retry[message_id] = auto_retry
     self.__queue_socket.send_multipart(('', message_id, message))
@@ -114,7 +114,7 @@ class WorkerConnection(object):
       worker_stream.on_recv(receive_response)
 
       def queue_message(message):
-        self.__queued_messages[message[1]] = (time() * 1000, message)
+        self.__queued_messages[message[1]] = (time(), message)
         try:
           worker_stream.send_multipart(message)
         except Exception as e:
@@ -122,13 +122,13 @@ class WorkerConnection(object):
       queue_stream.on_recv(queue_message)
 
       def timeout_message():
-        now = time() * 1000
-        for message, retry in [(item[1], self.__message_auto_retry.get(item[1][1], self.__auto_retry)) for item, t in ((i, self.__message_timeouts.get(i[1][1], self.__timeout_ms)) for i in self.__queued_messages.itervalues()) if t >= 0 and (item[0] + t < now)]:
+        now = time()
+        for message, retry in [(item[1], self.__message_auto_retry.get(item[1][1], self.__auto_retry)) for item, t in ((i, self.__message_timeouts.get(i[1][1], self.__timeout)) for i in self.__queued_messages.itervalues()) if t >= 0 and (item[0] + t < now)]:
           if retry:
             queue_message(message)
           else:
             receive_response(('', message[1]), {'error': 'timeout'})
-      timeout_callback = PeriodicCallback(timeout_message, abs(self.__timeout_ms), io_loop = self.__ioloop)
+      timeout_callback = PeriodicCallback(timeout_message, int(abs(self.__timeout * 1000.0)), io_loop = self.__ioloop)
       timeout_callback.start()
 
       self.__ioloop.start()
@@ -155,7 +155,7 @@ class WorkerConnection(object):
   @classmethod
   def instance(cls):
     if not hasattr(cls, '_instance'):
-      cls._instance = cls(options.worker_address, timeout_ms=options.worker_timeout_ms, compression=options.worker_compression_module and __import__(options.worker_compression_module), serialization=options.worker_serialization_module and __import__(options.worker_serialization_module), auto_retry=options.worker_auto_retry)
+      cls._instance = cls(options.worker_address, timeout=options.worker_timeout, compression=options.worker_compression_module and __import__(options.worker_compression_module), serialization=options.worker_serialization_module and __import__(options.worker_serialization_module), auto_retry=options.worker_auto_retry)
     return cls._instance
 
 class WorkerInvocation(object):
@@ -164,8 +164,8 @@ class WorkerInvocation(object):
     self._path = path
     self._connection = connection
 
-  def __call__(self, parameters, callback=None, timeout_ms=0, auto_retry=None):
-    self._connection.invoke(self._path, parameters, callback, timeout_ms, auto_retry)
+  def __call__(self, parameters, callback=None, timeout=0, auto_retry=None):
+    self._connection.invoke(self._path, parameters, callback, timeout, auto_retry)
 
   def __getattr__(self, path):
     return getattr(self._connection, self._path + '.' + path)
