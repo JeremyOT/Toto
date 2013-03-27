@@ -82,7 +82,7 @@ class WorkerConnection(object):
     message_id = str(uuid4())
     if callback:
       self.__callbacks[message_id] = callback
-    if timeout_ms > 0:
+    if timeout_ms != 0:
       self.__message_timeouts[message_id] = timeout_ms
     if auto_retry is not None:
       self.__message_auto_retry[message_id] = auto_retry
@@ -164,8 +164,8 @@ class WorkerInvocation(object):
     self._path = path
     self._connection = connection
 
-  def __call__(self, parameters, callback=None, timeout_ms=0):
-    self._connection.invoke(self._path, parameters, callback, timeout_ms)
+  def __call__(self, parameters, callback=None, timeout_ms=0, auto_retry=None):
+    self._connection.invoke(self._path, parameters, callback, timeout_ms, auto_retry)
 
   def __getattr__(self, path):
     return getattr(self._connection, self._path + '.' + path)
