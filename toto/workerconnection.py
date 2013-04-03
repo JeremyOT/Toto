@@ -19,7 +19,7 @@ define("worker_auto_retry", default=False, help="If True, the default timeout be
 define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
 
 class WorkerConnection(object):
-  """Use a ``WorkerConnection`` to make RPCs to the remote worker service or worker/router specified by ``address``. RPC retries
+  '''Use a ``WorkerConnection`` to make RPCs to the remote worker service or worker/router specified by ``address``. RPC retries
      and timeouts will happen by at most every ``abs(timeout)`` seconds when a periodic callback runs through all active
      messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout`` must not be
      ``0``.
@@ -33,7 +33,7 @@ class WorkerConnection(object):
 
      Use ``auto_retry`` to specify whether or not messages should be retried by default. Retrying messages can cause substantial
      congestion in your worker service. Use with caution.
-  """
+  '''
 
   def __init__(self, address, timeout=10.0, compression=None, serialization=None, auto_retry=False):
     self.address = address
@@ -55,7 +55,7 @@ class WorkerConnection(object):
     self.decompress = compression and compression.decompress or (lambda x: x)
 
   def invoke(self, method, parameters, callback=None, timeout=0, auto_retry=None):
-    """Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
+    '''Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
        current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.
 
@@ -67,7 +67,7 @@ class WorkerConnection(object):
 
        Alternativly, you can invoke methods with ``WorkerConnection.<module>.<method>(parameters, callback=None, timeout=0, auto_retry=None)``
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
-    """
+    '''
     self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout, auto_retry)
   
   def __len__(self):
@@ -154,6 +154,10 @@ class WorkerConnection(object):
 
   @classmethod
   def instance(cls):
+    '''Returns the default instance of ``WorkerConnection`` as configured by the options prefixed
+      with ``worker_``, instantiating it if necessary. Import the ``workerconnection`` module within
+      your ``TotoService`` and run it with ``--help`` to see all available options.
+    '''
     if not hasattr(cls, '_instance'):
       cls._instance = cls(options.worker_address, timeout=options.worker_timeout, compression=options.worker_compression_module and __import__(options.worker_compression_module), serialization=options.worker_serialization_module and __import__(options.worker_serialization_module), auto_retry=options.worker_auto_retry)
     return cls._instance

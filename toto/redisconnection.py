@@ -51,6 +51,8 @@ class RedisConnection(DBConnection):
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
   def create_account(self, user_id, password, additional_values={}, **values):
+    if not user_id:
+      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
     user_id = user_id.lower()
     account_key = _account_key(user_id)
     if self.db.exists(account_key):

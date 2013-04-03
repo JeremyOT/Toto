@@ -1,3 +1,28 @@
+'''The Toto worker and worker connection classes are designed to help build RPC systems,
+allowing you to pass CPU intensive work to other processeses or machines. Workers
+were originally designed for use with the Toto server, making it easy to perform
+long running tasks without effecting the server's responsiveness, but they have been
+designed to be used independently and have no direct ties to the web server
+architecture.
+
+``TotoWorkers`` and ``WorkerConnections`` use ZMQ for messaging and require the ``pyzmq`` module.
+
+The ``TotoWorkerService`` has a built in message router that will round-robin balance incoming
+messages. The router can be disabled through configuration if only one worker process is needed.
+Alternatively, the router can be configured to run without any worker processes, allowing multiple
+machines to share a common router.
+
+Most of the time you'll only need this script to start your server::
+
+  from toto.worker import TotoWorkerService
+  
+  TotoWorkerService('settings.conf').run()
+
+Methods, startup functions and databases can all be configured with the conf file.
+
+Run your startup script with --help to see all available options.
+'''
+
 import os
 import zmq
 from zmq.devices.basedevice import ProcessDevice
@@ -25,7 +50,16 @@ define("compression_module", type=str, help="The module to use for compressing a
 define("serialization_module", type=str, help="The module to use for serializing and deserializing messages. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. You can also set worker.dumps and worker.loads in your startup method for increased flexibility")
 
 class TotoWorkerService(TotoService):
+  '''Instances can be configured in three ways:
 
+  1. (Most common) Pass the path to a config file as the first parameter to the constructor.
+  2. Pass config parameters as command line arguments to the initialization script.
+  3. Pass keyword arguments to the constructor.
+
+  Precidence is as follows:
+
+  Keyword args, config file, command line
+  '''
   def __init__(self, conf_file=None, **kwargs):
     module_options = {'method_module', 'event_init_module'}
     function_options = {'startup_function'}
@@ -107,6 +141,23 @@ class TotoWorkerService(TotoService):
     super(TotoWorkerService, self).run()
 
 class TotoWorker():
+  '''The worker is responsible for processing all RPC calls. An instance
+  will be initialized for each incoming request.
+  
+  You can set the module to use for method delegation via the ``method_module`` parameter.
+  Methods are modules that contain an invoke function::
+
+    def invoke(handler, parameters)
+  
+  The request worker instance will be passed as the first parameter to the invoke function and
+  provides access to the server's database connection. Request parameters will be passed as the
+  second argument to the invoke function.
+
+  Any value returned from a method invocation will be sent to the caller, closing the
+  message->response cycle. If you only need to let the caller know that the task has begun, you
+  should decorate your ``invoke`` function with ``@toto.invocation.asynchronous`` to send a
+  response before processing begins.
+  '''
   def __init__(self, method_module, socket_address, db_connection, compression=None, serialization=None):
     self.context = zmq.Context()
     self.socket_address = socket_address

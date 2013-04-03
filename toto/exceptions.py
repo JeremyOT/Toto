@@ -9,6 +9,7 @@
   * ``ERROR_INVALID_SESSION_ID = 1007``
   * ``ERROR_INVALID_HMAC = 1008``
   * ``ERROR_INVALID_RESPONSE_HMAC = 1009``
+  * ``ERROR_INVALID_USER_ID 1010``
 '''
 
 ERROR_SERVER = 1000
@@ -20,6 +21,7 @@ ERROR_USER_ID_EXISTS = 1006
 ERROR_INVALID_SESSION_ID = 1007
 ERROR_INVALID_HMAC = 1008
 ERROR_INVALID_RESPONSE_HMAC = 1009
+ERROR_INVALID_USER_ID = 1010
 
 class TotoException(Exception):
   '''This class is used to return errors from Toto methods. ``TotoException.value``

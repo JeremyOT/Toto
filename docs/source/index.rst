@@ -11,6 +11,7 @@ Toto Documentation
    overview
    web
    service
+   work
 
 
 Indices and tables

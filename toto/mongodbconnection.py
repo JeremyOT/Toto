@@ -58,6 +58,8 @@ class MongoDBConnection(DBConnection):
     self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
   def create_account(self, user_id, password, additional_values={}, **values):
+    if not user_id:
+      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
     if self.db.accounts.find_one({'user_id': user_id}):
       raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
     values.update(additional_values)
