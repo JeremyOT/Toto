@@ -1,0 +1,104 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Workers and Connections &mdash; Toto 0.10.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.10.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/theme_extras.js"></script>
+    <link rel="top" title="Toto 0.10.0 documentation" href="index.html" />
+    <link rel="next" title="TotoWorker" href="worker.html" />
+    <link rel="prev" title="Toto Services" href="service.html" /> 
+  </head>
+  <body>
+      <div class="header"><h1 class="heading"><a href="index.html">
+          <span>Toto 0.10.0 documentation</span></a></h1>
+        <h2 class="heading"><span>Workers and Connections</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="service.html">Toto Services</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="worker.html">TotoWorker</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="workers-and-connections">
+<h1>Workers and Connections<a class="headerlink" href="#workers-and-connections" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-toto.worker"></span><p>The Toto worker and worker connection classes are designed to help build RPC systems,
+allowing you to pass CPU intensive work to other processeses or machines. Workers
+were originally designed for use with the Toto server, making it easy to perform
+long running tasks without effecting the server&#8217;s responsiveness, but they have been
+designed to be used independently and have no direct ties to the web server
+architecture.</p>
+<p><tt class="docutils literal"><span class="pre">TotoWorkers</span></tt> and <tt class="docutils literal"><span class="pre">WorkerConnections</span></tt> use ZMQ for messaging and require the <tt class="docutils literal"><span class="pre">pyzmq</span></tt> module.</p>
+<p>The <tt class="docutils literal"><span class="pre">TotoWorkerService</span></tt> has a built in message router that will round-robin balance incoming
+messages. The router can be disabled through configuration if only one worker process is needed.
+Alternatively, the router can be configured to run without any worker processes, allowing multiple
+machines to share a common router.</p>
+<p>Most of the time you&#8217;ll only need this script to start your server:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">toto.worker</span> <span class="kn">import</span> <span class="n">TotoWorkerService</span>
+
+<span class="n">TotoWorkerService</span><span class="p">(</span><span class="s">&#39;settings.conf&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Methods, startup functions and databases can all be configured with the conf file.</p>
+<p>Run your startup script with &#8211;help to see all available options.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="worker.html">TotoWorker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="worker.html#worker">Worker</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workerconnection.html">WorkerConnection</a></li>
+</ul>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="service.html">Toto Services</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="worker.html">TotoWorker</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2013, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
