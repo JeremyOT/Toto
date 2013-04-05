@@ -66,18 +66,18 @@ class TotoService(object):
 
   def _load_options(self, conf_file=None, **kwargs):
     for k in kwargs:
-      options[k].set(kwargs[k])
+      setattr(options, k, kwargs[k])
     if conf_file:
       tornado.options.parse_config_file(conf_file)
     tornado.options.parse_command_line()
     if options.start:
-      options['daemon'].set('start')
+      setattr(options, 'daemon', 'start')
     elif options.stop:
-      options['daemon'].set('stop')
+      setattr(options, 'daemon', 'stop')
     elif options.restart:
-      options['daemon'].set('restart')
+      setattr(options, 'daemon', 'restart')
     elif options.nodaemon:
-      options['daemon'].set('')
+      setattr(options, 'daemon', '')
 
   def __init__(self, conf_file=None, **kwargs):
     if options.log_file_prefix:
