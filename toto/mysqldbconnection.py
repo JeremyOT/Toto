@@ -1,4 +1,4 @@
-from tornado.database import *
+from torndb import *
 from toto.exceptions import *
 from toto.session import *
 from time import time, mktime

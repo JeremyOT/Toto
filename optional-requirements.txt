@@ -1,6 +1,7 @@
 pyzmq>=2.2.0
 pbkdf2>=1.3
 MySQL-python>=1.2.3
+torndb>=0.1
 hiredis>=0.1.1
 msgpack-python>=0.1.13
 pycassa>=1.6.0

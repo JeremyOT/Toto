@@ -39,7 +39,7 @@ the --database option. Database functionality requires the following modules:
 
   pbkdf2>=1.3
 
-  MySQL: MySQL-python>=1.2.3
+  MySQL: MySQL-python>=1.2.3, torndb>=0.1
   Redis: redis>=2.4.12, hiredis>=0.1.1 (optional)
   Postres: psycopg2>=2.4.5
   MongoDB: pymongo>=2.1
