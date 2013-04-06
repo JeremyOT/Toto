@@ -19,14 +19,14 @@ setup(
   download_url='https://github.com/JeremyOT/Toto/zipball/master',
   license='MIT License',
   platforms=['OS X', 'Linux'],
-  url='https://github.com/JeremyOT/Toto',
+  url='http://toto.li',
   packages=['toto','toto.methods','toto.methods.account'],
   requires=['tornado(>=2.1)',],
   install_requires=['tornado>=2.1',],
   provides=['toto',],
   scripts=['scripts/toto-create',],
   description='A Tornado based framework designed to accelerate web service development',
-  long_description='Documentation is available at http://jeremyot.com/Toto/docs',
+  long_description='Documentation is available at http://toto.li/docs/',
   classifiers=['License :: OSI Approved :: MIT License', 'Operating System :: POSIX'],
   package_data={'toto': template_files}
   )
