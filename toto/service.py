@@ -64,12 +64,12 @@ class TotoService(object):
   ran in multiple processes simultaneously.
   '''
 
-  def _load_options(self, conf_file=None, **kwargs):
+  def _load_options(self, conf_file=None, final=True, **kwargs):
     for k in kwargs:
       setattr(options, k, kwargs[k])
     if conf_file:
-      tornado.options.parse_config_file(conf_file)
-    tornado.options.parse_command_line()
+      tornado.options.parse_config_file(conf_file, final=False)
+    tornado.options.parse_command_line(final=final)
     if options.start:
       setattr(options, 'daemon', 'start')
     elif options.stop:
