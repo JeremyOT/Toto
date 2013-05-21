@@ -48,6 +48,7 @@ Servers, Handlers and Sessions
   .. automethod:: toto.session.TotoSession.refresh
   .. automethod:: toto.session.TotoSession.save
   .. automethod:: toto.session.TotoSession.get_account
+  .. automethod:: toto.session.TotoSession.set_serializer
 
   The TotoAccount class
   ^^^^^^^^^^^^^^^^^^^^^

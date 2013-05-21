@@ -112,6 +112,6 @@ class TotoSession(object):
   @classmethod
   def set_serializer(cls, serializer):
     '''Set the module that instances of ``TotoSession`` will use to serialize session state. The module must implement ``loads`` and ``dumps``.
-    By default, cPickle is used.
+    By default, ``cPickle`` is used.
     '''
     cls._serializer = serializer
