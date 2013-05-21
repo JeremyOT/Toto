@@ -5,7 +5,6 @@ from datetime import datetime
 from psycopg2.pool import ThreadedConnectionPool
 from itertools import izip
 import toto.secret as secret
-import cPickle as pickle
 import base64
 import uuid
 import hmac
@@ -77,7 +76,7 @@ class PostgresSession(TotoSession):
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.execute("update session set state = %s where session_id = %s", (pickle.dumps(self.state), self.session_id))
+    self._db.execute("update session set state = %s where session_id = %s", (TotoSession._serializer.dumps(self.state), self.session_id))
 
 class PostgresConnection(DBConnection):
 

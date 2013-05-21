@@ -7,7 +7,6 @@ import base64
 import uuid
 import hmac
 import hashlib
-import cPickle as pickle
 import toto.secret as secret
 from dbconnection import DBConnection
 
@@ -33,7 +32,7 @@ class MongoDBSession(TotoSession):
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': pickle.dumps(self.state)}})
+    self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': TotoSession._serializer.dumps(self.state)}})
 
 class MongoDBConnection(DBConnection):
 

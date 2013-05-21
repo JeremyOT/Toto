@@ -7,7 +7,6 @@ import base64
 import uuid
 import hmac
 import hashlib
-import cPickle as pickle
 import toto.secret as secret
 from dbconnection import DBConnection
 
@@ -39,7 +38,7 @@ class RedisSession(TotoSession):
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.hset(_session_key(self.session_id), 'state', pickle.dumps(self.state))
+    self._db.hset(_session_key(self.session_id), 'state', TotoSession._serializer.dumps(self.state))
 
 class RedisConnection(DBConnection):
   

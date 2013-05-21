@@ -59,17 +59,20 @@ class TotoSession(object):
   '''Instances of ``TotoSession`` provide dictionary-like access to current session variables, and the current
   account (if authenticated).
   '''
+
+  _serializer = pickle
+
   def __init__(self, db, session_data):
     self._db = db
     self.user_id = session_data['user_id']
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
-    self.state = 'state' in session_data and session_data['state'] and pickle.loads(str(session_data['state'])) or {}
+    self.state = 'state' in session_data and session_data['state'] and TotoSession._serializer.loads(str(session_data['state'])) or {}
     self._verified = False
 
   def get_account(self, *args):
     '''Load the account associated with this session (if authenticated). Session properties are
-    pickled to a binary string and stored as the ``TotoSession.state`` property, so you don't need to configure your database to handle them in
+    serialized to a binary string and stored as the ``TotoSession.state`` property, so you don't need to configure your database to handle them in
     advance.
     '''
     raise Exception("Unimplemented operation: get_account")
@@ -105,3 +108,10 @@ class TotoSession(object):
     '''Save the session to the database.
     '''
     raise Exception("Unimplemented operation: save")
+
+  @classmethod
+  def set_serializer(cls, serializer):
+    '''Set the module that instances of ``TotoSession`` will use to serialize session state. The module must implement ``loads`` and ``dumps``.
+    By default, cPickle is used.
+    '''
+    cls._serializer = serializer

@@ -12,7 +12,6 @@ import hmac
 import hashlib
 import random
 import string
-import cPickle as pickle
 
 class MySQLdbSession(TotoSession):
   _account = None
@@ -49,7 +48,7 @@ class MySQLdbSession(TotoSession):
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.execute("update session set state = %s where session_id = %s", pickle.dumps(self.state), self.session_id)
+    self._db.execute("update session set state = %s where session_id = %s", TotoSession._serializer.dumps(self.state), self.session_id)
 
 class MySQLdbConnection(DBConnection):
 
