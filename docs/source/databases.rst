@@ -17,3 +17,4 @@ Database Connections
   .. automethod:: DBConnection.clear_sessions
   .. automethod:: DBConnection.change_password
   .. automethod:: DBConnection.generate_password
+  .. automethod:: DBConnection.set_session_cache

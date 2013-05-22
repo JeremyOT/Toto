@@ -60,23 +60,27 @@ class PostgresSession(TotoSession):
       if key != 'account_id':
         super(PostgresSession.PostgresAccount, self).__setitem__(key, value)
     
-  def __init__(self, db, session_data):
-    super(PostgresSession, self).__init__(db, session_data)
+  def __init__(self, db, session_data, session_cache=None):
+    super(PostgresSession, self).__init__(db, session_data, session_cache)
     self.account_id = session_data['account_id']
 
   def get_account(self):
     if not self._account:
       self._account = PostgresSession.PostgresAccount(self)
     return self._account
-  
+
+  def session_data(self):
+    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': session_id, 'state': self.state, 'account_id': self.account_id}
+
   def refresh(self):
-    session_data = self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", (session_id,))
-    self.__init__(session_data)
+    session_data = self._refresh_cache() or self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", (session_id,))
+    self.__init__(session_data, self._session_cache)
 
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    self._db.execute("update session set state = %s where session_id = %s", (TotoSession._serializer.dumps(self.state), self.session_id))
+    if not self._save_cache():
+      self._db.execute("update session set state = %s where session_id = %s", (TotoSession._serializer.dumps(self.state), self.session_id))
 
 class PostgresConnection(DBConnection):
 
@@ -120,14 +124,18 @@ class PostgresConnection(DBConnection):
     if not user_id:
       user_id = ''
     user_id = user_id.lower()
-    account = user_id and self.db.get("select * from account where user_id = %s", (user_id,))
+    account = user_id and self.db.get("select account_id, password from account where user_id = %s", (user_id,))
     if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
-    self.db.execute("delete from session where account_id = %s and expires <= %s", (account['account_id'], time()))
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
-    self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", (account['account_id'], expires, session_id))
-    session = PostgresSession(self.db, {'user_id': user_id, 'expires': expires, 'session_id': session_id, 'account_id': account['account_id']})
+    session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id, 'account_id': account['account_id']}
+    if self._session_cache:
+      self._session_cache.store_session(session_data)
+    else:
+      self.db.execute("delete from session where account_id = %s and expires <= %s", (account['account_id'], time()))
+      self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", (account['account_id'], expires, session_id))
+    session = PostgresSession(self.db, session_data)
     session._verified = True
     return session
 
@@ -136,12 +144,16 @@ class PostgresConnection(DBConnection):
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if session_data['expires'] < (time() + (user_id and self.session_renew or self.anon_session_renew)):
-      session_data['expires'] = time() + (user_id and self.session_ttl or self.anon_session_ttl)
-      self.db.execute("update session set expires = %s where session_id = %s", (session_data['expires'], session_id))
-    session = PostgresSession(self.db, session_data)
     if data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
+    expires = time() + (user_id and self.session_renew or self.anon_session_renew)
+    if session_data['expires'] < expires:
+      session_data['expires'] = expires
+      if self._session_cache:
+        self._session_cache.store_session(session_data)
+      else:
+        self.db.execute("update session set expires = %s where session_id = %s", (session_data['expires'], session_id))
+    session = PostgresSession(self.db, session_data)
     session._verified = True
     return session
 

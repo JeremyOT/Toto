@@ -50,6 +50,15 @@ Servers, Handlers and Sessions
   .. automethod:: toto.session.TotoSession.get_account
   .. automethod:: toto.session.TotoSession.set_serializer
 
+  The TotoSessionCache class
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  .. autoclass:: toto.session.TotoSessionCache
+  
+  .. automethod:: toto.session.TotoSessionCache.store_session
+  .. automethod:: toto.session.TotoSessionCache.load_session
+  .. automethod:: toto.session.TotoSessionCache.set_serializer
+
   The TotoAccount class
   ^^^^^^^^^^^^^^^^^^^^^
 

@@ -62,8 +62,9 @@ class TotoSession(object):
 
   _serializer = pickle
 
-  def __init__(self, db, session_data):
+  def __init__(self, db, session_data, session_cache=None):
     self._db = db
+    self._session_cache = session_cache
     self.user_id = session_data['user_id']
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
@@ -76,6 +77,11 @@ class TotoSession(object):
     advance.
     '''
     raise Exception("Unimplemented operation: get_account")
+
+  def session_data(self):
+    '''Return a session data ``dict`` that could be used to instantiate a session identical to the current one.
+    '''
+    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': session_id, 'state': self.state}
 
   def __getitem__(self, key):
     return key in self.state and self.state[key] or None
@@ -99,15 +105,55 @@ class TotoSession(object):
   def __str__(self):
     return str({'user_id': self.user_id, 'expires': self.expires, 'id': self.session_id, 'state': self.state})
 
+  def _refresh_cache(self):
+    if self._session_cache:
+      return self._session_cache.load_session(self.session_id)
+    return None
+
   def refresh(self):
     '''Refresh the current session to the state in the database.
     '''
     raise Exception("Unimplemented operation: refresh")
 
+  def _save_cache(self):
+    if self._session_cache:
+      self._session_cache.store_session(self.session_data)
+      return True
+    return False
+
   def save(self):
     '''Save the session to the database.
     '''
     raise Exception("Unimplemented operation: save")
+
+  @classmethod
+  def set_serializer(cls, serializer):
+    '''Set the module that instances of ``TotoSession`` will use to serialize session state. The module must implement ``loads`` and ``dumps``.
+    By default, ``cPickle`` is used.
+    '''
+    cls._serializer = serializer
+
+class TotoSessionCache(object):
+  '''Instances of ``TotoSessionCache`` allow for sessions to be stored separately from the main application database. As sessions must be retrieved
+  for each authenticated request, it can be useful to keep them in a specialized database (redis, memcached) separate from the rest of your data.
+
+  Note: cached sessions cannot currently be removed before their expiry.
+  '''
+
+  _serializer = pickle
+
+  def store_session(self, session_data):
+    '''Store a ``TotoSession`` with the given ``session_data``. ``session_data`` can be expected to contain, at a minimum, ``session_id`` and ``expires``.
+    If an existing session matches the ``session_id`` contained in ``session_data``, it should be overwritten. The session is expected to be removed
+    after the time specified by ``expires``.
+    '''
+    raise Exception("Unimplemented operation: store_session")
+
+  def load_session(self, session_id):
+    '''Retrieve the session with the given ``session_id``. This method should return the ``session_data`` ``dict`` that was originally passed to
+    ``store_session()``.
+    '''
+    raise Exception("Unimplemented operation: retrieve_session")
 
   @classmethod
   def set_serializer(cls, serializer):

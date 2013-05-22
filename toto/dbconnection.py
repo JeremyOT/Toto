@@ -11,6 +11,8 @@ class DBConnection(object):
     * ``toto.redisconnection.RedisConnection``
   '''
 
+  _session_cache = None
+
   def create_account(self, user_id, password, additional_values={}, **values):
     '''Create an account for the given ``user_id`` and ``password``. Optionally set additional account
       values by passing them as keyword arguments (the ``additional_values`` parameter is deprecated).
@@ -59,6 +61,12 @@ class DBConnection(object):
     support "forgot password" functionality.
     '''
     raise NotImplementedError()
+
+  def set_session_cache(self, session_cache):
+    '''Optionally set an instance of ``TotoSessionCache`` that will be used to store sessions separately from
+    this database.
+    '''
+    self._session_cache = session_cache
 
 from tornado.options import define, options
 
