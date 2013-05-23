@@ -60,7 +60,7 @@ class TotoSession(object):
   account (if authenticated).
   '''
 
-  _serializer = pickle
+  __serializer = pickle
 
   def __init__(self, db, session_data, session_cache=None):
     self._db = db
@@ -68,7 +68,7 @@ class TotoSession(object):
     self.user_id = session_data['user_id']
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
-    self.state = 'state' in session_data and session_data['state'] and TotoSession._serializer.loads(str(session_data['state'])) or {}
+    self.state = session_data.get('state') and TotoSession.loads(session_data['state']) or {}
     self._verified = False
 
   def get_account(self, *args):
@@ -81,7 +81,7 @@ class TotoSession(object):
   def session_data(self):
     '''Return a session data ``dict`` that could be used to instantiate a session identical to the current one.
     '''
-    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': session_id, 'state': self.state}
+    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state)}
 
   def __getitem__(self, key):
     return key in self.state and self.state[key] or None
@@ -117,7 +117,7 @@ class TotoSession(object):
 
   def _save_cache(self):
     if self._session_cache:
-      self._session_cache.store_session(self.session_data)
+      self._session_cache.store_session(self.session_data())
       return True
     return False
 
@@ -128,10 +128,23 @@ class TotoSession(object):
 
   @classmethod
   def set_serializer(cls, serializer):
-    '''Set the module that instances of ``TotoSession`` will use to serialize session state. The module must implement ``loads`` and ``dumps``.
+    '''Set the module that instances of ``TotoSession`` and ``TotoSessionCache`` will use to serialize session state. The module must implement ``loads`` and ``dumps``
+    and support serialization and deserialization of binary strings.
     By default, ``cPickle`` is used.
     '''
-    cls._serializer = serializer
+    cls.__serializer = serializer
+
+  @classmethod
+  def loads(cls, data):
+    '''A convenience method to call ``serializer.loads()`` on the active serializer.
+    '''
+    return cls.__serializer.loads(str(data))
+
+  @classmethod
+  def dumps(cls, data):
+    '''A convenience method to call ``serializer.dumps()`` on the active serializer.
+    '''
+    return cls.__serializer.dumps(data)
 
 class TotoSessionCache(object):
   '''Instances of ``TotoSessionCache`` allow for sessions to be stored separately from the main application database. As sessions must be retrieved
@@ -139,8 +152,6 @@ class TotoSessionCache(object):
 
   Note: cached sessions cannot currently be removed before their expiry.
   '''
-
-  _serializer = pickle
 
   def store_session(self, session_data):
     '''Store a ``TotoSession`` with the given ``session_data``. ``session_data`` can be expected to contain, at a minimum, ``session_id`` and ``expires``.
@@ -154,10 +165,3 @@ class TotoSessionCache(object):
     ``store_session()``.
     '''
     raise Exception("Unimplemented operation: retrieve_session")
-
-  @classmethod
-  def set_serializer(cls, serializer):
-    '''Set the module that instances of ``TotoSession`` will use to serialize session state. The module must implement ``loads`` and ``dumps``.
-    By default, ``cPickle`` is used.
-    '''
-    cls._serializer = serializer

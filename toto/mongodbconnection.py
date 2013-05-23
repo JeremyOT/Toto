@@ -33,7 +33,7 @@ class MongoDBSession(TotoSession):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     if not self._save_cache(): 
-      self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': TotoSession._serializer.dumps(self.state)}})
+      self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': TotoSession.dumps(self.state)}})
 
 class MongoDBConnection(DBConnection):
 
@@ -67,6 +67,9 @@ class MongoDBConnection(DBConnection):
     values['password'] = secret.password_hash(password)
     self.db.accounts.insert(values)
 
+  def _load_uncached_data(self, session_id):
+    return self.db.sessions.find_one({'session_id': session_id, 'expires': {'$gt': time()}})
+
   def create_session(self, user_id=None, password=None, verify_password=True):
     if not user_id:
       user_id = ''
@@ -76,33 +79,26 @@ class MongoDBConnection(DBConnection):
     session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
-    if self._session_cache:
-      self._session_cache.store_session(session_data)
-    else:
+    if not self._cache_session_data(session_data):
       self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
       self.db.sessions.insert(session_data)
-    session = MongoDBSession(self.db, session_data
+    session = MongoDBSession(self.db, session_data, self._session_cache)
     session._verified = True
     return session
 
   def retrieve_session(self, session_id, hmac_data=None, data=None):
-    if self._session_cache:
-      session_data = self._session_cache.load_session(session_id)
-    else:
-      session_data = self.db.sessions.find_one({'session_id': session_id, 'expires': {'$gt': time()}})
+    session_data = self._load_session_data(session_id)
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
+    if user_id and data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     expires = time() + (user_id and self.session_renew or self.anon_session_renew)
     if session_data['expires'] < expires:
       session_data['expires'] = expires
-      if self._session_cache:
-        self._session_cache.store_session(session_data)
-      else:
+      if not self._cache_session_data(session_data):
         self.db.sesions.update({'session_id': session_id}, {'$set': {'expires': session_data['expires']}})
-    session = MongoDBSession(self.db, session_data)
+    session = MongoDBSession(self.db, session_data, self._session_cache)
     session._verified = True
     return session
 

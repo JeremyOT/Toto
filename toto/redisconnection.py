@@ -32,19 +32,19 @@ class RedisSession(TotoSession):
     return self._account
 
   def refresh(self):
-    session_data = self._refresh_cache() or TotoSession._serializer.loads(self._db.get(_session_key(self.session_id)))
+    session_data = self._refresh_cache() or TotoSession.loads(self._db.get(_session_key(self.session_id)))
     self.__init__(self._db, session_data, self._session_cache)
   
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     if not self._save_cache():
-      self._db.setex(_session_key(self.session_id), int(self.expires - time()), TotoSession._serializer.dumps(self.session_data()))
+      self._db.setex(_session_key(self.session_id), int(self.expires - time()), TotoSession.dumps(self.session_data()))
 
 class RedisConnection(DBConnection):
   
   def __init__(self, host='localhost', port=6379, database=0, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
-    self.db = redis.Redis(host=host, port=port, db=database)
+    self.db = redis.StrictRedis(host=host, port=port, db=database)
     self.session_ttl = session_ttl
     self.anon_session_ttl = anon_session_ttl or self.session_ttl
     self.session_renew = session_renew or self.session_ttl
@@ -62,6 +62,12 @@ class RedisConnection(DBConnection):
     values['password'] = secret.password_hash(password)
     self.db.hmset(account_key, values)
 
+  def _load_uncached_data(self, session_id):
+    data = self.db.get(_session_key(session_id))
+    if data:
+      return TotoSession.loads(data)
+    return None
+
   def create_session(self, user_id=None, password=None, verify_password=True):
     user_id = user_id.lower()
     if not user_id:
@@ -75,35 +81,26 @@ class RedisConnection(DBConnection):
     expires = time() + ttl
     session_key = _session_key(session_id)
     session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
-    if self._session_cache:
-      self._session_cache.store_session(session_data)
-    else:
-      self.db.setex(session_key, int(ttl), TotoSession._serializer.dumps(session_data))
-    session = RedisSession(self.db, session_data)
+    if not self._cache_session_data(session_data):
+      self.db.setex(session_key, int(ttl), TotoSession.dumps(session_data))
+    session = RedisSession(self.db, session_data, self._session_cache)
     session._verified = True
     return session
 
   def retrieve_session(self, session_id, hmac_data=None, data=None):
     session_key = _session_key(session_id)
-    if self._session_cache:
-      session_data = self._session_cache.load_session(session_id)
-    else:
-      session_data = self.db.get(session_key)
-      if session_data:
-        session_data = TotoSession._serializer.loads(session_data)
+    session_data = self._load_session_data(session_id)
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
+    if user_id and data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     ttl = user_id and self.session_renew or self.anon_session_renew
     if session_data['expires'] < (time() + ttl):
       session_data['expires'] = time() + ttl
-      if self._session_cache:
-        self._session_cache.store_session(session_data)
-      else:
-        self.setex(session_key, int(ttl), TotoSession._serializer.dumps(session_data))
-    session = RedisSession(self.db, session_data)
+      if not self._cache_session_data(session_data):
+        self.db.setex(session_key, int(ttl), TotoSession.dumps(session_data))
+    session = RedisSession(self.db, session_data, self._session_cache)
     session._verified = True
     return session
 
@@ -141,7 +138,7 @@ class RedisSessionCache(TotoSessionCache):
 
   def store_session(self, session_data):
     session_key = _session_key(session_data['session_id'])
-    self.db.setex(session_key, int(session_data['expires'] - time()), TotoSessionCache._serializer.dumps(session_data))
+    self.db.setex(session_key, int(session_data['expires'] - time()), TotoSession.dumps(session_data))
 
   def load_session(self, session_id):
     session_key = _session_key(session_id)
@@ -149,5 +146,5 @@ class RedisSessionCache(TotoSessionCache):
     if not session_data:
       return None
     else:
-      return TotoSessionCache._serializer.loads(session_data)
+      return TotoSession.loads(session_data)
     

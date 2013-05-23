@@ -68,6 +68,30 @@ class DBConnection(object):
     '''
     self._session_cache = session_cache
 
+  def _load_session_data(self, session_id):
+    '''Called by ``DBConnection.retrieve_session``. Will attempt to load data from an associated ``TotoSessionCache``.
+    If no ``TotoSessionCache`` is associated with the current instance, the result of ``self._load_uncached_data(session_id)``
+    is returned.
+    '''
+    if self._session_cache:
+      return self._session_cache.load_session(session_id)
+    return self._load_uncached_data(session_id)
+
+  def _load_uncached_data(self, session_id):
+    '''Load a session data ``dict`` from the local database. Called by default and if no ``TotoSessionCache`` has been
+    associated with the current instance of ``DBConnection``. 
+    '''
+    raise NotImplementedError()
+
+  def _cache_session_data(self, session_data):
+    '''Called by ``DBConnection.create_session`` and by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires``.
+    Returns ``True`` if the session has been written to an associated ``TotoSessionCache``, ``False`` otherwise.
+    '''
+    if self._session_cache:
+      self._session_cache.store_session(session_data)
+      return True
+    return False
+
 from tornado.options import define, options
 
 define("database", metavar='mysql|mongodb|redis|postgres|none', default="none", help="the database driver to use")
