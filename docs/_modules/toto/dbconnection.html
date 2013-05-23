@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.dbconnection &mdash; Toto 0.10.1 documentation</title>
+    <title>toto.dbconnection &mdash; Toto 0.11.0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.10.1',
+        VERSION:     '0.11.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.10.1 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.10.1 documentation</span></a></h1>
+          <span>Toto 0.11.0 documentation</span></a></h1>
         <h2 class="heading"><span>toto.dbconnection</span></h2>
       </div>
       <div class="topnav">
@@ -58,6 +58,8 @@
 <span class="sd">    * ``toto.postgresconnection.PostgresConnection``</span>
 <span class="sd">    * ``toto.redisconnection.RedisConnection``</span>
 <span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="n">_session_cache</span> <span class="o">=</span> <span class="bp">None</span>
 
 <div class="viewcode-block" id="DBConnection.create_account"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_account">[docs]</a>  <span class="k">def</span> <span class="nf">create_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">additional_values</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">values</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Create an account for the given ``user_id`` and ``password``. Optionally set additional account</span>
@@ -107,6 +109,36 @@
 <span class="sd">    support &quot;forgot password&quot; functionality.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection.set_session_cache"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.set_session_cache">[docs]</a>  <span class="k">def</span> <span class="nf">set_session_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_cache</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Optionally set an instance of ``TotoSessionCache`` that will be used to store sessions separately from</span>
+<span class="sd">    this database.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span> <span class="o">=</span> <span class="n">session_cache</span>
+</div>
+<div class="viewcode-block" id="DBConnection._load_session_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._load_session_data">[docs]</a>  <span class="k">def</span> <span class="nf">_load_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.retrieve_session``. Will attempt to load data from an associated ``TotoSessionCache``.</span>
+<span class="sd">    If no ``TotoSessionCache`` is associated with the current instance, the result of ``self._load_uncached_data(session_id)``</span>
+<span class="sd">    is returned.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">load_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_uncached_data</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DBConnection._load_uncached_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._load_uncached_data">[docs]</a>  <span class="k">def</span> <span class="nf">_load_uncached_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Load a session data ``dict`` from the local database. Called by default and if no ``TotoSessionCache`` has been</span>
+<span class="sd">    associated with the current instance of ``DBConnection``. </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection._cache_session_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._cache_session_data">[docs]</a>  <span class="k">def</span> <span class="nf">_cache_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session`` and by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires``.</span>
+<span class="sd">    Returns ``True`` if the session has been written to an associated ``TotoSessionCache``, ``False`` otherwise.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">store_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span>
+      <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="bp">False</span>
 </div></div>
 <span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
 

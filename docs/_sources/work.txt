@@ -1,5 +1,5 @@
 Workers and Connections
-===================
+=======================
 
 .. automodule:: toto.worker
 

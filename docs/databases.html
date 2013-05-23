@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Database Connections &mdash; Toto 0.10.1 documentation</title>
+    <title>Database Connections &mdash; Toto 0.11.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.10.1',
+        VERSION:     '0.11.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,14 +27,14 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.10.1 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.0 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Exceptions" href="exceptions.html" />
     <link rel="prev" title="Method Decorators" href="invocation.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.10.1 documentation</span></a></h1>
+          <span>Toto 0.11.0 documentation</span></a></h1>
         <h2 class="heading"><span>Database Connections</span></h2>
       </div>
       <div class="topnav">
@@ -123,6 +123,35 @@ subclasses of <tt class="docutils literal"><span class="pre">TotoSession</span><
 <dd><p>Generates a new password for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and makes it active
 for all future requests. The new password will be returned. This method is designed to
 support &#8220;forgot password&#8221; functionality.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection.set_session_cache">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">set_session_cache</tt><big>(</big><em>session_cache</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.set_session_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.set_session_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optionally set an instance of <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> that will be used to store sessions separately from
+this database.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._load_session_data">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_load_session_data</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._load_session_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._load_session_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt>. Will attempt to load data from an associated <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt>.
+If no <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> is associated with the current instance, the result of <tt class="docutils literal"><span class="pre">self._load_uncached_data(session_id)</span></tt>
+is returned.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._load_uncached_data">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_load_uncached_data</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._load_uncached_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._load_uncached_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a session data <tt class="docutils literal"><span class="pre">dict</span></tt> from the local database. Called by default and if no <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> has been
+associated with the current instance of <tt class="docutils literal"><span class="pre">DBConnection</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._cache_session_data">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_cache_session_data</tt><big>(</big><em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._cache_session_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._cache_session_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt> and by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt> if there is a change in <tt class="docutils literal"><span class="pre">TotoSession.expires</span></tt>.
+Returns <tt class="docutils literal"><span class="pre">True</span></tt> if the session has been written to an associated <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt>, <tt class="docutils literal"><span class="pre">False</span></tt> otherwise.</p>
 </dd></dl>
 
 </div>

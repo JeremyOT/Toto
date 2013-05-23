@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.10.1 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.11.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.10.1',
+        VERSION:     '0.11.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,14 +27,14 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.10.1 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.0 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.10.1 documentation</span></a></h1>
+          <span>Toto 0.11.0 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -221,7 +221,7 @@ in <tt class="docutils literal"><span class="pre">self.session</span></tt>. Alte
 <h3>The TotoSession class<a class="headerlink" href="#the-totosession-class" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="toto.session.TotoSession">
-<em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSession</tt><big>(</big><em>db</em>, <em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSession</tt><big>(</big><em>db</em>, <em>session_data</em>, <em>session_cache=None</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession" title="Permalink to this definition">¶</a></dt>
 <dd><p>Instances of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> provide dictionary-like access to current session variables, and the current
 account (if authenticated).</p>
 </dd></dl>
@@ -242,8 +242,54 @@ account (if authenticated).</p>
 <dt id="toto.session.TotoSession.get_account">
 <tt class="descclassname">TotoSession.</tt><tt class="descname">get_account</tt><big>(</big><em>*args</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.get_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.get_account" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load the account associated with this session (if authenticated). Session properties are
-pickled to a binary string and stored as the <tt class="docutils literal"><span class="pre">TotoSession.state</span></tt> property, so you don&#8217;t need to configure your database to handle them in
+serialized to a binary string and stored as the <tt class="docutils literal"><span class="pre">TotoSession.state</span></tt> property, so you don&#8217;t need to configure your database to handle them in
 advance.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.session.TotoSession.set_serializer">
+<em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">set_serializer</tt><big>(</big><em>serializer</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.set_serializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.set_serializer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the module that instances of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> and <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> will use to serialize session state. The module must implement <tt class="docutils literal"><span class="pre">loads</span></tt> and <tt class="docutils literal"><span class="pre">dumps</span></tt>
+and support serialization and deserialization of binary strings.
+By default, <tt class="docutils literal"><span class="pre">cPickle</span></tt> is used.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.session.TotoSession.loads">
+<em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">loads</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.loads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.loads" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method to call <tt class="docutils literal"><span class="pre">serializer.loads()</span></tt> on the active serializer.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.session.TotoSession.dumps">
+<em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">dumps</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.dumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.dumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method to call <tt class="docutils literal"><span class="pre">serializer.dumps()</span></tt> on the active serializer.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="the-totosessioncache-class">
+<h3>The TotoSessionCache class<a class="headerlink" href="#the-totosessioncache-class" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="toto.session.TotoSessionCache">
+<em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSessionCache</tt><a class="reference internal" href="_modules/toto/session.html#TotoSessionCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSessionCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instances of <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> allow for sessions to be stored separately from the main application database. As sessions must be retrieved
+for each authenticated request, it can be useful to keep them in a specialized database (redis, memcached) separate from the rest of your data.</p>
+<p>Note: cached sessions cannot currently be removed before their expiry.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.session.TotoSessionCache.store_session">
+<tt class="descclassname">TotoSessionCache.</tt><tt class="descname">store_session</tt><big>(</big><em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSessionCache.store_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSessionCache.store_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Store a <tt class="docutils literal"><span class="pre">TotoSession</span></tt> with the given <tt class="docutils literal"><span class="pre">session_data</span></tt>. <tt class="docutils literal"><span class="pre">session_data</span></tt> can be expected to contain, at a minimum, <tt class="docutils literal"><span class="pre">session_id</span></tt> and <tt class="docutils literal"><span class="pre">expires</span></tt>.
+If an existing session matches the <tt class="docutils literal"><span class="pre">session_id</span></tt> contained in <tt class="docutils literal"><span class="pre">session_data</span></tt>, it should be overwritten. The session is expected to be removed
+after the time specified by <tt class="docutils literal"><span class="pre">expires</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.session.TotoSessionCache.load_session">
+<tt class="descclassname">TotoSessionCache.</tt><tt class="descname">load_session</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSessionCache.load_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSessionCache.load_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>. This method should return the <tt class="docutils literal"><span class="pre">session_data</span></tt> <tt class="docutils literal"><span class="pre">dict</span></tt> that was originally passed to
+<tt class="docutils literal"><span class="pre">store_session()</span></tt>.</p>
 </dd></dl>
 
 </div>

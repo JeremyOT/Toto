@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.session &mdash; Toto 0.10.1 documentation</title>
+    <title>toto.session &mdash; Toto 0.11.0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.10.1',
+        VERSION:     '0.11.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.10.1 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.10.1 documentation</span></a></h1>
+          <span>Toto 0.11.0 documentation</span></a></h1>
         <h2 class="heading"><span>toto.session</span></h2>
       </div>
       <div class="topnav">
@@ -107,21 +107,30 @@
   <span class="sd">&#39;&#39;&#39;Instances of ``TotoSession`` provide dictionary-like access to current session variables, and the current</span>
 <span class="sd">  account (if authenticated).</span>
 <span class="sd">  &#39;&#39;&#39;</span>
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+
+  <span class="n">__serializer</span> <span class="o">=</span> <span class="n">pickle</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span> <span class="n">session_cache</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_db</span> <span class="o">=</span> <span class="n">db</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span> <span class="o">=</span> <span class="n">session_cache</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;user_id&#39;</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">expires</span> <span class="o">=</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;expires&#39;</span><span class="p">]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">session_id</span> <span class="o">=</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s">&#39;state&#39;</span> <span class="ow">in</span> <span class="n">session_data</span> <span class="ow">and</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;state&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">session_data</span><span class="p">[</span><span class="s">&#39;state&#39;</span><span class="p">]))</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">session_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;state&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">session_data</span><span class="p">[</span><span class="s">&#39;state&#39;</span><span class="p">])</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_verified</span> <span class="o">=</span> <span class="bp">False</span>
 
 <div class="viewcode-block" id="TotoSession.get_account"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.get_account">[docs]</a>  <span class="k">def</span> <span class="nf">get_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Load the account associated with this session (if authenticated). Session properties are</span>
-<span class="sd">    pickled to a binary string and stored as the ``TotoSession.state`` property, so you don&#39;t need to configure your database to handle them in</span>
+<span class="sd">    serialized to a binary string and stored as the ``TotoSession.state`` property, so you don&#39;t need to configure your database to handle them in</span>
 <span class="sd">    advance.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: get_account&quot;</span><span class="p">)</span>
 </div>
+  <span class="k">def</span> <span class="nf">session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Return a session data ``dict`` that could be used to instantiate a session identical to the current one.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s">&#39;user_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="s">&#39;expires&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">expires</span><span class="p">,</span> <span class="s">&#39;session_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;state&#39;</span><span class="p">:</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)}</span>
+
   <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span>
   
@@ -144,15 +153,66 @@
   <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="nb">str</span><span class="p">({</span><span class="s">&#39;user_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="s">&#39;expires&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">expires</span><span class="p">,</span> <span class="s">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">})</span>
 
+  <span class="k">def</span> <span class="nf">_refresh_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">load_session</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
 <div class="viewcode-block" id="TotoSession.refresh"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.refresh">[docs]</a>  <span class="k">def</span> <span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Refresh the current session to the state in the database.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: refresh&quot;</span><span class="p">)</span>
 </div>
+  <span class="k">def</span> <span class="nf">_save_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">store_session</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_data</span><span class="p">())</span>
+      <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
 <div class="viewcode-block" id="TotoSession.save"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.save">[docs]</a>  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Save the session to the database.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: save&quot;</span><span class="p">)</span></div></div>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: save&quot;</span><span class="p">)</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoSession.set_serializer"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.set_serializer">[docs]</a>  <span class="k">def</span> <span class="nf">set_serializer</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">serializer</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Set the module that instances of ``TotoSession`` and ``TotoSessionCache`` will use to serialize session state. The module must implement ``loads`` and ``dumps``</span>
+<span class="sd">    and support serialization and deserialization of binary strings.</span>
+<span class="sd">    By default, ``cPickle`` is used.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">__serializer</span> <span class="o">=</span> <span class="n">serializer</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoSession.loads"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.loads">[docs]</a>  <span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A convenience method to call ``serializer.loads()`` on the active serializer.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">__serializer</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoSession.dumps"><a class="viewcode-back" href="../../server.html#toto.session.TotoSession.dumps">[docs]</a>  <span class="k">def</span> <span class="nf">dumps</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A convenience method to call ``serializer.dumps()`` on the active serializer.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">__serializer</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="TotoSessionCache"><a class="viewcode-back" href="../../server.html#toto.session.TotoSessionCache">[docs]</a><span class="k">class</span> <span class="nc">TotoSessionCache</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;Instances of ``TotoSessionCache`` allow for sessions to be stored separately from the main application database. As sessions must be retrieved</span>
+<span class="sd">  for each authenticated request, it can be useful to keep them in a specialized database (redis, memcached) separate from the rest of your data.</span>
+
+<span class="sd">  Note: cached sessions cannot currently be removed before their expiry.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="TotoSessionCache.store_session"><a class="viewcode-back" href="../../server.html#toto.session.TotoSessionCache.store_session">[docs]</a>  <span class="k">def</span> <span class="nf">store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Store a ``TotoSession`` with the given ``session_data``. ``session_data`` can be expected to contain, at a minimum, ``session_id`` and ``expires``.</span>
+<span class="sd">    If an existing session matches the ``session_id`` contained in ``session_data``, it should be overwritten. The session is expected to be removed</span>
+<span class="sd">    after the time specified by ``expires``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: store_session&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="TotoSessionCache.load_session"><a class="viewcode-back" href="../../server.html#toto.session.TotoSessionCache.load_session">[docs]</a>  <span class="k">def</span> <span class="nf">load_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Retrieve the session with the given ``session_id``. This method should return the ``session_data`` ``dict`` that was originally passed to</span>
+<span class="sd">    ``store_session()``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Unimplemented operation: retrieve_session&quot;</span><span class="p">)</span></div></div>
 </pre></div>
 
       </div>
