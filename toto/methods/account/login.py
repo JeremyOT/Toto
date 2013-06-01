@@ -3,7 +3,7 @@ from toto.invocation import *
 @requires('user_id', 'password')
 def invoke(handler, params):
   '''Creates a new session for the account matching ``user_id`` and ``password``. If no
-  mathcing account is found, a "User not found" error will be returned.
+  matching account is found, a "User not found" error will be returned.
 
   Requires: ``user_id``, ``password``
   '''

@@ -12,12 +12,24 @@ import json
 This is a list of all attributes that may be added by a decorator,
 it is used to allow decorators to be order agnostic.
 """
-invocation_attributes = ['asynchronous', '__doc__', '__repr__']
+invocation_attributes = ['asynchronous', '__doc__', '__module__', '__name__', '__repr__']
 
-def __copy_attributes(fn, wrapper):
-  for a in invocation_attributes:
+def _add_doc(fn, wrapper, doc):
+  '''A convenience method for appending to a decorated method's docstring.'''
+  wrapper.__name__ = fn.__name__
+  wrapper.__module__ = fn.__module__
+  wrapper.__doc__ = fn.__doc__ and '%s\n\n%s' % (fn.__doc__, doc) or doc
+
+def _copy_attributes(fn, wrapper, doc=None, attributes=invocation_attributes):
+  '''A convenience method for copying certain attributes to a decorated method. Optionally, ``doc``
+  can be passed to append to a the method's docstring. To specify which attributes to copy, pass
+  an iterable as the ``attributes`` argument.
+  '''
+  for a in attributes:
     if hasattr(fn, a):
       setattr(wrapper, a, getattr(fn, a))
+  if doc:
+    _add_doc(fn, wrapper, doc)
 
 def asynchronous(fn):
   '''Invoke functions with the ``@asynchronous`` decorator will not cause the request
@@ -40,7 +52,7 @@ def anonymous_session(fn):
     if not handler.session:
       handler.create_session()
     return fn(handler, parameters)
-  __copy_attributes(fn, wrapper)
+  _copy_attributes(fn, wrapper, '*If not authenticated, this request will use an anonymous session for state persistence*.')
   return wrapper
 
 def authenticated(fn):
@@ -54,7 +66,7 @@ def authenticated(fn):
     if not handler.session or not handler.session.user_id:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     return fn(handler, parameters)
-  __copy_attributes(fn, wrapper)
+  _copy_attributes(fn, wrapper, '*Requires authentication*.')
   return wrapper
 
 def optionally_authenticated(fn):
@@ -65,7 +77,7 @@ def optionally_authenticated(fn):
   def wrapper(handler, parameters):
     handler.retrieve_session()
     return fn(handler, parameters)
-  __copy_attributes(fn, wrapper)
+  _copy_attributes(fn, wrapper)
   return wrapper
 
 def authenticated_with_parameter(fn):
@@ -80,7 +92,7 @@ def authenticated_with_parameter(fn):
     if not handler.session:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     return fn(handler, parameters)
-  __copy_attributes(fn, wrapper)
+  _copy_attributes(fn, wrapper, '*Authenticated session. Requires the session to be passed as* ``session_id``.')
   return wrapper
 
 def requires(*args):
@@ -99,7 +111,7 @@ def requires(*args):
       if missing_parameters:
         raise TotoException(ERROR_MISSING_PARAMS, "Missing parameters: " + ', '.join(missing_parameters))
       return fn(handler, parameters)
-    __copy_attributes(fn, wrapper)
+    _copy_attributes(fn, wrapper, '*Required parameters:* %s.' % ', '.join('``%s``' % i for i in args))
     return wrapper
   return decorator
 
@@ -113,7 +125,7 @@ def raw_response(fn):
     handler.response_type = 'application/octet-stream'
     handler.respond_raw(fn(handler, parameters), handler.response_type)
     return None
-  __copy_attributes(fn, wrapper)
+  _copy_attributes(fn, wrapper)
   return wrapper
 
 def jsonp(callback_name='jsonp'):
@@ -145,7 +157,7 @@ def jsonp(callback_name='jsonp'):
         return None
       else:
         return fn(handler, parameters)
-    __copy_attributes(fn, wrapper)
+    _copy_attributes(fn, wrapper, '*Supports JSONP requests with the callback parameter* ``%s``.' % callback_name)
     return wrapper
 
   if isinstance(callback_name, basestring):
@@ -182,7 +194,7 @@ def error_redirect(redirect_map, default=None):
           handler.redirect(default)
         else:
           raise
-    __copy_attributes(fn, wrapper)
+    _copy_attributes(fn, wrapper)
     return wrapper
   return decorator
 
@@ -196,6 +208,6 @@ def default_parameters(defaults):
         if p not in parameters:
           parameters[p] = defaults[p]
       return fn(handler, parameters)
-    __copy_attributes(fn, wrapper)
+    _copy_attributes(fn, wrapper, '*Automatically adds default parameters:* %s.' % ', '.join(('``%s: %s``' % (k, v) for k, v in defaults.iteritems())))
     return wrapper
   return decorator

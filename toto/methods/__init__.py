@@ -11,5 +11,6 @@ module scope like this::
 In the above examples, Toto's built in ``account.create`` method can be called from
 your method module as ``account_create`` and ``account.create`` respecively.
 '''
+
 import account
 import client_error
