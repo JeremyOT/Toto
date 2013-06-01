@@ -27,7 +27,7 @@ Method Decorators
   .. autofunction:: toto.invocation.error_redirect
 
   Adding Decorators
-  _________________
+  -----------------
 
   .. autofunction:: toto.invocation._copy_attributes
   .. autofunction:: toto.invocation._add_doc
