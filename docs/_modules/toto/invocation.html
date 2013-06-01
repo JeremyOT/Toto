@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.invocation &mdash; Toto 0.11.0 documentation</title>
+    <title>toto.invocation &mdash; Toto 0.11.1 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.0',
+        VERSION:     '0.11.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.0 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.1 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.0 documentation</span></a></h1>
+          <span>Toto 0.11.1 documentation</span></a></h1>
         <h2 class="heading"><span>toto.invocation</span></h2>
       </div>
       <div class="topnav">
@@ -60,13 +60,25 @@
 <span class="sd">This is a list of all attributes that may be added by a decorator,</span>
 <span class="sd">it is used to allow decorators to be order agnostic.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="n">invocation_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;asynchronous&#39;</span><span class="p">,</span> <span class="s">&#39;__doc__&#39;</span><span class="p">,</span> <span class="s">&#39;__repr__&#39;</span><span class="p">]</span>
+<span class="n">invocation_attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;asynchronous&#39;</span><span class="p">,</span> <span class="s">&#39;__doc__&#39;</span><span class="p">,</span> <span class="s">&#39;__module__&#39;</span><span class="p">,</span> <span class="s">&#39;__name__&#39;</span><span class="p">,</span> <span class="s">&#39;__repr__&#39;</span><span class="p">]</span>
 
-<span class="k">def</span> <span class="nf">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">):</span>
-  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">invocation_attributes</span><span class="p">:</span>
+<div class="viewcode-block" id="_add_doc"><a class="viewcode-back" href="../../invocation.html#toto.invocation._add_doc">[docs]</a><span class="k">def</span> <span class="nf">_add_doc</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A convenience method for appending to a decorated method&#39;s docstring.&#39;&#39;&#39;</span>
+  <span class="n">wrapper</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">__name__</span>
+  <span class="n">wrapper</span><span class="o">.</span><span class="n">__module__</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">__module__</span>
+  <span class="n">wrapper</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">__doc__</span> <span class="ow">and</span> <span class="s">&#39;</span><span class="si">%s</span><span class="se">\n\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fn</span><span class="o">.</span><span class="n">__doc__</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="ow">or</span> <span class="n">doc</span>
+</div>
+<div class="viewcode-block" id="_copy_attributes"><a class="viewcode-back" href="../../invocation.html#toto.invocation._copy_attributes">[docs]</a><span class="k">def</span> <span class="nf">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="n">invocation_attributes</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A convenience method for copying certain attributes to a decorated method. Optionally, ``doc``</span>
+<span class="sd">  can be passed to append to a the method&#39;s docstring. To specify which attributes to copy, pass</span>
+<span class="sd">  an iterable as the ``attributes`` argument.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
       <span class="nb">setattr</span><span class="p">(</span><span class="n">wrapper</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">a</span><span class="p">))</span>
-
+  <span class="k">if</span> <span class="n">doc</span><span class="p">:</span>
+    <span class="n">_add_doc</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+</div>
 <div class="viewcode-block" id="asynchronous"><a class="viewcode-back" href="../../invocation.html#toto.invocation.asynchronous">[docs]</a><span class="k">def</span> <span class="nf">asynchronous</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Invoke functions with the ``@asynchronous`` decorator will not cause the request</span>
 <span class="sd">  handler to finish when they return. Use this decorator to support long running</span>
@@ -88,7 +100,7 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
       <span class="n">handler</span><span class="o">.</span><span class="n">create_session</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*If not authenticated, this request will use an anonymous session for state persistence*.&#39;</span><span class="p">)</span>
   <span class="k">return</span> <span class="n">wrapper</span>
 </div>
 <div class="viewcode-block" id="authenticated"><a class="viewcode-back" href="../../invocation.html#toto.invocation.authenticated">[docs]</a><span class="k">def</span> <span class="nf">authenticated</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
@@ -102,7 +114,7 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">user_id</span><span class="p">:</span>
       <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_NOT_AUTHORIZED</span><span class="p">,</span> <span class="s">&quot;Not authorized&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*Requires authentication*.&#39;</span><span class="p">)</span>
   <span class="k">return</span> <span class="n">wrapper</span>
 </div>
 <div class="viewcode-block" id="optionally_authenticated"><a class="viewcode-back" href="../../invocation.html#toto.invocation.optionally_authenticated">[docs]</a><span class="k">def</span> <span class="nf">optionally_authenticated</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
@@ -113,7 +125,7 @@
   <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
     <span class="n">handler</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
   <span class="k">return</span> <span class="n">wrapper</span>
 </div>
 <div class="viewcode-block" id="authenticated_with_parameter"><a class="viewcode-back" href="../../invocation.html#toto.invocation.authenticated_with_parameter">[docs]</a><span class="k">def</span> <span class="nf">authenticated_with_parameter</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
@@ -128,7 +140,7 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">handler</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
       <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_NOT_AUTHORIZED</span><span class="p">,</span> <span class="s">&quot;Not authorized&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*Authenticated session. Requires the session to be passed as* ``session_id``.&#39;</span><span class="p">)</span>
   <span class="k">return</span> <span class="n">wrapper</span>
 </div>
 <div class="viewcode-block" id="requires"><a class="viewcode-back" href="../../invocation.html#toto.invocation.requires">[docs]</a><span class="k">def</span> <span class="nf">requires</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
@@ -147,7 +159,7 @@
       <span class="k">if</span> <span class="n">missing_parameters</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_PARAMS</span><span class="p">,</span> <span class="s">&quot;Missing parameters: &quot;</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_parameters</span><span class="p">))</span>
       <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*Required parameters:* </span><span class="si">%s</span><span class="s">.&#39;</span> <span class="o">%</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&#39;``</span><span class="si">%s</span><span class="s">``&#39;</span> <span class="o">%</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">args</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">wrapper</span>
   <span class="k">return</span> <span class="n">decorator</span>
 </div>
@@ -161,7 +173,7 @@
     <span class="n">handler</span><span class="o">.</span><span class="n">response_type</span> <span class="o">=</span> <span class="s">&#39;application/octet-stream&#39;</span>
     <span class="n">handler</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">),</span> <span class="n">handler</span><span class="o">.</span><span class="n">response_type</span><span class="p">)</span>
     <span class="k">return</span> <span class="bp">None</span>
-  <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+  <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
   <span class="k">return</span> <span class="n">wrapper</span>
 </div>
 <div class="viewcode-block" id="jsonp"><a class="viewcode-back" href="../../invocation.html#toto.invocation.jsonp">[docs]</a><span class="k">def</span> <span class="nf">jsonp</span><span class="p">(</span><span class="n">callback_name</span><span class="o">=</span><span class="s">&#39;jsonp&#39;</span><span class="p">):</span>
@@ -193,7 +205,7 @@
         <span class="k">return</span> <span class="bp">None</span>
       <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*Supports JSONP requests with the callback parameter* ``</span><span class="si">%s</span><span class="s">``.&#39;</span> <span class="o">%</span> <span class="n">callback_name</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">wrapper</span>
 
   <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">callback_name</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
@@ -230,7 +242,7 @@
           <span class="n">handler</span><span class="o">.</span><span class="n">redirect</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
           <span class="k">raise</span>
-    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">wrapper</span>
   <span class="k">return</span> <span class="n">decorator</span>
 </div>
@@ -244,7 +256,7 @@
         <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
           <span class="n">parameters</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="n">p</span><span class="p">]</span>
       <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-    <span class="n">__copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">)</span>
+    <span class="n">_copy_attributes</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrapper</span><span class="p">,</span> <span class="s">&#39;*Automatically adds default parameters:* </span><span class="si">%s</span><span class="s">.&#39;</span> <span class="o">%</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="s">&#39;``</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">``&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">defaults</span><span class="o">.</span><span class="n">iteritems</span><span class="p">())))</span>
     <span class="k">return</span> <span class="n">wrapper</span>
   <span class="k">return</span> <span class="n">decorator</span></div>
 </pre></div>

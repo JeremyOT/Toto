@@ -3,6 +3,9 @@ Built-in Methods
 
 .. automodule:: toto.methods
   
+  Methods
+  =======
+
   .. autofunction:: toto.methods.client_error.invoke
 
   Accounts

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Method Decorators &mdash; Toto 0.11.0 documentation</title>
+    <title>Method Decorators &mdash; Toto 0.11.1 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.11.0',
+        VERSION:     '0.11.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,14 +27,14 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.0 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.1 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Database Connections" href="databases.html" />
     <link rel="prev" title="Servers, Handlers and Sessions" href="server.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.11.0 documentation</span></a></h1>
+          <span>Toto 0.11.1 documentation</span></a></h1>
         <h2 class="heading"><span>Method Decorators</span></h2>
       </div>
       <div class="topnav">
@@ -170,6 +170,23 @@ in <tt class="docutils literal"><span class="pre">redirect_map</span></tt>.</p>
   <span class="k">pass</span>
 </pre></div>
 </div>
+</dd></dl>
+
+</div>
+<div class="section" id="adding-decorators">
+<h2>Adding Decorators<a class="headerlink" href="#adding-decorators" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="toto.invocation._copy_attributes">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">_copy_attributes</tt><big>(</big><em>fn, wrapper, doc=None, attributes=['asynchronous', '__doc__', '__module__', '__name__', '__repr__']</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#_copy_attributes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation._copy_attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method for copying certain attributes to a decorated method. Optionally, <tt class="docutils literal"><span class="pre">doc</span></tt>
+can be passed to append to a the method&#8217;s docstring. To specify which attributes to copy, pass
+an iterable as the <tt class="docutils literal"><span class="pre">attributes</span></tt> argument.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="toto.invocation._add_doc">
+<tt class="descclassname">toto.invocation.</tt><tt class="descname">_add_doc</tt><big>(</big><em>fn</em>, <em>wrapper</em>, <em>doc</em><big>)</big><a class="reference internal" href="_modules/toto/invocation.html#_add_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.invocation._add_doc" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method for appending to a decorated method&#8217;s docstring.</p>
 </dd></dl>
 
 </div>
