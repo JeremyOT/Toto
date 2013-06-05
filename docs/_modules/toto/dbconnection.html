@@ -84,6 +84,14 @@
 <span class="sd">    of the ``x-toto-hmac`` header as ``data`` and ``hmac_data`` respectively to verify an authenticated request.</span>
 <span class="sd">    If ``hmac_data`` and ``data`` are both ``None``, HMAC verification will be skipped. This method returns a</span>
 <span class="sd">    subclasses of ``TotoSession`` designed for the current backing database.</span>
+
+<span class="sd">    Toto uses HMAC verification to ensure that requests and responses are not corrupted in transmission.</span>
+<span class="sd">    The session&#39;s ``user_id`` is used as the key which makes it easy for an attacker to forge a request</span>
+<span class="sd">    so long as they have an active session ID and the associated user ID - both of which are contained</span>
+<span class="sd">    in the response body of each authenticated request. A future update may contain an option to use</span>
+<span class="sd">    a secret key for HMAC verification instead.</span>
+
+<span class="sd">    The use of HTTPS is strongly recommended for any communication involving sensitive information.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
 </div>

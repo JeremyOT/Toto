@@ -96,6 +96,12 @@ methods like Facebook, Twitter or Google+.</p>
 of the <tt class="docutils literal"><span class="pre">x-toto-hmac</span></tt> header as <tt class="docutils literal"><span class="pre">data</span></tt> and <tt class="docutils literal"><span class="pre">hmac_data</span></tt> respectively to verify an authenticated request.
 If <tt class="docutils literal"><span class="pre">hmac_data</span></tt> and <tt class="docutils literal"><span class="pre">data</span></tt> are both <tt class="docutils literal"><span class="pre">None</span></tt>, HMAC verification will be skipped. This method returns a
 subclasses of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> designed for the current backing database.</p>
+<p>Toto uses HMAC verification to ensure that requests and responses are not corrupted in transmission.
+The session&#8217;s <tt class="docutils literal"><span class="pre">user_id</span></tt> is used as the key which makes it easy for an attacker to forge a request
+so long as they have an active session ID and the associated user ID - both of which are contained
+in the response body of each authenticated request. A future update may contain an option to use
+a secret key for HMAC verification instead.</p>
+<p>The use of HTTPS is strongly recommended for any communication involving sensitive information.</p>
 </dd></dl>
 
 <dl class="method">
