@@ -36,6 +36,14 @@ class DBConnection(object):
     of the ``x-toto-hmac`` header as ``data`` and ``hmac_data`` respectively to verify an authenticated request.
     If ``hmac_data`` and ``data`` are both ``None``, HMAC verification will be skipped. This method returns a
     subclasses of ``TotoSession`` designed for the current backing database.
+
+    Toto uses HMAC verification to ensure that requests and responses are not corrupted in transmission.
+    The session's ``user_id`` is used as the key which makes it easy for an attacker to forge a request
+    so long as they have an active session ID and the associated user ID - both of which are contained
+    in the response body of each authenticated request. A future update may contain an option to use
+    a secret key for HMAC verification instead.
+
+    The use of HTTPS is strongly recommended for any communication involving sensitive information.
     '''
     raise NotImplementedError()
 
