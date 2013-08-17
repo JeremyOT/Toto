@@ -16,10 +16,14 @@ define("worker_compression_module", type=str, help="The module to use for compre
 define("worker_serialization_module", type=str, help="The module to use for serializing and deserializing messages to workers. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. Only the default instance will be affected")
 define("worker_timeout", default=10.0, help="The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.")
 define("worker_auto_retry", default=False, help="If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.")
-define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)")
+define("worker_address", default='', help="This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file). A comma separated list may be used to round-robin load balance tasks between workers.")
+
+WORKER_SOCKET_CONNECT = 'CONNECT'
+WORKER_SOCKET_DISCONNECT = 'DISCONNECT'
 
 class WorkerConnection(object):
-  '''Use a ``WorkerConnection`` to make RPCs to the remote worker service or worker/router specified by ``address``. RPC retries
+  '''Use a ``WorkerConnection`` to make RPCs to the remote worker service(s) or worker/router specified by ``address``.
+     ``address`` may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
      and timeouts will happen by at most every ``abs(timeout)`` seconds when a periodic callback runs through all active
      messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout`` must not be
      ``0``.
@@ -36,7 +40,10 @@ class WorkerConnection(object):
   '''
 
   def __init__(self, address, timeout=10.0, compression=None, serialization=None, auto_retry=False):
-    self.address = address
+    if isinstance(address, str):
+      self.active_connections = {i.strip() for i in address.split(',')}
+    else:
+      self.active_connections = set(address)
     self.message_address = 'inproc://WorkerConnection%s' % id(self)
     self.__context = zmq.Context()
     self.__queue_socket = self.__context.socket(zmq.PUSH)
@@ -69,14 +76,35 @@ class WorkerConnection(object):
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
     '''
     self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout, auto_retry)
-  
+
+  def add_connection(self, address):
+    '''Connect to the worker at ``address``. Worker invocations will be round robin load balanced between all connected workers.'''
+    self._queue_message(address, command=WORKER_SOCKET_CONNECT)
+
+  def remove_connection(self, address):
+    '''Disconnect from the worker at ``address``. Worker invocations will be round robin load balanced between all connected workers.'''
+    self._queue_message(address, command=WORKER_SOCKET_DISCONNECT)
+
+  def set_connections(self, addresses):
+    '''A convenience method to set the connected addresses. A connection will be made to any new address included in the ``addresses``
+       enumerable and any currently connected address not included in ``addresses`` will be disconnected. If an address in ``addresses``
+       is already connected, it will not be affected.
+    '''
+    addresses = set(addresses)
+    to_remove = {a for a in self.active_connections if a not in addresses}
+    to_add = {a for a in addresses if a not in self.active_connections}
+    for a in to_remove:
+      self.remove_connection(a)
+    for a in to_add:
+      self.add_connection(a)
+
   def __len__(self):
     return len(self.__queued_messages)
 
   def __getattr__(self, path):
     return WorkerInvocation(path, self)
 
-  def _queue_message(self, message, callback=None, timeout=0, auto_retry=None):
+  def _queue_message(self, message, callback=None, timeout=0, auto_retry=None, command=''):
     if not self.__ioloop:
       self.start()
     message_id = str(uuid4())
@@ -86,7 +114,7 @@ class WorkerConnection(object):
       self.__message_timeouts[message_id] = timeout
     if auto_retry is not None:
       self.__message_auto_retry[message_id] = auto_retry
-    self.__queue_socket.send_multipart(('', message_id, message))
+    self.__queue_socket.send_multipart((command, message_id, message))
   
   def log_error(self, error):
     logging.error(repr(error))
@@ -98,7 +126,8 @@ class WorkerConnection(object):
       queue_socket.connect(self.message_address)
       queue_stream = ZMQStream(queue_socket, self.__ioloop)
       worker_socket = self.__context.socket(zmq.DEALER)
-      worker_socket.connect(self.address)
+      for address in self.active_connections:
+        worker_socket.connect(address)
       worker_stream = ZMQStream(worker_socket, self.__ioloop)
 
       def receive_response(message, response_override=None):
@@ -114,6 +143,14 @@ class WorkerConnection(object):
       worker_stream.on_recv(receive_response)
 
       def queue_message(message):
+        if message[0]:
+          if message[0] == WORKER_SOCKET_CONNECT and message[2] not in self.active_connections:
+            self.active_connections.add(message[2])
+            worker_stream.socket.connect(message[2])
+          elif message[0] == WORKER_SOCKET_DISCONNECT and message[2] in self.active_connections:
+            self.active_connections.remove(message[2])
+            worker_stream.socket.disconnect(message[2])
+          return
         self.__queued_messages[message[1]] = (time(), message)
         try:
           worker_stream.send_multipart(message)
@@ -125,6 +162,7 @@ class WorkerConnection(object):
         now = time()
         for message, retry in [(item[1], self.__message_auto_retry.get(item[1][1], self.__auto_retry)) for item, t in ((i, self.__message_timeouts.get(i[1][1], self.__timeout)) for i in self.__queued_messages.itervalues()) if t >= 0 and (item[0] + t < now)]:
           if retry:
+            logging.info('Worker timeout, requeuing ' + message[1])
             queue_message(message)
           else:
             receive_response(('', message[1]), {'error': 'timeout'})
