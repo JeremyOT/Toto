@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>WorkerConnection &mdash; Toto 0.11.1 documentation</title>
+    <title>WorkerConnection &mdash; Toto 0.11.2 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.11.1',
+        VERSION:     '0.11.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,13 +27,13 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.1 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.2 documentation" href="index.html" />
     <link rel="up" title="Workers and Connections" href="work.html" />
     <link rel="prev" title="TotoWorker" href="worker.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.11.1 documentation</span></a></h1>
+          <span>Toto 0.11.2 documentation</span></a></h1>
         <h2 class="heading"><span>WorkerConnection</span></h2>
       </div>
       <div class="topnav">
@@ -53,7 +53,8 @@
 <dl class="class">
 <dt id="toto.workerconnection.WorkerConnection">
 <em class="property">class </em><tt class="descclassname">toto.workerconnection.</tt><tt class="descname">WorkerConnection</tt><big>(</big><em>address</em>, <em>timeout=10.0</em>, <em>compression=None</em>, <em>serialization=None</em>, <em>auto_retry=False</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection" title="Permalink to this definition">¶</a></dt>
-<dd><p>Use a <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> to make RPCs to the remote worker service or worker/router specified by <tt class="docutils literal"><span class="pre">address</span></tt>. RPC retries
+<dd><p>Use a <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> to make RPCs to the remote worker service(s) or worker/router specified by <tt class="docutils literal"><span class="pre">address</span></tt>.
+<tt class="docutils literal"><span class="pre">address</span></tt> may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
 and timeouts will happen by at most every <tt class="docutils literal"><span class="pre">abs(timeout)</span></tt> seconds when a periodic callback runs through all active
 messages and checks for prolonged requests. This is also the default timeout for any new calls. <tt class="docutils literal"><span class="pre">timeout</span></tt> must not be
 <tt class="docutils literal"><span class="pre">0</span></tt>.</p>
@@ -87,6 +88,26 @@ where <tt class="docutils literal"><span class="pre">&quot;&lt;module&gt;.&lt;me
 <dd><p>Returns the default instance of <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> as configured by the options prefixed
 with <tt class="docutils literal"><span class="pre">worker_</span></tt>, instantiating it if necessary. Import the <tt class="docutils literal"><span class="pre">workerconnection</span></tt> module within
 your <tt class="docutils literal"><span class="pre">TotoService</span></tt> and run it with <tt class="docutils literal"><span class="pre">--help</span></tt> to see all available options.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.workerconnection.WorkerConnection.add_connection">
+<tt class="descclassname">WorkerConnection.</tt><tt class="descname">add_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.add_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.add_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.workerconnection.WorkerConnection.remove_connection">
+<tt class="descclassname">WorkerConnection.</tt><tt class="descname">remove_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.remove_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.remove_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disconnect from the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.workerconnection.WorkerConnection.set_connections">
+<tt class="descclassname">WorkerConnection.</tt><tt class="descname">set_connections</tt><big>(</big><em>addresses</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.set_connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.set_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method to set the connected addresses. A connection will be made to any new address included in the <tt class="docutils literal"><span class="pre">addresses</span></tt>
+enumerable and any currently connected address not included in <tt class="docutils literal"><span class="pre">addresses</span></tt> will be disconnected. If an address in <tt class="docutils literal"><span class="pre">addresses</span></tt>
+is already connected, it will not be affected.</p>
 </dd></dl>
 
 </div>

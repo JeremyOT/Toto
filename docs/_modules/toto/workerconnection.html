@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.workerconnection &mdash; Toto 0.11.1 documentation</title>
+    <title>toto.workerconnection &mdash; Toto 0.11.2 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.1',
+        VERSION:     '0.11.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.1 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.2 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.1 documentation</span></a></h1>
+          <span>Toto 0.11.2 documentation</span></a></h1>
         <h2 class="heading"><span>toto.workerconnection</span></h2>
       </div>
       <div class="topnav">
@@ -64,10 +64,14 @@
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_serialization_module&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The module to use for serializing and deserializing messages to workers. The module must have &#39;dumps&#39; and &#39;loads&#39; methods. If not specified, cPickle will be used. Only the default instance will be affected&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_timeout&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_auto_retry&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file)&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file). A comma separated list may be used to round-robin load balance tasks between workers.&quot;</span><span class="p">)</span>
+
+<span class="n">WORKER_SOCKET_CONNECT</span> <span class="o">=</span> <span class="s">&#39;CONNECT&#39;</span>
+<span class="n">WORKER_SOCKET_DISCONNECT</span> <span class="o">=</span> <span class="s">&#39;DISCONNECT&#39;</span>
 
 <div class="viewcode-block" id="WorkerConnection"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection">[docs]</a><span class="k">class</span> <span class="nc">WorkerConnection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-  <span class="sd">&#39;&#39;&#39;Use a ``WorkerConnection`` to make RPCs to the remote worker service or worker/router specified by ``address``. RPC retries</span>
+  <span class="sd">&#39;&#39;&#39;Use a ``WorkerConnection`` to make RPCs to the remote worker service(s) or worker/router specified by ``address``.</span>
+<span class="sd">     ``address`` may be either an enumerable of address strings or a string of comma separated addresses. RPC retries</span>
 <span class="sd">     and timeouts will happen by at most every ``abs(timeout)`` seconds when a periodic callback runs through all active</span>
 <span class="sd">     messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout`` must not be</span>
 <span class="sd">     ``0``.</span>
@@ -84,7 +88,10 @@
 <span class="sd">  &#39;&#39;&#39;</span>
 
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">serialization</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">address</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)}</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">message_address</span> <span class="o">=</span> <span class="s">&#39;inproc://WorkerConnection</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">__context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">__queue_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PUSH</span><span class="p">)</span>
@@ -117,14 +124,35 @@
 <span class="sd">       where ``&quot;&lt;module&gt;.&lt;method&gt;&quot;`` will be passed as the ``method`` argument to ``invoke()``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_queue_message</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s">&#39;method&#39;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span> <span class="s">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">})),</span> <span class="n">callback</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">auto_retry</span><span class="p">)</span>
-  </div>
+</div>
+<div class="viewcode-block" id="WorkerConnection.add_connection"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.add_connection">[docs]</a>  <span class="k">def</span> <span class="nf">add_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Connect to the worker at ``address``. Worker invocations will be round robin load balanced between all connected workers.&#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_queue_message</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="n">WORKER_SOCKET_CONNECT</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="WorkerConnection.remove_connection"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.remove_connection">[docs]</a>  <span class="k">def</span> <span class="nf">remove_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Disconnect from the worker at ``address``. Worker invocations will be round robin load balanced between all connected workers.&#39;&#39;&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_queue_message</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="n">WORKER_SOCKET_DISCONNECT</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="WorkerConnection.set_connections"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.set_connections">[docs]</a>  <span class="k">def</span> <span class="nf">set_connections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addresses</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A convenience method to set the connected addresses. A connection will be made to any new address included in the ``addresses``</span>
+<span class="sd">       enumerable and any currently connected address not included in ``addresses`` will be disconnected. If an address in ``addresses``</span>
+<span class="sd">       is already connected, it will not be affected.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">addresses</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">addresses</span><span class="p">)</span>
+    <span class="n">to_remove</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">addresses</span><span class="p">}</span>
+    <span class="n">to_add</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">addresses</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">remove_connection</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">to_add</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">add_connection</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</div>
   <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__queued_messages</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">WorkerInvocation</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 
-  <span class="k">def</span> <span class="nf">_queue_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_queue_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
     <span class="n">message_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">())</span>
@@ -134,7 +162,7 @@
       <span class="bp">self</span><span class="o">.</span><span class="n">__message_timeouts</span><span class="p">[</span><span class="n">message_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">timeout</span>
     <span class="k">if</span> <span class="n">auto_retry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">__message_auto_retry</span><span class="p">[</span><span class="n">message_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">auto_retry</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">__queue_socket</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">((</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">message_id</span><span class="p">,</span> <span class="n">message</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__queue_socket</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">((</span><span class="n">command</span><span class="p">,</span> <span class="n">message_id</span><span class="p">,</span> <span class="n">message</span><span class="p">))</span>
   
   <span class="k">def</span> <span class="nf">log_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">error</span><span class="p">):</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">error</span><span class="p">))</span>
@@ -146,7 +174,8 @@
       <span class="n">queue_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message_address</span><span class="p">)</span>
       <span class="n">queue_stream</span> <span class="o">=</span> <span class="n">ZMQStream</span><span class="p">(</span><span class="n">queue_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">)</span>
       <span class="n">worker_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">DEALER</span><span class="p">)</span>
-      <span class="n">worker_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
+        <span class="n">worker_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
       <span class="n">worker_stream</span> <span class="o">=</span> <span class="n">ZMQStream</span><span class="p">(</span><span class="n">worker_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">)</span>
 
       <span class="k">def</span> <span class="nf">receive_response</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">response_override</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
@@ -162,6 +191,14 @@
       <span class="n">worker_stream</span><span class="o">.</span><span class="n">on_recv</span><span class="p">(</span><span class="n">receive_response</span><span class="p">)</span>
 
       <span class="k">def</span> <span class="nf">queue_message</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+          <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">WORKER_SOCKET_CONNECT</span> <span class="ow">and</span> <span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+          <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">WORKER_SOCKET_DISCONNECT</span> <span class="ow">and</span> <span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+          <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__queued_messages</span><span class="p">[</span><span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="p">(),</span> <span class="n">message</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
           <span class="n">worker_stream</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
@@ -173,6 +210,7 @@
         <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">message</span><span class="p">,</span> <span class="n">retry</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">__message_auto_retry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">__auto_retry</span><span class="p">))</span> <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__message_timeouts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">__timeout</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__queued_messages</span><span class="o">.</span><span class="n">itervalues</span><span class="p">())</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">t</span> <span class="o">&lt;</span> <span class="n">now</span><span class="p">)]:</span>
           <span class="k">if</span> <span class="n">retry</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Worker timeout, requeuing &#39;</span> <span class="o">+</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
             <span class="n">queue_message</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
           <span class="k">else</span><span class="p">:</span>
             <span class="n">receive_response</span><span class="p">((</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="p">{</span><span class="s">&#39;error&#39;</span><span class="p">:</span> <span class="s">&#39;timeout&#39;</span><span class="p">})</span>

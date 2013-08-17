@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.server &mdash; Toto 0.11.1 documentation</title>
+    <title>toto.server &mdash; Toto 0.11.2 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.1',
+        VERSION:     '0.11.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.1 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.2 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.1 documentation</span></a></h1>
+          <span>Toto 0.11.2 documentation</span></a></h1>
         <h2 class="heading"><span>toto.server</span></h2>
       </div>
       <div class="topnav">
@@ -78,7 +78,7 @@
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;event_mode&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;off&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;off|on|only&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This option enables or disables the event system, also providing an option to launch this server as an event server only&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;event_init_module&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If defined, this module&#39;s &#39;invoke&#39; function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;event_port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8999</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The address to listen to event connections on - due to message queuing, servers use the next higher port as well&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;startup_function&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=&lt;active database connection&gt;, application=&lt;tornado.web.Application&gt;).&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;startup_function&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server starts listening as function(connection=&lt;active database connection&gt;, application=&lt;tornado.web.Application&gt;).&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;use_cookies&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;secure_cookies&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;cookie_domain&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The value to use for the session cookie&#39;s domain attribute - e.g. &#39;.example.com&#39;&quot;</span><span class="p">)</span>
