@@ -30,7 +30,7 @@ define("remote_event_receivers", type=str, help="A comma separated list of remot
 define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
 define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
 define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
-define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server start listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
+define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server starts listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
 define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False")
 define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set")
 define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com'")
