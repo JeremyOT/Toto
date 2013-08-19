@@ -10,7 +10,7 @@ from toto.server import TotoServer
 from time import sleep, time
 
 def run_server():
-  TotoServer(method_module='web_methods', port=9000).run()
+  TotoServer(method_module='web_methods', port=9000, debug=True).run()
 
 def dicts_equal(d1, d2):
   for k, v in d1.iteritems():
@@ -143,6 +143,26 @@ class TestWeb(unittest.TestCase):
     f = urllib2.urlopen(req)
     response = json.loads(f.read())['result']
     self.assertTrue(dicts_equal(request['parameters'], response['parameters']))
+  
+  def test_exception(self):
+    request = {}
+    request['method'] = 'throw_exception'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertTrue(dicts_equal({'error': {'code': 1000, 'value': "Test Exception"}}, response))
+  
+  def test_toto_exception(self):
+    request = {}
+    request['method'] = 'throw_toto_exception'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertTrue(dicts_equal({'error': {'code': 4242, 'value': "Test Toto Exception"}}, response))
 
 
 

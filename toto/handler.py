@@ -108,12 +108,10 @@ class TotoHandler(RequestHandler):
     if options.debug:
       import traceback
       def error_info(self, e):
-        if isinstance(e , TotoException):
-          logging.error('%s\n%s\nHeaders: %s\n' % (e, traceback.format_exc(), repr(self.request.headers)))
-          return e.__dict__
-        else:
-          logging.error('%s\n%s\nHeaders: %s\n' % (e, traceback.format_exc(), repr(self.request.headers)))
-          return TotoException(ERROR_SERVER, str(e)).__dict__
+        if not isinstance(e, TotoException):
+          e = TotoException(ERROR_SERVER, str(e))
+        logging.error('%s\n%s\nHeaders: %s\n' % (e, traceback.format_exc(), repr(self.request.headers)))
+        return e.__dict__
       cls.error_info = error_info
     cls.__method_root = __import__(options.method_module)
       
@@ -137,13 +135,10 @@ class TotoHandler(RequestHandler):
     return method
 
   def error_info(self, e):
-    if isinstance(e, TotoException):
-      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
-      return e.__dict__
-    else:
+    if not isinstance(e, TotoException):
       e = TotoException(ERROR_SERVER, str(e))
-      logging.error("TotoException: %s Value: %s" % (e.code, e.value))
-      return e.__dict__
+    logging.error("TotoException: %s Value: %s" % (e.code, e.value))
+    return e.__dict__
 
   def invoke_method(self, path, request_body, parameters, finish_by_default=True):
     result = None

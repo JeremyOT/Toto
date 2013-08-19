@@ -27,7 +27,7 @@ import os
 import zmq
 from zmq.devices.basedevice import ProcessDevice
 import tornado
-from tornado.options import define, options
+from tornado.options import options
 import logging
 import zlib
 import cPickle as pickle
@@ -37,17 +37,19 @@ from threading import Thread
 from multiprocessing import Process, cpu_count
 from toto.service import TotoService, process_count, pid_path
 from toto.dbconnection import configured_connection
+from exceptions import *
+from toto.options import safe_define
 
-define("method_module", default='methods', help="The root module to use for method lookup")
-define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
-define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
-define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each worker process after it is configured and before it starts listening for tasks with the named parameters worker and db_connection.")
-define("worker_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers. If this is set to an empty string, workers will connect directly to worker_socket_address.")
-define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
-define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
-define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
-define("compression_module", type=str, help="The module to use for compressing and decompressing messages. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. You can also set worker.compress and worker.decompress in your startup method for increased flexibility")
-define("serialization_module", type=str, help="The module to use for serializing and deserializing messages. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. You can also set worker.dumps and worker.loads in your startup method for increased flexibility")
+safe_define("method_module", default='methods', help="The root module to use for method lookup")
+safe_define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
+safe_define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
+safe_define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each worker process after it is configured and before it starts listening for tasks with the named parameters worker and db_connection.")
+safe_define("worker_bind_address", default="tcp://*:55555", help="The service will bind to this address with a zmq PULL socket and listen for incoming tasks. Tasks will be load balanced to all workers. If this is set to an empty string, workers will connect directly to worker_socket_address.")
+safe_define("worker_socket_address", default="ipc:///tmp/workerservice.sock", help="The load balancer will use this address to coordinate tasks between local workers")
+safe_define("control_socket_address", default="ipc:///tmp/workercontrol.sock", help="Workers will subscribe to messages on this socket and listen for control commands. If this is an empty string, the command option will have no effect")
+safe_define("command", type=str, metavar='status|shutdown', help="Specify a command to send to running workers on the control socket")
+safe_define("compression_module", type=str, help="The module to use for compressing and decompressing messages. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. You can also set worker.compress and worker.decompress in your startup method for increased flexibility")
+safe_define("serialization_module", type=str, help="The module to use for serializing and deserializing messages. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. You can also set worker.dumps and worker.loads in your startup method for increased flexibility")
 
 class TotoWorkerService(TotoService):
   '''Instances can be configured in three ways:
@@ -89,10 +91,10 @@ class TotoWorkerService(TotoService):
 
   def prepare(self):
     self.balancer = None
-    if options.worker_address:
+    if options.worker_bind_address:
       self.balancer = ProcessDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
       self.balancer.daemon = True
-      self.balancer.bind_in(options.worker_address)
+      self.balancer.bind_in(options.worker_bind_address)
       self.balancer.bind_out(options.worker_socket_address)
       self.balancer.setsockopt_in(zmq.IDENTITY, 'ROUTER')
       self.balancer.setsockopt_out(zmq.IDENTITY, 'DEALER')
@@ -102,9 +104,9 @@ class TotoWorkerService(TotoService):
           f.write(str(self.balancer.launcher.pid))
     count = options.processes if options.processes >= 0 else cpu_count()
     if count == 0:
-      print 'Starting load balancer. Listening on "%s". Routing to "%s"' % (options.worker_address, options.worker_socket_address)
+      print 'Starting load balancer. Listening on "%s". Routing to "%s"' % (options.worker_bind_address, options.worker_socket_address)
     else:
-      print "Starting %s worker process%s. %s." % (count, count > 1 and 'es' or '', options.worker_address and ('Listening on "%s"' % options.worker_address) or ('Connecting to "%s"' % options.worker_socket_address))
+      print "Starting %s worker process%s. %s." % (count, count > 1 and 'es' or '', options.worker_bind_address and ('Listening on "%s"' % options.worker_bind_address) or ('Connecting to "%s"' % options.worker_socket_address))
 
   def main_loop(self):
     db_connection = configured_connection()
@@ -172,16 +174,18 @@ class TotoWorker():
     self.dumps = serialization and serialization.dumps or pickle.dumps
     if options.debug:
       from traceback import format_exc
-      def log_error(self, e):
-        err_string = format_exc()
-        logging.error(err_string)
-        return err_string
-      TotoWorker.log_error = log_error
+      def error_info(self, e):
+        if not isinstance(e, TotoException):
+          e = TotoException(ERROR_SERVER, str(e))
+        logging.error('%s\n%s\n' % (e, format_exc()))
+        return e.__dict__
+      TotoWorker.error_info = error_info
   
-  def log_error(self, e):
-    err_string = repr(e)
-    logging.error(err_string)
-    return err_string
+  def error_info(self, e):
+    if not isinstance(e, TotoException):
+      e = TotoException(ERROR_SERVER, str(e))
+    logging.error(str(e))
+    return e.__dict__
 
   def log_status(self):
     logging.info('Pid: %s status: %s' % (os.getpid(), self.status))
@@ -202,7 +206,7 @@ class TotoWorker():
           elif command == 'status':
             self.log_status()
         except Exception as e:
-          self.log_error(e)
+          self.error_info(e)
     if address:
       thread = Thread(target=monitor)
       thread.daemon = True
@@ -236,9 +240,8 @@ class TotoWorker():
           socket.send_multipart((message_id, self.compress(self.dumps(response))))
           pending_reply = False
       except Exception as e:
-        err_string = self.log_error(e)
         if pending_reply:
-          socket.send_multipart((message_id, self.compress(self.dumps(err_string))))
+          socket.send_multipart((message_id, self.compress(self.dumps({'error': self.error_info(e)}))))
 
     self.status = 'Finished'
     self.log_status()

@@ -15,31 +15,32 @@ Run your startup script with --help to see all available options.
 import os
 from tornado.web import *
 from tornado.ioloop import *
-from tornado.options import define, options
+from tornado.options import options
 from handler import TotoHandler
 from toto.service import TotoService
 from dbconnection import configured_connection
+from toto.options import safe_define
 import logging
 
-define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.")
-define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain")
-define("method_module", default='methods', help="The root module to use for method lookup")
-define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
-define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
-define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
-define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
-define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
-define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
-define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server starts listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
-define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False")
-define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set")
-define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com'")
-define("socket_opened_method", default=None, type=str, help="An optional function to run when a new web socket is opened, the socket handler will be passed as the only argument")
-define("socket_closed_method", default=None, type=str, help="An optional function to run when a web socket is closed, the socket handler will be passed as the only argument")
-define("socket_method_module", default=None, type=str, help="The root module to use for web socket method lookup")
-define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods")
-define("socket_path", default='websocket', help="The path to use for websocket connections")
-define("client_side_worker_path", default="", help="The path to use for client side worker connections - functionality will be disabled if this is not set.")
+safe_define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.")
+safe_define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain")
+safe_define("method_module", default='methods', help="The root module to use for method lookup")
+safe_define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
+safe_define("autoreload", default=False, help="This option autoreloads modules as changes occur - useful for debugging.")
+safe_define("remote_event_receivers", type=str, help="A comma separated list of remote event address that this event manager should connect to. e.g.: 'tcp://192.168.1.2:8889'", multiple=True)
+safe_define("event_mode", default='off', metavar='off|on|only', help="This option enables or disables the event system, also providing an option to launch this server as an event server only")
+safe_define("event_init_module", default=None, type=str, help="If defined, this module's 'invoke' function will be called with the EventManager instance after the main event handler is registered (e.g.: myevents.setup)")
+safe_define("event_port", default=8999, help="The address to listen to event connections on - due to message queuing, servers use the next higher port as well")
+safe_define("startup_function", default=None, type=str, help="An optional function to run on startup - e.g. module.function. The function will be called for each server instance before the server starts listening as function(connection=<active database connection>, application=<tornado.web.Application>).")
+safe_define("use_cookies", default=False, help="Select whether to use cookies for session storage, replacing the x-toto-session-id header. You must set cookie_secret if using this option and secure_cookies is not set to False")
+safe_define("secure_cookies", default=True, help="If using cookies, select whether or not they should be secure. Secure cookies require cookie_secret to be set")
+safe_define("cookie_domain", default=None, type=str, help="The value to use for the session cookie's domain attribute - e.g. '.example.com'")
+safe_define("socket_opened_method", default=None, type=str, help="An optional function to run when a new web socket is opened, the socket handler will be passed as the only argument")
+safe_define("socket_closed_method", default=None, type=str, help="An optional function to run when a web socket is closed, the socket handler will be passed as the only argument")
+safe_define("socket_method_module", default=None, type=str, help="The root module to use for web socket method lookup")
+safe_define("use_web_sockets", default=False, help="Whether or not web sockets should be installed as an alternative way to call methods")
+safe_define("socket_path", default='websocket', help="The path to use for websocket connections")
+safe_define("client_side_worker_path", default="", help="The path to use for client side worker connections - functionality will be disabled if this is not set.")
 
 class TotoServer(TotoService):
   '''Instances can be configured in three ways:
