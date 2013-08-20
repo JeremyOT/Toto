@@ -29,11 +29,13 @@ class TestWeb(unittest.TestCase):
   
   @classmethod
   def tearDownClass(cls):
-    print 'Stopping server', cls.service_process.pid
-    for p in active_children():
-      print 'Killing', p.pid
-      os.kill(p.pid, signal.SIGTERM)
-      os.kill(p.pid + 1, signal.SIGTERM)
+    print 'Stopping server'
+    processes = [int(l.split()[0]) for l in os.popen('ps').readlines() if 'python' in l and 'unittest' in l]
+    for p in processes:
+      if p == os.getpid():
+        continue
+      print 'killing', p
+      os.kill(p, signal.SIGKILL)
     sleep(0.5)
   
   def test_method(self):
