@@ -62,7 +62,7 @@ class WorkerConnection(object):
     self.compress = compression and compression.compress or (lambda x: x)
     self.decompress = compression and compression.decompress or (lambda x: x)
 
-  def invoke(self, method, parameters, callback=None, timeout=0, auto_retry=None):
+  def invoke(self, method, parameters={}, callback=None, timeout=0, auto_retry=None):
     '''Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
        current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.
@@ -207,7 +207,7 @@ class WorkerInvocation(object):
     self._path = path
     self._connection = connection
 
-  def __call__(self, parameters, callback=None, timeout=0, auto_retry=None):
+  def __call__(self, parameters={}, callback=None, timeout=0, auto_retry=None):
     self._connection.invoke(self._path, parameters, callback, timeout, auto_retry)
 
   def __getattr__(self, path):
