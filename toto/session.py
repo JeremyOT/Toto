@@ -1,4 +1,8 @@
 import cPickle as pickle
+from uuid import uuid4
+from base64 import b64encode
+
+SESSION_ID_LENGTH = 22
 
 class TotoAccount(object):
   '''Instances of TotoAccount provide dictionary-like access to user account properties. Unlike
@@ -129,7 +133,7 @@ class TotoSession(object):
   @classmethod
   def set_serializer(cls, serializer):
     '''Set the module that instances of ``TotoSession`` and ``TotoSessionCache`` will use to serialize session state. The module must implement ``loads`` and ``dumps``
-    and support serialization and deserialization of binary strings.
+    and support serialization and deserialization of any data you want to store in the session.
     By default, ``cPickle`` is used.
     '''
     cls.__serializer = serializer
@@ -145,6 +149,12 @@ class TotoSession(object):
     '''A convenience method to call ``serializer.dumps()`` on the active serializer.
     '''
     return cls.__serializer.dumps(data)
+
+  @classmethod
+  def generate_id(cls):
+    '''Generate a random 22 character url safe session ID string.
+    '''
+    return b64encode(uuid4().bytes, '-_')[:-2]
 
 class TotoSessionCache(object):
   '''Instances of ``TotoSessionCache`` allow for sessions to be stored separately from the main application database. As sessions must be retrieved

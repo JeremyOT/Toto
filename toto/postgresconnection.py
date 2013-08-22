@@ -130,7 +130,7 @@ class PostgresConnection(DBConnection):
     account = user_id and self.db.get("select account_id, password from account where user_id = %s", (user_id,))
     if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
+    session_id = PostgresSession.generate_id()
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id, 'account_id': account['account_id']}
     if not self._cache_session_data(session_data):

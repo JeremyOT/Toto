@@ -76,7 +76,7 @@ class RedisConnection(DBConnection):
     account = user_id and password and self.db.hmget(account_key, 'user_id', 'password')
     if user_id and (account[0] != user_id or (verify_password and not secret.verify_password(password, account[1]))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = base64.b64encode(uuid.uuid4().bytes, '-_')[:-2]
+    session_id = RedisSession.generate_id()
     ttl = (user_id and self.session_ttl or self.anon_session_ttl)
     expires = time() + ttl
     session_key = _session_key(session_id)
