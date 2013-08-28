@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.workerconnection &mdash; Toto 0.11.2 documentation</title>
+    <title>toto.workerconnection &mdash; Toto 0.11.4 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.2',
+        VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.2 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.4 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.2 documentation</span></a></h1>
+          <span>Toto 0.11.4 documentation</span></a></h1>
         <h2 class="heading"><span>toto.workerconnection</span></h2>
       </div>
       <div class="topnav">
@@ -52,19 +52,20 @@
 <span class="kn">import</span> <span class="nn">zlib</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span>
-<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">options</span><span class="p">,</span> <span class="n">define</span>
+<span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">options</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">zmq.eventloop.ioloop</span> <span class="kn">import</span> <span class="n">ZMQPoller</span><span class="p">,</span> <span class="n">IOLoop</span><span class="p">,</span> <span class="n">PeriodicCallback</span>
 <span class="kn">from</span> <span class="nn">zmq.eventloop.zmqstream</span> <span class="kn">import</span> <span class="n">ZMQStream</span>
 <span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
 <span class="kn">from</span> <span class="nn">uuid</span> <span class="kn">import</span> <span class="n">uuid4</span>
 <span class="kn">from</span> <span class="nn">traceback</span> <span class="kn">import</span> <span class="n">format_exc</span>
+<span class="kn">from</span> <span class="nn">toto.options</span> <span class="kn">import</span> <span class="n">safe_define</span>
 
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_compression_module&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The module to use for compressing and decompressing messages to workers. The module must have &#39;decompress&#39; and &#39;compress&#39; methods. If not specified, no compression will be used. Only the default instance will be affected&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_serialization_module&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The module to use for serializing and deserializing messages to workers. The module must have &#39;dumps&#39; and &#39;loads&#39; methods. If not specified, cPickle will be used. Only the default instance will be affected&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_timeout&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_auto_retry&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file). A comma separated list may be used to round-robin load balance tasks between workers.&quot;</span><span class="p">)</span>
+<span class="n">safe_define</span><span class="p">(</span><span class="s">&quot;worker_compression_module&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The module to use for compressing and decompressing messages to workers. The module must have &#39;decompress&#39; and &#39;compress&#39; methods. If not specified, no compression will be used. Only the default instance will be affected&quot;</span><span class="p">)</span>
+<span class="n">safe_define</span><span class="p">(</span><span class="s">&quot;worker_serialization_module&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The module to use for serializing and deserializing messages to workers. The module must have &#39;dumps&#39; and &#39;loads&#39; methods. If not specified, cPickle will be used. Only the default instance will be affected&quot;</span><span class="p">)</span>
+<span class="n">safe_define</span><span class="p">(</span><span class="s">&quot;worker_timeout&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.&quot;</span><span class="p">)</span>
+<span class="n">safe_define</span><span class="p">(</span><span class="s">&quot;worker_auto_retry&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.&quot;</span><span class="p">)</span>
+<span class="n">safe_define</span><span class="p">(</span><span class="s">&quot;worker_address&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;This is the address that toto.workerconnection.invoke(method, params) will send tasks too (As specified in the worker conf file). A comma separated list may be used to round-robin load balance tasks between workers.&quot;</span><span class="p">)</span>
 
 <span class="n">WORKER_SOCKET_CONNECT</span> <span class="o">=</span> <span class="s">&#39;CONNECT&#39;</span>
 <span class="n">WORKER_SOCKET_DISCONNECT</span> <span class="o">=</span> <span class="s">&#39;DISCONNECT&#39;</span>
@@ -109,7 +110,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">=</span> <span class="n">compression</span> <span class="ow">and</span> <span class="n">compression</span><span class="o">.</span><span class="n">compress</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">decompress</span> <span class="o">=</span> <span class="n">compression</span> <span class="ow">and</span> <span class="n">compression</span><span class="o">.</span><span class="n">decompress</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
 
-<div class="viewcode-block" id="WorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="WorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be</span>
 <span class="sd">       invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the</span>
 <span class="sd">       current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.</span>
@@ -254,7 +255,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">connection</span>
 
-  <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">auto_retry</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>

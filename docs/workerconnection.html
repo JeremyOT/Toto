@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>WorkerConnection &mdash; Toto 0.11.2 documentation</title>
+    <title>WorkerConnection &mdash; Toto 0.11.4 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.11.2',
+        VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,13 +27,13 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.2 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.4 documentation" href="index.html" />
     <link rel="up" title="Workers and Connections" href="work.html" />
     <link rel="prev" title="TotoWorker" href="worker.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.11.2 documentation</span></a></h1>
+          <span>Toto 0.11.4 documentation</span></a></h1>
         <h2 class="heading"><span>WorkerConnection</span></h2>
       </div>
       <div class="topnav">
@@ -69,7 +69,7 @@ congestion in your worker service. Use with caution.</p>
 
 <dl class="method">
 <dt id="toto.workerconnection.WorkerConnection.invoke">
-<tt class="descclassname">WorkerConnection.</tt><tt class="descname">invoke</tt><big>(</big><em>method</em>, <em>parameters</em>, <em>callback=None</em>, <em>timeout=0</em>, <em>auto_retry=None</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.invoke" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">WorkerConnection.</tt><tt class="descname">invoke</tt><big>(</big><em>method</em>, <em>parameters={}</em>, <em>callback=None</em>, <em>timeout=0</em>, <em>auto_retry=None</em><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.invoke" title="Permalink to this definition">¶</a></dt>
 <dd><p>Invoke a <tt class="docutils literal"><span class="pre">method</span></tt> to be run on a remote worker process with the given <tt class="docutils literal"><span class="pre">parameters</span></tt>. If specified, <tt class="docutils literal"><span class="pre">callback</span></tt> will be
 invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
 current <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> but <tt class="docutils literal"><span class="pre">timeout</span></tt> and <tt class="docutils literal"><span class="pre">auto_retry</span></tt> can be used for invocation specific behavior.</p>

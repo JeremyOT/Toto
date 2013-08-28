@@ -51,6 +51,7 @@ Servers, Handlers and Sessions
   .. automethod:: toto.session.TotoSession.set_serializer
   .. automethod:: toto.session.TotoSession.loads
   .. automethod:: toto.session.TotoSession.dumps
+  .. automethod:: toto.session.TotoSession.generate_id
 
   The TotoSessionCache class
   ^^^^^^^^^^^^^^^^^^^^^^^^^^

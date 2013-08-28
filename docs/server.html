@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.11.2 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.11.4 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
-        VERSION:     '0.11.2',
+        VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,14 +27,14 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.2 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.11.4 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.11.2 documentation</span></a></h1>
+          <span>Toto 0.11.4 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -250,7 +250,7 @@ advance.</p>
 <dt id="toto.session.TotoSession.set_serializer">
 <em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">set_serializer</tt><big>(</big><em>serializer</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.set_serializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.set_serializer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set the module that instances of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> and <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> will use to serialize session state. The module must implement <tt class="docutils literal"><span class="pre">loads</span></tt> and <tt class="docutils literal"><span class="pre">dumps</span></tt>
-and support serialization and deserialization of binary strings.
+and support serialization and deserialization of any data you want to store in the session.
 By default, <tt class="docutils literal"><span class="pre">cPickle</span></tt> is used.</p>
 </dd></dl>
 
@@ -264,6 +264,12 @@ By default, <tt class="docutils literal"><span class="pre">cPickle</span></tt> i
 <dt id="toto.session.TotoSession.dumps">
 <em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">dumps</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.dumps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.dumps" title="Permalink to this definition">¶</a></dt>
 <dd><p>A convenience method to call <tt class="docutils literal"><span class="pre">serializer.dumps()</span></tt> on the active serializer.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.session.TotoSession.generate_id">
+<em class="property">classmethod </em><tt class="descclassname">TotoSession.</tt><tt class="descname">generate_id</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession.generate_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession.generate_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a random 22 character url safe session ID string.</p>
 </dd></dl>
 
 </div>

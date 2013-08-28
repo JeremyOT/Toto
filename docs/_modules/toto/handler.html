@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.handler &mdash; Toto 0.11.2 documentation</title>
+    <title>toto.handler &mdash; Toto 0.11.4 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.2',
+        VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -27,12 +27,12 @@
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script type="text/javascript" src="../../_static/theme_extras.js"></script>
-    <link rel="top" title="Toto 0.11.2 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.11.4 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.2 documentation</span></a></h1>
+          <span>Toto 0.11.4 documentation</span></a></h1>
         <h2 class="heading"><span>toto.handler</span></h2>
       </div>
       <div class="topnav">
@@ -156,12 +156,10 @@
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
       <span class="kn">import</span> <span class="nn">traceback</span>
       <span class="k">def</span> <span class="nf">error_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span> <span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
-          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">Headers: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">)))</span>
-          <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">Headers: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">)))</span>
-          <span class="k">return</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_SERVER</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span><span class="o">.</span><span class="n">__dict__</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
+          <span class="n">e</span> <span class="o">=</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_SERVER</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">Headers: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
       <span class="n">cls</span><span class="o">.</span><span class="n">error_info</span> <span class="o">=</span> <span class="n">error_info</span>
     <span class="n">cls</span><span class="o">.</span><span class="n">__method_root</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">method_module</span><span class="p">)</span>
       
@@ -185,13 +183,10 @@
     <span class="k">return</span> <span class="n">method</span>
 
   <span class="k">def</span> <span class="nf">error_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
-      <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TotoException: </span><span class="si">%s</span><span class="s"> Value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
-      <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
-    <span class="k">else</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">TotoException</span><span class="p">):</span>
       <span class="n">e</span> <span class="o">=</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_SERVER</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
-      <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TotoException: </span><span class="si">%s</span><span class="s"> Value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
-      <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TotoException: </span><span class="si">%s</span><span class="s"> Value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">__dict__</span>
 
   <span class="k">def</span> <span class="nf">invoke_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">finish_by_default</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
