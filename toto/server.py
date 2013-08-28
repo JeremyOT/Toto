@@ -13,16 +13,20 @@ Run your startup script with --help to see all available options.
 '''
 
 import os
-from tornado.web import *
-from tornado.ioloop import *
+import sys
+import logging
+import tornado
+from tornado.web import Application
+from tornado.ioloop import IOLoop
+from tornado.httpserver import HTTPServer
 from tornado.options import options
+from tornado.netutil import bind_sockets
 from handler import TotoHandler
-from toto.service import TotoService
+from toto.service import TotoService, process_count
 from dbconnection import configured_connection
 from toto.options import safe_define
-import logging
 
-safe_define("port", default=8888, help="The port to run this server on. Multiple daemon servers will be numbered sequentially starting at this port.")
+safe_define("port", default=8888, help="The port this server will bind to.")
 safe_define("root", default='/', help="The path to run the server on. This can be helpful when hosting multiple services on the same domain")
 safe_define("method_module", default='methods', help="The root module to use for method lookup")
 safe_define("cookie_secret", default=None, type=str, help="A long random string to use as the HMAC secret for secure cookies, ignored if use_cookies is not enabled")
@@ -87,6 +91,9 @@ class TotoServer(TotoService):
       ClientSideWorkerSocketHandler.configure()
     tornado.options.define = define
 
+  def prepare(self):
+    self.__pending_sockets = bind_sockets(options.port)
+
   def main_loop(self):
     db_connection = configured_connection()
   
@@ -106,7 +113,7 @@ class TotoServer(TotoService):
       event_manager = EventManager.instance()
       event_manager.address = 'tcp://*:%s' % (options.event_port + self.service_id)
       event_manager.start_listening()
-      for i in xrange(options.processes > 0 and options.processes or multiprocessing.cpu_count()):
+      for i in xrange(process_count()):
         event_manager.register_server('tcp://127.0.0.1:%s' % (options.event_port + i))
       if options.remote_event_receivers:
         for address in options.remote_event_receivers:
@@ -123,7 +130,7 @@ class TotoServer(TotoService):
       startup_path = options.startup_function.rsplit('.')
       __import__(startup_path[0]).__dict__[startup_path[1]](db_connection=db_connection, application=application)
   
-    port = options.port + self.service_id
-    application.listen(port)
-    print "Starting server on port %s" % port
+    server = HTTPServer(application)
+    server.add_sockets(self.__pending_sockets)
+    print "Starting server %d on port %s" % (self.service_id, options.port)
     IOLoop.instance().start()

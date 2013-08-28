@@ -9,15 +9,15 @@ from multiprocessing import Process, active_children
 from toto.server import TotoServer
 from time import sleep, time
 
-def run_server():
-  TotoServer(method_module='web_methods', port=9000, debug=True).run()
+def run_server(processes=1):
+  TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes).run()
 
 class TestWeb(unittest.TestCase):
   
   @classmethod
   def setUpClass(cls):
     print 'Starting server'
-    cls.service_process = Process(target=run_server)
+    cls.service_process = Process(target=run_server, args=[-1])
     cls.service_process.start()
     sleep(0.5)
   
