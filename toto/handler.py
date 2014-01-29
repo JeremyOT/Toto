@@ -106,7 +106,7 @@ class TotoHandler(RequestHandler):
     if options.method_select == 'url':
       def get_method_path(self, path, body):
         if path:
-          return path.split('/')
+          return '.'.join(path.split('/'))
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
@@ -114,7 +114,7 @@ class TotoHandler(RequestHandler):
       def get_method_path(self, path, body):
         if body and 'method' in body:
           logging.info(body['method'])
-          return body['method'].split('.')
+          return body['method']
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
@@ -169,15 +169,13 @@ class TotoHandler(RequestHandler):
       return self.__method_cache[path]
     except KeyError:
       try:
-        method = __import__(options.method_module + '.' + path, globals(), locals(), ['invoke'])
+        method = self.__method_root
+        for component in path.split('.'):
+          method = getattr(method, component)
         self.__method_cache[path] = method
-      except ImportError:
+      except AttributeError:
         raise TotoException(ERROR_INVALID_METHOD, "Cannot call '" + path + "'.")
     return self.__method_cache[path]
-    method = self.__method_root
-    for i in path:
-      method = getattr(method, i)
-    return method
 
   def error_info(self, e):
     if not isinstance(e, TotoException):
@@ -253,7 +251,7 @@ class TotoHandler(RequestHandler):
     self.batch_results = {}
     for k, v in ((i, requests[i]) for i in self.request_keys):
       proxy = BatchHandlerProxy(self, k)
-      (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False, handler=proxy)
+      (result, error, finish_by_default) = self.invoke_method(None, v, v.get('parameters', {}), False, handler=proxy)
       if result or error or finish_by_default:
         proxy.respond(result, error)
 
