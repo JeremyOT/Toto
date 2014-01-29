@@ -92,8 +92,8 @@ class WorkerConnection(object):
        is already connected, it will not be affected.
     '''
     addresses = set(addresses)
-    to_remove = {a for a in self.active_connections if a not in addresses}
-    to_add = {a for a in addresses if a not in self.active_connections}
+    to_remove = self.active_connections - addresses
+    to_add = addresses - self.active_connections
     for a in to_remove:
       self.remove_connection(a)
     for a in to_add:

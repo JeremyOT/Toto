@@ -34,6 +34,13 @@ Servers, Handlers and Sessions
   .. automethod:: toto.handler.TotoHandler.register_event_handler
   .. automethod:: toto.handler.TotoHandler.deregister_event_handler
 
+  Batch Requests
+  ^^^^^^^^^^^^^^
+
+  .. autoclass:: toto.handler.BatchHandlerProxy
+
+  .. automethod:: toto.handler.BatchHandlerProxy.respond
+
   Sessions
   --------
   

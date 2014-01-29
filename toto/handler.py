@@ -13,6 +13,41 @@ define("allow_origin", default="*", help="This is the value for the Access-Contr
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("msgpack_enabled", default=False, help="Allows requests to use MessagePack with content-type application/msgpack")
+define("hmac_enabled", default=True, help="Uses the x-toto-hmac header to verify authenticated requests.")
+
+class BatchHandlerProxy(object):
+  '''A proxy to a handler, this class intercepts calls to ``handler.respond()`` in order to match the
+  response to the proper batch ``request_key``. If a method is invoked as part of a batch request,
+  an instance of ``BatchHandlerProxy`` will be passed instead of a ``TotoHandler``. Though this
+  replacement should be transparent to the method invocation, you may access the underlying handler
+  with ``proxy.handler``.
+  '''
+
+  _non_proxy_keys = {'handler', 'request_key'}
+
+  def __init__(self, handler, request_key):
+    self.handler = handler
+    self.request_key = request_key
+
+  def __getattr__(self, attr):
+    return getattr(self.handler, attr)
+
+  def __setattr__(self, attr, value):
+    if attr in self._non_proxy_keys:
+      self.__dict__[attr] = value
+    else:
+      setattr(self.handler, attr, value)
+
+  def respond(self, result=None, error=None):
+    '''Sets the response for the corresponding batch ``request_key``. When all requests have been processed,
+    the combined response will passed to the underlying handler's ``respond()``.
+
+    Like the standard ``respond()`` method, calls to this method must be invoked on the main event loop.
+    Because of this, it is assumed that multiple calls to this method will process on the same thread.
+    '''
+    self.handler.batch_results[self.request_key] = error is not None and {'error': isinstance(error, dict) and error or self.handler.error_info(error)} or {'result': result}
+    if len(self.handler.batch_results) == len(self.handler.request_keys):
+      self.handler.respond(batch_results=self.handler.batch_results)
 
 class TotoHandler(RequestHandler):
   '''The handler is responsible for processing all requests to the server. An instance
@@ -100,7 +135,7 @@ class TotoHandler(RequestHandler):
           if not session_id:
             session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
           if session_id:
-            self.session = self.db_connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, 'x-toto-hmac' in headers and self.request.body or None)
+            self.session = self.db_connection.retrieve_session(session_id, options.hmac_enabled and headers.get('x-toto-hmac'), options.hmac_enabled and 'x-toto-hmac' in headers and self.request.body or None)
         if self.session:
           set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
@@ -114,6 +149,7 @@ class TotoHandler(RequestHandler):
         return e.__dict__
       cls.error_info = error_info
     cls.__method_root = __import__(options.method_module)
+    cls.__method_cache = {}
       
   def __get_method_path(self, path, body):
     """The default method_select "both" (or any unsupported value) will
@@ -121,14 +157,23 @@ class TotoHandler(RequestHandler):
     to a more efficient method according to ``tornado.options``.
     """
     if path:
-      return path.split('/')
+      return '.'.join(path.split('/'))
     elif body and 'method' in body:
       logging.info(body['method'])
-      return body['method'].split('.')
+      return body['method']
     else:
       raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
 
   def __get_method(self, path):
+    try:
+      return self.__method_cache[path]
+    except KeyError:
+      try:
+        method = __import__(options.method_module + '.' + path, globals(), locals(), ['invoke'])
+        self.__method_cache[path] = method
+      except ImportError:
+        raise TotoException(ERROR_INVALID_METHOD, "Cannot call '" + path + "'.")
+    return self.__method_cache[path]
     method = self.__method_root
     for i in path:
       method = getattr(method, i)
@@ -140,14 +185,14 @@ class TotoHandler(RequestHandler):
     logging.error("TotoException: %s Value: %s" % (e.code, e.value))
     return e.__dict__
 
-  def invoke_method(self, path, request_body, parameters, finish_by_default=True):
+  def invoke_method(self, path, request_body, parameters, finish_by_default=True, handler=None):
     result = None
     error = None
     method = None
     try:
       method = self.__get_method(self.__get_method_path(path, request_body))
       self.__active_methods.append(method)
-      result = method.invoke(self, parameters)
+      result = method.invoke(handler or self, parameters)
     except Exception as e:
       error = self.error_info(e)
     return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
@@ -204,12 +249,13 @@ class TotoHandler(RequestHandler):
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-    request_keys = sorted(requests.keys())
-    batch_results = {}
-    for k, v in ((i, requests[i]) for i in request_keys):
-      (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False)
-      batch_results[k] = error is not None and {'error': isinstance(error, dict) and error or self.error_info(error)} or {'result': result}
-    self.respond(batch_results=batch_results)
+    self.request_keys = sorted(requests.keys())
+    self.batch_results = {}
+    for k, v in ((i, requests[i]) for i in self.request_keys):
+      proxy = BatchHandlerProxy(self, k)
+      (result, error, finish_by_default) = self.invoke_method(None, v, v['parameters'], False, handler=proxy)
+      if result or error or finish_by_default:
+        proxy.respond(result, error)
 
   def process_request(self, path, request_body, parameters, finish_by_default=True):
     self.session = None
@@ -258,7 +304,7 @@ class TotoHandler(RequestHandler):
       response_body = self.msgpack.dumps(response)
     else:
       response_body = json.dumps(response)
-    if self.session:
+    if self.session and options.hmac_enabled:
       self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id).lower(), response_body, hashlib.sha1).digest()))
     self.respond_raw(response_body, self.response_type)
 
@@ -329,7 +375,7 @@ class TotoHandler(RequestHandler):
       if not session_id and 'x-toto-session-id' in headers:
         session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
       if session_id:
-        self.session = self.db_connection.retrieve_session(session_id, 'x-toto-hmac' in headers and headers['x-toto-hmac'] or None, self.request.body)
+        self.session = self.db_connection.retrieve_session(session_id, options.hmac_enabled and headers.get('x-toto-hmac'), options.hmac_enabled and 'x-toto-hmac' in headers and self.request.body or None)
     return self.session
     
   def on_finish(self):

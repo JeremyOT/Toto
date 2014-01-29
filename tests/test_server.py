@@ -79,7 +79,7 @@ class TestWeb(unittest.TestCase):
     req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
     f = urllib2.urlopen(req)
     response = json.loads(f.read())
-    self.assertEqual({'error': {'code': 1000, 'value': "'module' object has no attribute 'bad_method'"}}, response)
+    self.assertEqual({'error': {'code': 1001, 'value': "Cannot call 'bad_method.test'."}}, response)
   
   def test_method_form_post(self):
     request = {}
@@ -123,6 +123,38 @@ class TestWeb(unittest.TestCase):
       rid = uuid4().hex
       request = {}
       request['method'] = 'return_value'
+      request['parameters'] = {'arg1': 1, 'arg2': rid}
+      batch[rid] = request
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps({'batch': batch}), headers)
+    f = urllib2.urlopen(req)
+    batch_response = json.loads(f.read())['batch']
+    for rid, response in batch_response.iteritems():
+      request['parameters']['arg2'] = rid
+      self.assertEqual(request['parameters'], response['result']['parameters'])
+
+  def test_batch_method_async(self):
+    batch = {}
+    headers = {'content-type': 'application/json'}
+    for i in xrange(3):
+      rid = uuid4().hex
+      request = {}
+      request['method'] = 'return_value_async'
+      request['parameters'] = {'arg1': 1, 'arg2': rid}
+      batch[rid] = request
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps({'batch': batch}), headers)
+    f = urllib2.urlopen(req)
+    batch_response = json.loads(f.read())['batch']
+    for rid, response in batch_response.iteritems():
+      request['parameters']['arg2'] = rid
+      self.assertEqual(request['parameters'], response['result']['parameters'])
+
+  def test_batch_method_task(self):
+    batch = {}
+    headers = {'content-type': 'application/json'}
+    for i in xrange(3):
+      rid = uuid4().hex
+      request = {}
+      request['method'] = 'return_value_task'
       request['parameters'] = {'arg1': 1, 'arg2': rid}
       batch[rid] = request
     req = urllib2.Request('http://127.0.0.1:9000/', json.dumps({'batch': batch}), headers)
