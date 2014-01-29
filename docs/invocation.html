@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -12,11 +10,10 @@
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -26,7 +23,6 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/theme_extras.js"></script>
     <link rel="top" title="Toto 0.11.4 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Database Connections" href="databases.html" />
@@ -143,15 +139,17 @@ call a client-side javascript function. This decorator requires a &#8220;jsonp&#
 callback function to be passed with the request. If no &#8220;jsonp&#8221; parameter is passed, the request will respond
 like any other Toto request. The decorator can be applied with an optional <tt class="docutils literal"><span class="pre">callback_name</span></tt> argument to
 specify a parameter to use instead of &#8220;jsonp&#8221;, e.g.:</p>
-<div class="highlight-python"><pre>@jsonp('callback')
+<div class="highlight-python"><div class="highlight"><pre>@jsonp(&#39;callback&#39;)
 def invoke(handler, parameters):
-  #do stuff</pre>
+  #do stuff
+</pre></div>
 </div>
 <p>Will allow JSONP requests that call the function specified by &#8220;callback&#8221; in their response. Applying the
 decorator without the <tt class="docutils literal"><span class="pre">callback_name</span></tt> parameter will use the default &#8220;jsonp&#8221;:</p>
-<div class="highlight-python"><pre>@jsonp
+<div class="highlight-python"><div class="highlight"><pre>@jsonp
 def invoke(handler, parameters):
-  #do stuff</pre>
+  #do stuff
+</pre></div>
 </div>
 <p>Note: JSONP requests will only be affected by decorators before <tt class="docutils literal"><span class="pre">&#64;jsonp</span></tt> in the decorator chain.</p>
 </dd></dl>
@@ -208,7 +206,7 @@ an iterable as the <tt class="docutils literal"><span class="pre">attributes</sp
 
     <div class="footer">
         &copy; Copyright 2013, Jeremy Olmsted-Thompson.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>
 </html>

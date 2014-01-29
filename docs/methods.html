@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -12,11 +10,10 @@
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="stylesheet" href="_static/print.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.11.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -26,7 +23,6 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/theme_extras.js"></script>
     <link rel="top" title="Toto 0.11.4 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Toto Services" href="service.html" />
@@ -70,14 +66,15 @@ your method module as <tt class="docutils literal"><span class="pre">account_cre
 <dl class="function">
 <dt id="toto.methods.client_error.invoke">
 <tt class="descclassname">toto.methods.client_error.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/client_error.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.client_error.invoke" title="Permalink to this definition">¶</a></dt>
-<dd><p>A convenince method for writing browser errors
-to Toto&#8217;s server log. It works with the <tt class="docutils literal"><span class="pre">registerErrorHandler()</span></tt> method in <tt class="docutils literal"><span class="pre">toto.js</span></tt>.</p>
-<blockquote>
-<div><p>The &#8220;client_error&#8221; parameter should be set to the string to be written to Toto&#8217;s log.
+<dd><dl class="docutils">
+<dt>A convenince method for writing browser errors</dt>
+<dd><p class="first">to Toto&#8217;s server log. It works with the <tt class="docutils literal"><span class="pre">registerErrorHandler()</span></tt> method in <tt class="docutils literal"><span class="pre">toto.js</span></tt>.</p>
+<p>The &#8220;client_error&#8221; parameter should be set to the string to be written to Toto&#8217;s log.
 Currently, the &#8220;client_type&#8221; parameter must be set to &#8220;browser_js&#8221; for an event
 to be written. Otherwise, this method has no effect.</p>
-<p>Requires: <tt class="docutils literal"><span class="pre">client_error</span></tt>, <tt class="docutils literal"><span class="pre">client_type</span></tt></p>
-</div></blockquote>
+<p class="last">Requires: <tt class="docutils literal"><span class="pre">client_error</span></tt>, <tt class="docutils literal"><span class="pre">client_type</span></tt></p>
+</dd>
+</dl>
 <p><em>Required parameters:</em> <tt class="docutils literal"><span class="pre">client_error</span></tt>, <tt class="docutils literal"><span class="pre">client_type</span></tt>.</p>
 </dd></dl>
 
@@ -88,32 +85,37 @@ common methods around account creation and management.</p>
 <dl class="function">
 <dt id="toto.methods.account.create.invoke">
 <tt class="descclassname">toto.methods.account.create.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/create.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.create.invoke" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> if no account
-matching the <tt class="docutils literal"><span class="pre">user_id</span></tt> exists. Any other parameters will be added as</p>
-<blockquote>
-<div><p>additional properties of the account. If using a database with a predefined
+<dd><dl class="docutils">
+<dt>Create an account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> if no account</dt>
+<dd><p class="first">matching the <tt class="docutils literal"><span class="pre">user_id</span></tt> exists. Any other parameters will be added as
+additional properties of the account. If using a database with a predefined
 schema, make sure they match existing columns, otherwise an error will be
 returned.</p>
-<p>Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></p>
-</div></blockquote>
+<p class="last">Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></p>
+</dd>
+</dl>
 <p><em>Required parameters:</em> <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt>.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="toto.methods.account.login.invoke">
 <tt class="descclassname">toto.methods.account.login.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/login.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.login.invoke" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a new session for the account matching <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>. If no
-matching account is found, a &#8220;User not found&#8221; error will be returned.</p>
-<blockquote>
-<div>Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></div></blockquote>
+<dd><dl class="docutils">
+<dt>Creates a new session for the account matching <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>. If no</dt>
+<dd><p class="first">matching account is found, a &#8220;User not found&#8221; error will be returned.</p>
+<p class="last">Requires: <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt></p>
+</dd>
+</dl>
 <p><em>Required parameters:</em> <tt class="docutils literal"><span class="pre">user_id</span></tt>, <tt class="docutils literal"><span class="pre">password</span></tt>.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="toto.methods.account.logout.invoke">
 <tt class="descclassname">toto.methods.account.logout.</tt><tt class="descname">invoke</tt><big>(</big><em>handler</em>, <em>parameters</em><big>)</big><a class="reference internal" href="_modules/toto/methods/account/logout.html#invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.methods.account.logout.invoke" title="Permalink to this definition">¶</a></dt>
-<dd><p>Invalidates the current authenticated session. If the request is
-not authenticated, a &#8220;Not authorized&#8221; error will be returned.</p>
+<dd><dl class="docutils">
+<dt>Invalidates the current authenticated session. If the request is</dt>
+<dd>not authenticated, a &#8220;Not authorized&#8221; error will be returned.</dd>
+</dl>
 <p><em>Requires authentication</em>.</p>
 </dd></dl>
 
@@ -137,7 +139,7 @@ not authenticated, a &#8220;Not authorized&#8221; error will be returned.</p>
 
     <div class="footer">
         &copy; Copyright 2013, Jeremy Olmsted-Thompson.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>
 </html>
