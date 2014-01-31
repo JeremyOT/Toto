@@ -41,7 +41,9 @@ class WorkerConnection(object):
   '''
 
   def __init__(self, address, timeout=10.0, compression=None, serialization=None, auto_retry=False):
-    if isinstance(address, str):
+    if not address:
+      self.active_connections = set()
+    elif isinstance(address, str):
       self.active_connections = {i.strip() for i in address.split(',')}
     else:
       self.active_connections = set(address)
@@ -121,15 +123,13 @@ class WorkerConnection(object):
     logging.error(repr(error))
 
   def start(self):
+    if self.__ioloop:
+      return
     def loop():
       self.__ioloop = IOLoop()
       queue_socket = self.__context.socket(zmq.PULL)
       queue_socket.connect(self.message_address)
       queue_stream = ZMQStream(queue_socket, self.__ioloop)
-      worker_socket = self.__context.socket(zmq.DEALER)
-      for address in self.active_connections:
-        worker_socket.connect(address)
-      worker_stream = ZMQStream(worker_socket, self.__ioloop)
 
       def receive_response(message, response_override=None):
         self.__queued_messages.pop(message[1], None)
@@ -141,20 +141,36 @@ class WorkerConnection(object):
           except Exception as e:
             self.log_error(e)
             callback({'error': e})
-      worker_stream.on_recv(receive_response)
+
+      def create_worker_stream():
+        def close_callback():
+          logging.info('Worker stream closed')
+          create_worker_stream()
+        worker_socket = self.__context.socket(zmq.DEALER)
+        for address in self.active_connections:
+          worker_socket.connect(address)
+        worker_stream = ZMQStream(worker_socket, self.__ioloop)
+        worker_stream.on_recv(receive_response)
+        worker_stream.set_close_callback(close_callback)
+        self._worker_stream = worker_stream
+      create_worker_stream()
 
       def queue_message(message):
         if message[0]:
           if message[0] == WORKER_SOCKET_CONNECT and message[2] not in self.active_connections:
             self.active_connections.add(message[2])
-            worker_stream.socket.connect(message[2])
+            self._worker_stream.socket.connect(message[2])
           elif message[0] == WORKER_SOCKET_DISCONNECT and message[2] in self.active_connections:
             self.active_connections.remove(message[2])
-            worker_stream.socket.disconnect(message[2])
+            self._worker_stream.socket.disconnect(message[2])
           return
         self.__queued_messages[message[1]] = (time(), message)
         try:
-          worker_stream.send_multipart(message)
+          self._worker_stream.send_multipart(message)
+        except IOError as e:
+          self.log_error(e)
+          logging.info('Reconnecting')
+          create_worker_stream()
         except Exception as e:
           self.log_error(e)
       queue_stream.on_recv(queue_message)
