@@ -4,6 +4,8 @@ Toto is a small framework intended to accelerate web service development. It is
 built on top of [Tornado][tornado] and can currently use [MySQL][mysql], [MongoDB][mongodb], [PostgreSQL][postgres] or
 [Redis][redis] as a backing database.
 
+[![Build Status](https://drone.io/github.com/JeremyOT/Toto/status.png)](https://drone.io/github.com/JeremyOT/Toto/latest)
+
 Features
 --------
 * Uses JSON (or BSON or msgpack) for easy consumption by clients on any platform
