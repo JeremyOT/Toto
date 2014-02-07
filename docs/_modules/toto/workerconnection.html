@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.workerconnection &mdash; Toto 0.11.5 documentation</title>
+    <title>toto.workerconnection &mdash; Toto 0.12.0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.11.5',
+        VERSION:     '0.12.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.11.5 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.12.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.11.5 documentation</span></a></h1>
+          <span>Toto 0.12.0 documentation</span></a></h1>
         <h2 class="heading"><span>toto.workerconnection</span></h2>
       </div>
       <div class="topnav">
@@ -85,7 +85,9 @@
 <span class="sd">  &#39;&#39;&#39;</span>
 
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">serialization</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">address</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)}</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
@@ -165,15 +167,13 @@
     <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">error</span><span class="p">))</span>
 
   <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">:</span>
+      <span class="k">return</span>
     <span class="k">def</span> <span class="nf">loop</span><span class="p">():</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span> <span class="o">=</span> <span class="n">IOLoop</span><span class="p">()</span>
       <span class="n">queue_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PULL</span><span class="p">)</span>
       <span class="n">queue_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message_address</span><span class="p">)</span>
       <span class="n">queue_stream</span> <span class="o">=</span> <span class="n">ZMQStream</span><span class="p">(</span><span class="n">queue_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">)</span>
-      <span class="n">worker_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">DEALER</span><span class="p">)</span>
-      <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
-        <span class="n">worker_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
-      <span class="n">worker_stream</span> <span class="o">=</span> <span class="n">ZMQStream</span><span class="p">(</span><span class="n">worker_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">)</span>
 
       <span class="k">def</span> <span class="nf">receive_response</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">response_override</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__queued_messages</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">None</span><span class="p">)</span>
@@ -185,20 +185,36 @@
           <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
             <span class="n">callback</span><span class="p">({</span><span class="s">&#39;error&#39;</span><span class="p">:</span> <span class="n">e</span><span class="p">})</span>
-      <span class="n">worker_stream</span><span class="o">.</span><span class="n">on_recv</span><span class="p">(</span><span class="n">receive_response</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">create_worker_stream</span><span class="p">():</span>
+        <span class="k">def</span> <span class="nf">close_callback</span><span class="p">():</span>
+          <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Worker stream closed&#39;</span><span class="p">)</span>
+          <span class="n">create_worker_stream</span><span class="p">()</span>
+        <span class="n">worker_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">DEALER</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
+          <span class="n">worker_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+        <span class="n">worker_stream</span> <span class="o">=</span> <span class="n">ZMQStream</span><span class="p">(</span><span class="n">worker_socket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ioloop</span><span class="p">)</span>
+        <span class="n">worker_stream</span><span class="o">.</span><span class="n">on_recv</span><span class="p">(</span><span class="n">receive_response</span><span class="p">)</span>
+        <span class="n">worker_stream</span><span class="o">.</span><span class="n">set_close_callback</span><span class="p">(</span><span class="n">close_callback</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_worker_stream</span> <span class="o">=</span> <span class="n">worker_stream</span>
+      <span class="n">create_worker_stream</span><span class="p">()</span>
 
       <span class="k">def</span> <span class="nf">queue_message</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
           <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">WORKER_SOCKET_CONNECT</span> <span class="ow">and</span> <span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-            <span class="n">worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
           <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">WORKER_SOCKET_DISCONNECT</span> <span class="ow">and</span> <span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-            <span class="n">worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_stream</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">disconnect</span><span class="p">(</span><span class="n">message</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
           <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__queued_messages</span><span class="p">[</span><span class="n">message</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="p">(),</span> <span class="n">message</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-          <span class="n">worker_stream</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">_worker_stream</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+          <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Reconnecting&#39;</span><span class="p">)</span>
+          <span class="n">create_worker_stream</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
           <span class="bp">self</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
       <span class="n">queue_stream</span><span class="o">.</span><span class="n">on_recv</span><span class="p">(</span><span class="n">queue_message</span><span class="p">)</span>

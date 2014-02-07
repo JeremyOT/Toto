@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.11.5 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.11.5',
+        VERSION:     '0.12.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.11.5 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.12.0 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.11.5 documentation</span></a></h1>
+          <span>Toto 0.12.0 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -120,11 +120,11 @@ respectively.</p>
 <h3>Response paths<a class="headerlink" href="#response-paths" title="Permalink to this headline">¶</a></h3>
 <dl class="method">
 <dt id="toto.handler.TotoHandler.respond">
-<tt class="descclassname">TotoHandler.</tt><tt class="descname">respond</tt><big>(</big><em>result=None</em>, <em>error=None</em>, <em>batch_results=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.respond"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.respond" title="Permalink to this definition">¶</a></dt>
-<dd><p>Respond to the request with the given result or error object (the <tt class="docutils literal"><span class="pre">batch_results</span></tt> parameter
-is for internal use only and not intendented to be supplied manually). Responses will be
-serialized according to the <tt class="docutils literal"><span class="pre">response_type</span></tt> propery. The default serialization is
-&#8220;application/json&#8221;. Other supported protocols are:</p>
+<tt class="descclassname">TotoHandler.</tt><tt class="descname">respond</tt><big>(</big><em>result=None</em>, <em>error=None</em>, <em>batch_results=None</em>, <em>allow_async=True</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.respond"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.respond" title="Permalink to this definition">¶</a></dt>
+<dd><p>Respond to the request with the given result or error object (the <tt class="docutils literal"><span class="pre">batch_results</span></tt> and
+<tt class="docutils literal"><span class="pre">allow_async</span></tt> parameters are for internal use only and not intended to be supplied manually).
+Responses will be serialized according to the <tt class="docutils literal"><span class="pre">response_type</span></tt> propery. The default
+serialization is &#8220;application/json&#8221;. Other supported protocols are:</p>
 <ul class="simple">
 <li>application/bson - requires pymongo</li>
 <li>application/msgpack - requires msgpack-python</li>
@@ -209,11 +209,10 @@ with <tt class="docutils literal"><span class="pre">proxy.handler</span></tt>.</
 
 <dl class="method">
 <dt id="toto.handler.BatchHandlerProxy.respond">
-<tt class="descclassname">BatchHandlerProxy.</tt><tt class="descname">respond</tt><big>(</big><em>result=None</em>, <em>error=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#BatchHandlerProxy.respond"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.BatchHandlerProxy.respond" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">BatchHandlerProxy.</tt><tt class="descname">respond</tt><big>(</big><em>result=None</em>, <em>error=None</em>, <em>allow_async=True</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#BatchHandlerProxy.respond"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.BatchHandlerProxy.respond" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets the response for the corresponding batch <tt class="docutils literal"><span class="pre">request_key</span></tt>. When all requests have been processed,
 the combined response will passed to the underlying handler&#8217;s <tt class="docutils literal"><span class="pre">respond()</span></tt>.</p>
-<p>Like the standard <tt class="docutils literal"><span class="pre">respond()</span></tt> method, calls to this method must be invoked on the main event loop.
-Because of this, it is assumed that multiple calls to this method will process on the same thread.</p>
+<p>The <tt class="docutils literal"><span class="pre">allow_async</span></tt> parameter is for internal use only and is not intended to be supplied manually.</p>
 </dd></dl>
 
 </div>
