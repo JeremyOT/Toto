@@ -7,6 +7,7 @@ from exceptions import *
 from tornado.options import define, options
 import base64
 from tornado.httputil import parse_multipart_form_data
+from tornado.ioloop import IOLoop
 import logging
 
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -23,7 +24,7 @@ class BatchHandlerProxy(object):
   with ``proxy.handler``.
   '''
 
-  _non_proxy_keys = {'handler', 'request_key'}
+  _non_proxy_keys = {'handler', 'request_key', 'async'}
 
   def __init__(self, handler, request_key):
     self.handler = handler
@@ -38,16 +39,19 @@ class BatchHandlerProxy(object):
     else:
       setattr(self.handler, attr, value)
 
-  def respond(self, result=None, error=None):
+  def respond(self, result=None, error=None, allow_async=True):
     '''Sets the response for the corresponding batch ``request_key``. When all requests have been processed,
     the combined response will passed to the underlying handler's ``respond()``.
 
-    Like the standard ``respond()`` method, calls to this method must be invoked on the main event loop.
-    Because of this, it is assumed that multiple calls to this method will process on the same thread.
+    The ``allow_async`` parameter is for internal use only and is not intended to be supplied manually.
     '''
+    #if the handler is processing an async method, schedule the response on the main runloop
+    if self.async and allow_async:
+      IOLoop.instance().add_callback(lambda: self.respond(result, error, False))
+      return
     self.handler.batch_results[self.request_key] = error is not None and {'error': isinstance(error, dict) and error or self.handler.error_info(error)} or {'result': result}
     if len(self.handler.batch_results) == len(self.handler.request_keys):
-      self.handler.respond(batch_results=self.handler.batch_results)
+      self.handler.respond(batch_results=self.handler.batch_results, allow_async=False)
 
 class TotoHandler(RequestHandler):
   '''The handler is responsible for processing all requests to the server. An instance
@@ -94,6 +98,7 @@ class TotoHandler(RequestHandler):
     self.registered_event_handlers = []
     self.__active_methods = []
     self.headers_only = False
+    self.async = False
 
   @classmethod
   def configure(cls):
@@ -183,7 +188,7 @@ class TotoHandler(RequestHandler):
     logging.error("TotoException: %s Value: %s" % (e.code, e.value))
     return e.__dict__
 
-  def invoke_method(self, path, request_body, parameters, finish_by_default=True, handler=None):
+  def invoke_method(self, path, request_body, parameters, handler=None):
     result = None
     error = None
     method = None
@@ -193,7 +198,7 @@ class TotoHandler(RequestHandler):
       result = method.invoke(handler or self, parameters)
     except Exception as e:
       error = self.error_info(e)
-    return result, error, (finish_by_default and not hasattr(method, 'asynchronous'))
+    return result, error, (hasattr(method, 'asynchronous'))
 
   def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
@@ -251,25 +256,29 @@ class TotoHandler(RequestHandler):
     self.batch_results = {}
     for k, v in ((i, requests[i]) for i in self.request_keys):
       proxy = BatchHandlerProxy(self, k)
-      (result, error, finish_by_default) = self.invoke_method(None, v, v.get('parameters', {}), False, handler=proxy)
-      if result or error or finish_by_default:
-        proxy.respond(result, error)
+      (result, error, async) = self.invoke_method(None, v, v.get('parameters', {}), handler=proxy)
+      if async:
+        proxy.async = True
+      if result or error or not async:
+        proxy.respond(result, error, allow_async=False)
 
-  def process_request(self, path, request_body, parameters, finish_by_default=True):
+  def process_request(self, path, request_body, parameters):
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-    (result, error, finish_by_default) = self.invoke_method(path, request_body, parameters, finish_by_default)
+    (result, error, async) = self.invoke_method(path, request_body, parameters)
+    if async:
+      self.async = True
     if result is not None or error:
-      self.respond(result, error)
-    elif finish_by_default and not self._finished:
+      self.respond(result, error, allow_async=False)
+    elif not async and not self._finished:
       self.finish()
 
-  def respond(self, result=None, error=None, batch_results=None):
-    '''Respond to the request with the given result or error object (the ``batch_results`` parameter
-    is for internal use only and not intendented to be supplied manually). Responses will be
-    serialized according to the ``response_type`` propery. The default serialization is
-    "application/json". Other supported protocols are:
+  def respond(self, result=None, error=None, batch_results=None, allow_async=True):
+    '''Respond to the request with the given result or error object (the ``batch_results`` and
+    ``allow_async`` parameters are for internal use only and not intended to be supplied manually).
+    Responses will be serialized according to the ``response_type`` propery. The default
+    serialization is "application/json". Other supported protocols are:
 
     * application/bson - requires pymongo
     * application/msgpack - requires msgpack-python
@@ -287,6 +296,10 @@ class TotoHandler(RequestHandler):
 
     To send custom error information, pass an instance of ``TotoException`` with ``value = <some_json_serializable_object>``.
     '''
+    #if the handler is processing an async method, schedule the response on the main runloop
+    if self.async and allow_async:
+      IOLoop.instance().add_callback(lambda: self.respond(result, error, batch_results, False))
+      return
     response = {}
     if result is not None:
       response['result'] = result

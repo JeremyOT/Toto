@@ -10,8 +10,8 @@ from toto.worker import TotoWorkerService
 from toto.workerconnection import WorkerConnection
 from time import sleep, time
 
-def run_server(port):
-  TotoWorkerService(method_module='worker_methods', worker_bind_address='tcp://*:%d' % port, worker_socket_address='ipc:///tmp/workerservice%d.sock' % port, control_socket_address='ipc:///tmp/workercontrol%d.sock', debug=True).run()
+def run_server(port, daemon='start'):
+  TotoWorkerService(method_module='worker_methods', worker_bind_address='tcp://*:%d' % port, worker_socket_address='ipc:///tmp/workerservice%d.sock' % port, control_socket_address='ipc:///tmp/workercontrol%d.sock', debug=True, daemon=daemon, pidfile='worker-%d.pid' % port).run()
 
 def invoke_synchronously(worker, method, parameters, **kwargs):
   resp = []
@@ -27,8 +27,7 @@ class TestWorker(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     print 'Starting worker'
-    cls.service_processes = [Process(target=run_server, args=[9001 + i]) for i in xrange(3)]
-    for p in cls.service_processes:
+    for p in [Process(target=run_server, args=[9001 + i]) for i in xrange(3)]:
       p.start()
     sleep(0.5)
     cls.worker_addresses = ['tcp://127.0.0.1:%d' % (9001 + i) for i in xrange(3)]
@@ -37,12 +36,8 @@ class TestWorker(unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     print 'Stopping worker'
-    processes = [int(l.split()[0]) for l in os.popen('ps').readlines() if 'python' in l and 'unittest' in l]
-    for p in processes:
-      if p == os.getpid():
-        continue
-      print 'killing', p
-      os.kill(p, signal.SIGKILL)
+    for p in [Process(target=run_server, args=[9001 + i, 'stop']) for i in xrange(3)]:
+      p.start()
     sleep(0.5)
   
   def test_method(self):

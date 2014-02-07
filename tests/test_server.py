@@ -9,28 +9,21 @@ from multiprocessing import Process, active_children
 from toto.server import TotoServer
 from time import sleep, time
 
-def run_server(processes=1):
-  TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes).run()
+def run_server(processes=1, daemon='start'):
+  TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes, daemon=daemon, pidfile='server.pid').run()
 
 class TestWeb(unittest.TestCase):
   
   @classmethod
   def setUpClass(cls):
     print 'Starting server'
-    cls.service_process = Process(target=run_server, args=[-1])
-    cls.service_process.start()
+    Process(target=run_server, args=[int(os.environ.get('NUM_PROCS', -1))]).start()
     sleep(0.5)
   
   @classmethod
   def tearDownClass(cls):
     print 'Stopping server'
-    processes = [int(l.split()[0]) for l in os.popen('ps').readlines() if 'python' in l and 'unittest' in l]
-    for p in processes:
-      if p == os.getpid():
-        continue
-      print 'killing', p
-      os.kill(p, signal.SIGKILL)
-    sleep(0.5)
+    Process(target=run_server, args=[int(os.environ.get('NUM_PROCS', -1)), 'stop']).start()
   
   def test_method(self):
     request = {}
