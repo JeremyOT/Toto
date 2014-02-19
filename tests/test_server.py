@@ -45,9 +45,29 @@ class TestWeb(unittest.TestCase):
     response = json.loads(f.read())['result']
     self.assertEqual(request['parameters'], response['parameters'])
   
+  def test_method_coroutine(self):
+    request = {}
+    request['method'] = 'return_value_coroutine'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())['result']
+    self.assertEqual(request['parameters'], response['parameters'])
+  
   def test_method_task(self):
     request = {}
     request['method'] = 'return_value_task'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())['result']
+    self.assertEqual(request['parameters'], response['parameters'])
+  
+  def test_method_task_coroutine(self):
+    request = {}
+    request['method'] = 'return_value_task_coroutine'
     request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
     headers = {'content-type': 'application/json'}
     req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
@@ -184,6 +204,46 @@ class TestWeb(unittest.TestCase):
     f = urllib2.urlopen(req)
     response = json.loads(f.read())
     self.assertEqual({'error': {'code': 4242, 'value': "Test Toto Exception"}}, response)
+
+  def test_toto_exception_async_coroutine(self):
+    request = {}
+    request['method'] = 'throw_toto_exception_async_coroutine'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertEqual({'error': {'code': 4242, 'value': "Test Toto Exception"}}, response)
+
+  def test_toto_exception_task_coroutine(self):
+    request = {}
+    request['method'] = 'throw_toto_exception_task_coroutine'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertEqual({'error': {'code': 4242, 'value': "Test Toto Exception"}}, response)
+  
+  def test_exception_async_coroutine(self):
+    request = {}
+    request['method'] = 'throw_exception_async_coroutine'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertEqual({'error': {'code': 1000, 'value': "Test Exception"}}, response)
+  
+  def test_exception_task_coroutine(self):
+    request = {}
+    request['method'] = 'throw_exception_task_coroutine'
+    request['parameters'] = {'arg1': 1, 'arg2': 'hello'}
+    headers = {'content-type': 'application/json'}
+    req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
+    f = urllib2.urlopen(req)
+    response = json.loads(f.read())
+    self.assertEqual({'error': {'code': 1000, 'value': "Test Exception"}}, response)
 
 
 

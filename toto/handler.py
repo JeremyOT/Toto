@@ -8,8 +8,8 @@ from tornado.options import define, options
 import base64
 from tornado.httputil import parse_multipart_form_data
 from tornado.ioloop import IOLoop
-from tornado.gen import coroutine
-from tornado.concurrent import return_future
+from tornado.gen import coroutine, Return, engine
+from tornado.concurrent import return_future, Future
 import logging
 
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -190,6 +190,7 @@ class TotoHandler(RequestHandler):
     logging.error("TotoException: %s Value: %s" % (e.code, e.value))
     return e.__dict__
 
+  @coroutine
   def invoke_method(self, path, request_body, parameters, handler=None):
     result = None
     error = None
@@ -197,10 +198,15 @@ class TotoHandler(RequestHandler):
     try:
       method = self.__get_method(self.__get_method_path(path, request_body))
       self.__active_methods.append(method)
-      result = method.invoke(handler or self, parameters)
+      output = method.invoke(handler or self, parameters)
+      if isinstance(output, Future):
+        #result is a future, so yield the real response
+        result = yield output
+      else:
+        result = output
     except Exception as e:
       error = self.error_info(e)
-    return result, error, (hasattr(method, 'asynchronous'))
+    raise Return((result, error, (hasattr(method, 'asynchronous'))))
 
   def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
@@ -251,6 +257,7 @@ class TotoHandler(RequestHandler):
       yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
   
   @return_future
+  @engine
   def batch_process_request(self, requests, callback):
     self._request_callback = callback
     self.session = None
@@ -260,19 +267,20 @@ class TotoHandler(RequestHandler):
     self.batch_results = {}
     for k, v in ((i, requests[i]) for i in self.request_keys):
       proxy = BatchHandlerProxy(self, k)
-      (result, error, async) = self.invoke_method(None, v, v.get('parameters', {}), handler=proxy)
+      result, error, async = yield self.invoke_method(None, v, v.get('parameters', {}), handler=proxy)
       if async:
         proxy.async = True
       if result or error or not async:
         proxy.respond(result, error, allow_async=False)
 
   @return_future
+  @engine 
   def process_request(self, path, request_body, parameters, callback):
     self._request_callback = callback
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-    (result, error, async) = self.invoke_method(path, request_body, parameters)
+    result, error, async = yield self.invoke_method(path, request_body, parameters)
     if async:
       self.async = True
     if result is not None or error:
