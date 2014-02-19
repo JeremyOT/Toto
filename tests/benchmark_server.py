@@ -39,7 +39,7 @@ class TestWeb(unittest.TestCase):
     headers = {'content-type': 'application/json'}
     req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
     start = time()
-    for i in xrange(10000):
+    for i in xrange(1000):
       f = urllib2.urlopen(req)
     total = time() - start
     print '10000 requests in %s seconds\nAverage time %s ms (%s requests/second)' % (total, total/10000.0*1000.0, 10000.0/total)

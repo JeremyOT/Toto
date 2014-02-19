@@ -8,6 +8,8 @@ from tornado.options import define, options
 import base64
 from tornado.httputil import parse_multipart_form_data
 from tornado.ioloop import IOLoop
+from tornado.gen import coroutine
+from tornado.concurrent import return_future
 import logging
 
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -211,12 +213,12 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-allow-methods', ','.join(self.SUPPORTED_METHODS))
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
   
-  @tornado.web.asynchronous
+  @coroutine
   def head(self, path=None):
     self.headers_only = True
     self.get(path)
 
-  @tornado.web.asynchronous
+  @coroutine
   def get(self, path=None):
     parameters = {}
     # Convert parameters with one item to string, will cause undesired behavior if user means to pass array with length 1
@@ -225,9 +227,9 @@ class TotoHandler(RequestHandler):
         parameters[k] = v[0]
       else:
         parameters[k] = v
-    self.process_request(path, self.body, parameters)
+    yield self.process_request(path, self.body, parameters)
 
-  @tornado.web.asynchronous
+  @coroutine
   def post(self, path=None):
     content_type = 'content-type' in self.request.headers and self.request.headers['content-type'] or 'application/json'
     if not content_type.startswith('application/json'):
@@ -244,11 +246,13 @@ class TotoHandler(RequestHandler):
     else:
       self.body = json.loads(self.request.body)
     if self.body and 'batch' in self.body:
-      self.batch_process_request(self.body['batch'])
+      yield self.batch_process_request(self.body['batch'])
     else:
-      self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
+      yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
   
-  def batch_process_request(self, requests):
+  @return_future
+  def batch_process_request(self, requests, callback):
+    self._request_callback = callback
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
@@ -262,7 +266,9 @@ class TotoHandler(RequestHandler):
       if result or error or not async:
         proxy.respond(result, error, allow_async=False)
 
-  def process_request(self, path, request_body, parameters):
+  @return_future
+  def process_request(self, path, request_body, parameters, callback):
+    self._request_callback = callback
     self.session = None
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
@@ -272,7 +278,7 @@ class TotoHandler(RequestHandler):
     if result is not None or error:
       self.respond(result, error, allow_async=False)
     elif not async and not self._finished:
-      self.finish()
+      self._request_callback()
 
   def respond(self, result=None, error=None, batch_results=None, allow_async=True):
     '''Respond to the request with the given result or error object (the ``batch_results`` and
@@ -329,7 +335,7 @@ class TotoHandler(RequestHandler):
     if not self.headers_only:
       self.write(body)
     if finish:
-      self.finish()
+      self._request_callback()
 
   def on_connection_close(self):
     '''You should not call this method directly, but if you implement an ``on_connection_close()`` function in a
