@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.0 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.5 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.12.0',
+        VERSION:     '0.12.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.0 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.12.5 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.12.0 documentation</span></a></h1>
+          <span>Toto 0.12.5 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -99,7 +99,8 @@ Methods are modules that contain an invoke function:</p>
 <p>The request handler will be passed as the first parameter to the invoke function and
 provides access to the server&#8217;s database connection, the current session and other
 useful request properties. Request parameters will be passed as the second argument
-to the invoke function.</p>
+to the invoke function. Any return values from <tt class="docutils literal"><span class="pre">invoke()</span></tt> functions should be
+JSON serializable.</p>
 <p>Toto methods are generally invoked via a POST request to the server with a JSON
 serialized object as the body. The body should contain two properties:</p>
 <ol class="arabic simple">
@@ -111,6 +112,11 @@ serialized object as the body. The body should contain two properties:</p>
 </pre></div>
 </div>
 <p>Will call method_module.account.create.invoke(handler, {&#8216;user_id&#8217;: &#8216;test&#8217;, &#8216;password&#8217;: &#8216;testpassword&#8217;})</p>
+<p>An <tt class="docutils literal"><span class="pre">invoke()</span></tt> function can be decorated with <tt class="docutils literal"><span class="pre">&#64;tornado.gen.coroutine</span></tt> and be run as a Tornado coroutine.</p>
+<p>Alternatively, an <tt class="docutils literal"><span class="pre">invoke(handler,</span> <span class="pre">parameters)</span></tt> function may be decorated with <tt class="docutils literal"><span class="pre">&#64;toto.invocation.asynchronous</span></tt>.
+If a function decorated in this manner does not return a value, the connection well remain open until
+<tt class="docutils literal"><span class="pre">handler.respond(result,</span> <span class="pre">error)</span></tt> is called where <tt class="docutils literal"><span class="pre">error</span></tt> is an <tt class="docutils literal"><span class="pre">Exception</span></tt> or <tt class="docutils literal"><span class="pre">None</span></tt> and <tt class="docutils literal"><span class="pre">result</span></tt>
+is a normal <tt class="docutils literal"><span class="pre">invoke()</span></tt> return value or <tt class="docutils literal"><span class="pre">None</span></tt>.</p>
 <p>There are client libraries for iOS and Javascript that will make using Toto much easier. They are
 available at <a class="reference external" href="https://github.com/JeremyOT/TotoClient-iOS">https://github.com/JeremyOT/TotoClient-iOS</a> and <a class="reference external" href="https://github.com/JeremyOT/TotoClient-JS">https://github.com/JeremyOT/TotoClient-JS</a>
 respectively.</p>

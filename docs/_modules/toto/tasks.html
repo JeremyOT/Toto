@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.tasks &mdash; Toto 0.12.0 documentation</title>
+    <title>toto.tasks &mdash; Toto 0.12.5 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.12.0',
+        VERSION:     '0.12.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.0 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.12.5 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.12.0 documentation</span></a></h1>
+          <span>Toto 0.12.5 documentation</span></a></h1>
         <h2 class="heading"><span>toto.tasks</span></h2>
       </div>
       <div class="topnav">
@@ -49,6 +49,7 @@
 <span class="sd">&#39;&#39;&#39;</span>
 <span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">coroutine</span><span class="p">,</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Return</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
 
@@ -74,6 +75,36 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
 </div>
+  <span class="nd">@coroutine</span>
+  <span class="k">def</span> <span class="nf">yield_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Like add_task but will call the function as a coroutine, allowing you</span>
+<span class="sd">    to yield the return value from within a function decorated with ``@tornado.gen.coroutine``</span>
+<span class="sd">    or ``@tornado.gen.engine``.</span>
+
+<span class="sd">    Usage::</span>
+
+<span class="sd">      def add(arg1, arg2):</span>
+<span class="sd">        return arg1 + arg2</span>
+
+<span class="sd">      @tornado.gen.engine</span>
+<span class="sd">      def caller():</span>
+<span class="sd">        value = yield TaskQueue.instance(&#39;myqueue&#39;).yield_task(add, 1, 2)</span>
+<span class="sd">        print value #prints 3</span>
+<span class="sd">    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">callback</span><span class="p">):</span>
+      <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="n">error</span> <span class="o">=</span> <span class="bp">None</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+      <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">e</span>
+      <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Task</span><span class="p">(</span><span class="k">lambda</span> <span class="n">callback</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">call</span><span class="p">,</span> <span class="n">callback</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">error</span>
+    <span class="k">raise</span> <span class="n">Return</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
 <div class="viewcode-block" id="TaskQueue.run"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.run">[docs]</a>  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Start processing jobs in the queue. You should not need</span>
 <span class="sd">    to call this as ``add_task`` automatically starts the queue.</span>

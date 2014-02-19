@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.workerconnection &mdash; Toto 0.12.0 documentation</title>
+    <title>toto.workerconnection &mdash; Toto 0.12.5 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.12.0',
+        VERSION:     '0.12.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.0 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.12.5 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.12.0 documentation</span></a></h1>
+          <span>Toto 0.12.5 documentation</span></a></h1>
         <h2 class="heading"><span>toto.workerconnection</span></h2>
       </div>
       <div class="topnav">
@@ -49,6 +49,7 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span>
 <span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">options</span>
+<span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">Task</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">zmq.eventloop.ioloop</span> <span class="kn">import</span> <span class="n">ZMQPoller</span><span class="p">,</span> <span class="n">IOLoop</span><span class="p">,</span> <span class="n">PeriodicCallback</span>
 <span class="kn">from</span> <span class="nn">zmq.eventloop.zmqstream</span> <span class="kn">import</span> <span class="n">ZMQStream</span>
@@ -108,7 +109,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">=</span> <span class="n">compression</span> <span class="ow">and</span> <span class="n">compression</span><span class="o">.</span><span class="n">compress</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">decompress</span> <span class="o">=</span> <span class="n">compression</span> <span class="ow">and</span> <span class="n">compression</span><span class="o">.</span><span class="n">decompress</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">)</span>
 
-<div class="viewcode-block" id="WorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="WorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">await</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be</span>
 <span class="sd">       invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the</span>
 <span class="sd">       current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.</span>
@@ -119,9 +120,14 @@
 <span class="sd">       values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default</span>
 <span class="sd">       values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.</span>
 
-<span class="sd">       Alternativly, you can invoke methods with ``WorkerConnection.&lt;module&gt;.&lt;method&gt;(parameters, callback=None, timeout=0, auto_retry=None)``</span>
+<span class="sd">       Passing ``await=True`` will wrap the call in a ``tornado.gen.Task`` allowing you to ``yield`` the response from the worker.</span>
+<span class="sd">       The ``Task`` replaces ``callback`` so any user supplied callback will be ignored when ``await=True``.</span>
+
+<span class="sd">       Alternatively, you can invoke methods with ``WorkerConnection.&lt;module&gt;.&lt;method&gt;(*args, **kwargs)``</span>
 <span class="sd">       where ``&quot;&lt;module&gt;.&lt;method&gt;&quot;`` will be passed as the ``method`` argument to ``invoke()``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">await</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">Task</span><span class="p">(</span><span class="k">lambda</span> <span class="n">callback</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_queue_message</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s">&#39;method&#39;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span> <span class="s">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">})),</span> <span class="n">callback</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">auto_retry</span><span class="p">))</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_queue_message</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s">&#39;method&#39;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span> <span class="s">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">})),</span> <span class="n">callback</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">auto_retry</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="WorkerConnection.add_connection"><a class="viewcode-back" href="../../workerconnection.html#toto.workerconnection.WorkerConnection.add_connection">[docs]</a>  <span class="k">def</span> <span class="nf">add_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">):</span>
@@ -267,8 +273,8 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">connection</span>
 
-  <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">auto_retry</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">auto_retry</span><span class="p">)</span>
+  <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
     <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">+</span> <span class="s">&#39;.&#39;</span> <span class="o">+</span> <span class="n">path</span><span class="p">)</span>
