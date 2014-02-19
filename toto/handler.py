@@ -68,7 +68,8 @@ class TotoHandler(RequestHandler):
   The request handler will be passed as the first parameter to the invoke function and
   provides access to the server's database connection, the current session and other
   useful request properties. Request parameters will be passed as the second argument
-  to the invoke function.
+  to the invoke function. Any return values from ``invoke()`` functions should be
+  JSON serializable.
   
   Toto methods are generally invoked via a POST request to the server with a JSON
   serialized object as the body. The body should contain two properties:
@@ -81,6 +82,13 @@ class TotoHandler(RequestHandler):
     {"method": "account.create", "parameters": {"user_id": "test", "password": "testpassword"}}
 
   Will call method_module.account.create.invoke(handler, {'user_id': 'test', 'password': 'testpassword'})
+
+  An ``invoke()`` function can be decorated with ``@tornado.gen.coroutine`` and be run as a Tornado coroutine.
+
+  Alternatively, an ``invoke(handler, parameters)`` function may be decorated with ``@toto.invocation.asynchronous``.
+  If a function decorated in this manner does not return a value, the connection well remain open until
+  ``handler.respond(result, error)`` is called where ``error`` is an ``Exception`` or ``None`` and ``result``
+  is a normal ``invoke()`` return value or ``None``.
 
   There are client libraries for iOS and Javascript that will make using Toto much easier. They are
   available at https://github.com/JeremyOT/TotoClient-iOS and https://github.com/JeremyOT/TotoClient-JS

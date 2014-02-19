@@ -13,7 +13,7 @@ for (path, dirs, files) in os.walk('templates'):
 
 setup(
   name='Toto',
-  version='0.12.0',
+  version='0.12.5',
   author='JeremyOT',
   author_email='',
   download_url='https://github.com/JeremyOT/Toto/zipball/master',
@@ -21,8 +21,8 @@ setup(
   platforms=['OS X', 'Linux'],
   url='http://toto.li',
   packages=['toto','toto.methods','toto.methods.account'],
-  requires=['tornado(>=2.1)',],
-  install_requires=['tornado>=2.1',],
+  requires=['tornado(>=3.2)',],
+  install_requires=['tornado>=3.2',],
   provides=['toto',],
   scripts=['scripts/toto-create',],
   description='A Tornado based framework designed to accelerate web service development',

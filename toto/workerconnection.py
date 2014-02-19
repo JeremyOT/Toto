@@ -5,6 +5,7 @@ import zlib
 import logging
 from threading import Thread
 from tornado.options import options
+from tornado.gen import Task
 from collections import deque
 from zmq.eventloop.ioloop import ZMQPoller, IOLoop, PeriodicCallback
 from zmq.eventloop.zmqstream import ZMQStream
@@ -64,7 +65,7 @@ class WorkerConnection(object):
     self.compress = compression and compression.compress or (lambda x: x)
     self.decompress = compression and compression.decompress or (lambda x: x)
 
-  def invoke(self, method, parameters={}, callback=None, timeout=0, auto_retry=None):
+  def invoke(self, method, parameters={}, callback=None, timeout=0, auto_retry=None, await=False):
     '''Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
        current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.
@@ -75,9 +76,14 @@ class WorkerConnection(object):
        values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default
        values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.
 
-       Alternativly, you can invoke methods with ``WorkerConnection.<module>.<method>(parameters, callback=None, timeout=0, auto_retry=None)``
+       Passing ``await=True`` will wrap the call in a ``tornado.gen.Task`` allowing you to ``yield`` the response from the worker.
+       The ``Task`` replaces ``callback`` so any user supplied callback will be ignored when ``await=True``.
+
+       Alternatively, you can invoke methods with ``WorkerConnection.<module>.<method>(*args, **kwargs)``
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
     '''
+    if await:
+      return Task(lambda callback: self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout, auto_retry))
     self._queue_message(self.compress(self.dumps({'method': method, 'parameters': parameters})), callback, timeout, auto_retry)
 
   def add_connection(self, address):
@@ -223,8 +229,8 @@ class WorkerInvocation(object):
     self._path = path
     self._connection = connection
 
-  def __call__(self, parameters={}, callback=None, timeout=0, auto_retry=None):
-    self._connection.invoke(self._path, parameters, callback, timeout, auto_retry)
+  def __call__(self, *args, **kwargs):
+    return self._connection.invoke(self._path, *args, **kwargs)
 
   def __getattr__(self, path):
     return getattr(self._connection, self._path + '.' + path)

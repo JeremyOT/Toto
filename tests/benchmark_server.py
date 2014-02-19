@@ -42,5 +42,5 @@ class TestWeb(unittest.TestCase):
     for i in xrange(1000):
       f = urllib2.urlopen(req)
     total = time() - start
-    print '10000 requests in %s seconds\nAverage time %s ms (%s requests/second)' % (total, total/10000.0*1000.0, 10000.0/total)
+    print '1000 requests in %s seconds\nAverage time %s ms (%s requests/second)' % (total, total/1000.0*1000.0, 1000.0/total)
 

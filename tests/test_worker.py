@@ -8,6 +8,7 @@ from toto.secret import *
 from multiprocessing import Process, active_children
 from toto.worker import TotoWorkerService
 from toto.workerconnection import WorkerConnection
+from tornado.gen import engine
 from time import sleep, time
 
 def run_server(port, daemon='start'):
@@ -49,6 +50,12 @@ class TestWorker(unittest.TestCase):
     while not resp:
       sleep(0.1)
     self.assertEqual(parameters, resp[0]['parameters'])
+
+  @engine
+  def test_method_generator(self):
+    parameters = {'arg1': 1, 'arg2': 'hello'}
+    resp = yield self.worker.invoke('return_value', parameters, await=True)
+    self.assertEqual(parameters, resp['parameters'])
   
   def test_method_alt_invocation(self):
     resp = []
@@ -59,6 +66,12 @@ class TestWorker(unittest.TestCase):
     while not resp:
       sleep(0.1)
     self.assertEqual(parameters, resp[0]['parameters'])
+  
+  @engine
+  def test_method_alt_invocation_generator(self):
+    parameters = {'arg1': 1, 'arg2': 'hello'}
+    resp = yield self.worker.return_value(parameters, await=True)
+    self.assertEqual(parameters, resp['parameters'])
   
   def test_bad_method(self):
     resp = []
@@ -82,6 +95,13 @@ class TestWorker(unittest.TestCase):
     self.assertEqual(resp[0]['error']['code'], 1000)
     self.assertEqual(resp[0]['error']['value'], "Test Exception")
 
+  @engine
+  def test_exception_generator(self):
+    parameters = {'arg1': 1, 'arg2': 'hello'}
+    resp = yield self.worker.invoke('throw_exception', parameters, await=True)
+    self.assertEqual(resp['error']['code'], 1000)
+    self.assertEqual(resp['error']['value'], "Test Exception")
+
   def test_toto_exception(self):
     resp = []
     def cb(response):
@@ -92,6 +112,13 @@ class TestWorker(unittest.TestCase):
       sleep(0.1)
     self.assertEqual(resp[0]['error']['code'], 4242)
     self.assertEqual(resp[0]['error']['value'], "Test Toto Exception")
+
+  @engine
+  def test_toto_exception_generator(self):
+    parameters = {'arg1': 1, 'arg2': 'hello'}
+    resp = yield self.worker.invoke('throw_exception', parameters, await=True)
+    self.assertEqual(resp['error']['code'], 4242)
+    self.assertEqual(resp['error']['value'], "Test Toto Exception")
   
   def test_add_connection(self):
     self.worker.add_connection(self.worker_addresses[1])
