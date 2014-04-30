@@ -21,7 +21,7 @@ to install the latest version of the Toto module on your machine.
 
 Documentation
 -------------
-Complete documentation is available here: [http://jeremyot.com/Toto/docs/][docs].
+Complete documentation is available here: [http://toto.li/docs/][docs].
 
 Usage
 -----
@@ -161,6 +161,6 @@ and [https://github.com/JeremyOT/TotoClient-iOS](https://github.com/JeremyOT/Tot
 [tornado]:http://www.tornadoweb.org
 [mysql]:http://www.mysql.com
 [mongodb]:http://www.mongodb.org
-[docs]:http://jeremyot.com/Toto/docs/ "http://jeremyot.com/Toto/docs/"
+[docs]:http://toto.li/docs/ "http://toto.li/docs/"
 [postgres]:http://www.postgresql.org/
 [redis]:http://redis.io/
