@@ -13,7 +13,7 @@ for (path, dirs, files) in os.walk('templates'):
 
 setup(
   name='Toto',
-  version='0.12.5',
+  version='0.12.7',
   author='JeremyOT',
   author_email='',
   download_url='https://github.com/JeremyOT/Toto/zipball/master',
