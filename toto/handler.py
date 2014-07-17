@@ -10,6 +10,7 @@ from tornado.httputil import parse_multipart_form_data
 from tornado.ioloop import IOLoop
 from tornado.gen import coroutine, Return, engine
 from tornado.concurrent import return_future, Future
+from uuid import uuid4
 import logging
 
 define("allow_origin", default="*", help="This is the value for the Access-Control-Allow-Origin header (default *)")
@@ -26,11 +27,12 @@ class BatchHandlerProxy(object):
   with ``proxy.handler``.
   '''
 
-  _non_proxy_keys = {'handler', 'request_key', 'async'}
+  _non_proxy_keys = {'handler', 'request_key', 'async', 'transaction_id'}
 
   def __init__(self, handler, request_key):
     self.handler = handler
     self.request_key = request_key
+    self.transaction_id = uuid4()
 
   def __getattr__(self, attr):
     return getattr(self.handler, attr)
@@ -51,6 +53,7 @@ class BatchHandlerProxy(object):
     if self.async and allow_async:
       IOLoop.instance().add_callback(lambda: self.respond(result, error, False))
       return
+    self._after_invoke(self.transaction_id)
     self.handler.batch_results[self.request_key] = error is not None and {'error': isinstance(error, dict) and error or self.handler.error_info(error)} or {'result': result}
     if len(self.handler.batch_results) == len(self.handler.request_keys):
       self.handler.respond(batch_results=self.handler.batch_results, allow_async=False)
@@ -109,6 +112,7 @@ class TotoHandler(RequestHandler):
     self.__active_methods = []
     self.headers_only = False
     self.async = False
+    self.transaction_id = uuid4()
 
   @classmethod
   def configure(cls):
@@ -204,7 +208,12 @@ class TotoHandler(RequestHandler):
     error = None
     method = None
     try:
-      method = self.__get_method(self.__get_method_path(path, request_body))
+      method_path = self.__get_method_path(path, request_body)
+      method = self.__get_method(method_path)
+      if handler:
+        self._before_invoke(handler.transaction_id, method_path)
+      else:
+        self._before_invoke(self.transaction_id, method_path)
       self.__active_methods.append(method)
       output = method.invoke(handler or self, parameters)
       if isinstance(output, Future):
@@ -242,6 +251,7 @@ class TotoHandler(RequestHandler):
       else:
         parameters[k] = v
     yield self.process_request(path, self.body, parameters)
+    self._after_invoke(self.transaction_id)
 
   @coroutine
   def post(self, path=None):
@@ -263,6 +273,7 @@ class TotoHandler(RequestHandler):
       yield self.batch_process_request(self.body['batch'])
     else:
       yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
+    self._after_invoke(self.transaction_id)
   
   @return_future
   @engine
@@ -273,6 +284,7 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
     self.request_keys = sorted(requests.keys())
     self.batch_results = {}
+    self._before_invoke(self.transaction_id, '<batch>')
     for k, v in ((i, requests[i]) for i in self.request_keys):
       proxy = BatchHandlerProxy(self, k)
       result, error, async = yield self.invoke_method(None, v, v.get('parameters', {}), handler=proxy)
@@ -415,3 +427,24 @@ class TotoHandler(RequestHandler):
     while self.registered_event_handlers:
       self.deregister_event_handler(self.registered_event_handlers[0])
 
+  def _before_invoke(self, transaction_id, method):
+    pass
+
+  def _after_invoke(self, transaction_id):
+    pass
+
+@classmethod
+def set_before_handler(cls, handler):
+  '''Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
+     called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the
+     invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
+     logged with name ``"<batch>"`` which wraps the entire request. The default handler is a no op.
+  '''
+  cls._before_invoke = handler
+
+@classmethod
+def set_after_handler(cls, handler):
+  '''Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,
+     where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.
+  '''
+  cls._after_invoke = handler

@@ -41,6 +41,12 @@ Servers, Handlers and Sessions
 
   .. automethod:: toto.handler.BatchHandlerProxy.respond
 
+  Instrumentation
+  ^^^^^^^^^^^^^^^
+  .. automethod:: toto.handler.TotoHandler.set_before_handler
+  .. automethod:: toto.handler.TotoHandler.set_after_handler
+  
+
   Sessions
   --------
   
