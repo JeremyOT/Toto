@@ -3,3 +3,5 @@
 docs/build
 *.swp
 *.egg-info
+MANIFEST
+dist
