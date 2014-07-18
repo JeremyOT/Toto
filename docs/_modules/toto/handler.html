@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.handler &mdash; Toto 0.12.6 documentation</title>
+    <title>toto.handler &mdash; Toto 0.12.8 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.12.6',
+        VERSION:     '0.12.8',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.6 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 0.12.8 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.12.6 documentation</span></a></h1>
+          <span>Toto 0.12.8 documentation</span></a></h1>
         <h2 class="heading"><span>toto.handler</span></h2>
       </div>
       <div class="topnav">
@@ -476,22 +476,22 @@
 
   <span class="k">def</span> <span class="nf">_after_invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transaction_id</span><span class="p">):</span>
     <span class="k">pass</span>
-</div>
-<span class="nd">@classmethod</span>
-<span class="k">def</span> <span class="nf">set_before_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
-  <span class="sd">&#39;&#39;&#39;Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be </span>
-<span class="sd">     called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the</span>
-<span class="sd">     invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message</span>
-<span class="sd">     logged with name ``&quot;&lt;batch&gt;&quot;`` which wraps the entire request. The default handler is a no op.</span>
-<span class="sd">  &#39;&#39;&#39;</span>
-  <span class="n">cls</span><span class="o">.</span><span class="n">_before_invoke</span> <span class="o">=</span> <span class="n">handler</span>
 
-<span class="nd">@classmethod</span>
-<span class="k">def</span> <span class="nf">set_after_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
-  <span class="sd">&#39;&#39;&#39;Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,</span>
-<span class="sd">     where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.</span>
-<span class="sd">  &#39;&#39;&#39;</span>
-  <span class="n">cls</span><span class="o">.</span><span class="n">_after_invoke</span> <span class="o">=</span> <span class="n">handler</span>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoHandler.set_before_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.set_before_handler">[docs]</a>  <span class="k">def</span> <span class="nf">set_before_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be </span>
+<span class="sd">       called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the</span>
+<span class="sd">       invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message</span>
+<span class="sd">       logged with name ``&quot;&lt;batch&gt;&quot;`` which wraps the entire request. The default handler is a no op.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">_before_invoke</span> <span class="o">=</span> <span class="n">handler</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoHandler.set_after_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.set_after_handler">[docs]</a>  <span class="k">def</span> <span class="nf">set_after_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,</span>
+<span class="sd">       where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">_after_invoke</span> <span class="o">=</span> <span class="n">handler</span></div></div>
 </pre></div>
 
       </div>
@@ -504,7 +504,7 @@
       </div>
 
     <div class="footer">
-        &copy; Copyright 2013, Jeremy Olmsted-Thompson.
+        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>

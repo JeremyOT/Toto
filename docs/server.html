@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.6 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.8 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.12.6',
+        VERSION:     '0.12.8',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.6 documentation" href="index.html" />
+    <link rel="top" title="Toto 0.12.8 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.12.6 documentation</span></a></h1>
+          <span>Toto 0.12.8 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -224,6 +224,22 @@ the combined response will passed to the underlying handler&#8217;s <tt class="d
 </div>
 <div class="section" id="instrumentation">
 <h3>Instrumentation<a class="headerlink" href="#instrumentation" title="Permalink to this headline">¶</a></h3>
+<dl class="classmethod">
+<dt id="toto.handler.TotoHandler.set_before_handler">
+<em class="property">classmethod </em><tt class="descclassname">TotoHandler.</tt><tt class="descname">set_before_handler</tt><big>(</big><em>handler</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.set_before_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.set_before_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
+called with <tt class="docutils literal"><span class="pre">handler,</span> <span class="pre">transaction_id,</span> <span class="pre">method</span></tt>, where <tt class="docutils literal"><span class="pre">transaction_id</span></tt> is a UUID and <tt class="docutils literal"><span class="pre">method</span></tt> is the name of the
+invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
+logged with name <tt class="docutils literal"><span class="pre">&quot;&lt;batch&gt;&quot;</span></tt> which wraps the entire request. The default handler is a no op.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.handler.TotoHandler.set_after_handler">
+<em class="property">classmethod </em><tt class="descclassname">TotoHandler.</tt><tt class="descname">set_after_handler</tt><big>(</big><em>handler</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.set_after_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.set_after_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the handler that will be called after any method invocation. The handler will be called with <tt class="docutils literal"><span class="pre">handler,</span> <span class="pre">transaction_id</span></tt>,
+where <tt class="docutils literal"><span class="pre">transaction_id</span></tt> is the UUID that was passed to the before handler. The default handler is a no op.</p>
+</dd></dl>
+
 </div>
 </div>
 <div class="section" id="sessions">
@@ -371,7 +387,7 @@ by passing all the keys you want to load as arguments to this method first.</p>
       </div>
 
     <div class="footer">
-        &copy; Copyright 2013, Jeremy Olmsted-Thompson.
+        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>
