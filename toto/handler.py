@@ -433,18 +433,18 @@ class TotoHandler(RequestHandler):
   def _after_invoke(self, transaction_id):
     pass
 
-@classmethod
-def set_before_handler(cls, handler):
-  '''Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
-     called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the
-     invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
-     logged with name ``"<batch>"`` which wraps the entire request. The default handler is a no op.
-  '''
-  cls._before_invoke = handler
+  @classmethod
+  def set_before_handler(cls, handler):
+    '''Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
+       called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the
+       invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
+       logged with name ``"<batch>"`` which wraps the entire request. The default handler is a no op.
+    '''
+    cls._before_invoke = handler
 
-@classmethod
-def set_after_handler(cls, handler):
-  '''Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,
-     where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.
-  '''
-  cls._after_invoke = handler
+  @classmethod
+  def set_after_handler(cls, handler):
+    '''Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,
+       where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.
+    '''
+    cls._after_invoke = handler

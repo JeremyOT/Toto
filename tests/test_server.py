@@ -8,6 +8,16 @@ from toto.secret import *
 from multiprocessing import Process, active_children
 from toto.server import TotoServer
 from time import sleep, time
+from toto.handler import TotoHandler
+import logging
+
+def before_handler(handler, transaction, method):
+  logging.info('Begin %s %s' % (method, transaction))
+
+def after_handler(handler, transaction):
+  logging.info('Finished %s' % transaction)
+TotoHandler.set_before_handler(before_handler)
+TotoHandler.set_after_handler(after_handler)
 
 def run_server(processes=1, daemon='start'):
   TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes, daemon=daemon, pidfile='server.pid').run()

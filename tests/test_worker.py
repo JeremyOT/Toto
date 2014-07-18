@@ -8,8 +8,23 @@ from toto.secret import *
 from multiprocessing import Process, active_children
 from toto.worker import TotoWorkerService
 from toto.workerconnection import WorkerConnection
-from tornado.gen import engine
+from tornado.gen import coroutine
+from tornado.concurrent import Future
+from tornado.ioloop import IOLoop
 from time import sleep, time
+from threading import Thread
+
+def run_loop(func):
+  def wrapper():
+    ioloop = IOLoop()
+    @coroutine
+    def looped():
+      yield func()
+      ioloop.stop()
+    ioloop.add_callback(looped)
+    thread = Thread(target=ioloop.start)
+    thread.start()
+  return wrapper
 
 def run_server(port, daemon='start'):
   TotoWorkerService(method_module='worker_methods', worker_bind_address='tcp://*:%d' % port, worker_socket_address='ipc:///tmp/workerservice%d.sock' % port, control_socket_address='ipc:///tmp/workercontrol%d.sock', debug=True, daemon=daemon, pidfile='worker-%d.pid' % port).run()
@@ -54,7 +69,8 @@ class TestWorker(unittest.TestCase):
   def test_method_generator(self):
     resp = []
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    @engine
+    @run_loop
+    @coroutine
     def run():
       resp.append((yield self.worker.invoke('return_value', parameters, await=True)))
     run()
@@ -75,7 +91,8 @@ class TestWorker(unittest.TestCase):
   def test_method_alt_invocation_generator(self):
     resp = []
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    @engine
+    @run_loop
+    @coroutine
     def run():
       resp.append((yield self.worker.return_value(parameters, await=True)))
     run()
@@ -108,7 +125,8 @@ class TestWorker(unittest.TestCase):
   def test_exception_generator(self):
     resp = []
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    @engine
+    @run_loop
+    @coroutine
     def run():
       resp.append((yield self.worker.invoke('throw_exception', parameters, await=True)))
     run()
@@ -130,7 +148,8 @@ class TestWorker(unittest.TestCase):
 
   def test_toto_exception_generator(self):
     resp = []
-    @engine
+    @run_loop
+    @coroutine
     def run():
       parameters = {'arg1': 1, 'arg2': 'hello'}
       resp.append((yield self.worker.invoke('throw_toto_exception', parameters, await=True)))
