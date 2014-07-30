@@ -17,7 +17,7 @@ define("allow_origin", default="*", help="This is the value for the Access-Contr
 define("method_select", default="both", metavar="both|url|parameter", help="Selects whether methods can be specified via URL, parameter in the message body or both (default both)")
 define("bson_enabled", default=False, help="Allows requests to use BSON with content-type application/bson")
 define("msgpack_enabled", default=False, help="Allows requests to use MessagePack with content-type application/msgpack")
-define("hmac_enabled", default=True, help="Uses the x-toto-hmac header to verify authenticated requests.")
+define("hmac_enabled", default=False, help="Uses the x-toto-hmac header to verify authenticated requests.")
 
 class BatchHandlerProxy(object):
   '''A proxy to a handler, this class intercepts calls to ``handler.respond()`` in order to match the
