@@ -62,18 +62,18 @@ class TotoHandler(RequestHandler):
   '''The handler is responsible for processing all requests to the server. An instance
   will be initialized for each incoming request and will handle authentication, session
   management and method delegation for you.
-  
+
   You can set the module to use for method delegation via the ``method_module`` parameter.
   Methods are modules that contain an invoke function::
 
     def invoke(handler, parameters)
-  
+
   The request handler will be passed as the first parameter to the invoke function and
   provides access to the server's database connection, the current session and other
   useful request properties. Request parameters will be passed as the second argument
   to the invoke function. Any return values from ``invoke()`` functions should be
   JSON serializable.
-  
+
   Toto methods are generally invoked via a POST request to the server with a JSON
   serialized object as the body. The body should contain two properties:
 
@@ -137,7 +137,7 @@ class TotoHandler(RequestHandler):
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
       cls.__get_method_path = get_method_path
-    
+
     if options.use_cookies:
       import math
       set_cookie = options.secure_cookies and cls.set_secure_cookie or cls.set_cookie
@@ -147,14 +147,16 @@ class TotoHandler(RequestHandler):
         set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
       cls.create_session = create_session
-      
+
       def retrieve_session(self, session_id=None):
         if not self.session or (session_id and self.session.session_id != session_id):
           headers = self.request.headers
           if not session_id:
             session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or get_cookie(self, 'toto-session-id')
           if session_id:
-            self.session = self.db_connection.retrieve_session(session_id, options.hmac_enabled and headers.get('x-toto-hmac'), options.hmac_enabled and 'x-toto-hmac' in headers and self.request.body or None)
+            self.session = self.db_connection.retrieve_session(session_id)
+          if options.hmac_enabled and self.session:
+            self.session.verify(headers['x-toto-hmac'], session_id + self.request.method + self.request.url + (self.request.body or ''))
         if self.session:
           set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
@@ -169,7 +171,7 @@ class TotoHandler(RequestHandler):
       cls.error_info = error_info
     cls.__method_root = __import__(options.method_module)
     cls.__method_cache = {}
-      
+
   def __get_method_path(self, path, body):
     """The default method_select "both" (or any unsupported value) will
     call this method. The class method ``configure()`` will update this
@@ -235,7 +237,7 @@ class TotoHandler(RequestHandler):
     self.add_header('access-control-allow-origin', self.ACCESS_CONTROL_ALLOW_ORIGIN)
     self.add_header('access-control-allow-methods', ','.join(self.SUPPORTED_METHODS))
     self.add_header('access-control-expose-headers', 'x-toto-hmac')
-  
+
   @coroutine
   def head(self, path=None):
     self.headers_only = True
@@ -274,7 +276,7 @@ class TotoHandler(RequestHandler):
     else:
       yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
     self._after_invoke(self.transaction_id)
-  
+
   @return_future
   @engine
   def batch_process_request(self, requests, callback):
@@ -294,7 +296,7 @@ class TotoHandler(RequestHandler):
         proxy.respond(result, error, allow_async=False)
 
   @return_future
-  @engine 
+  @engine
   def process_request(self, path, request_body, parameters, callback):
     self._request_callback = callback
     self.session = None
@@ -318,7 +320,7 @@ class TotoHandler(RequestHandler):
     * application/msgpack - requires msgpack-python
 
     The response will also contain any available session information.
-    
+
     To help with error handling in asynchronous methods, calling ``handler.respond(error=<your_error>)`` with a caught
     exception will trigger a normal Toto error response, log the error and finish the request. This is the same basic
     flow that is used internally when exceptions are raised from synchronous method calls.
@@ -349,8 +351,8 @@ class TotoHandler(RequestHandler):
       response_body = self.msgpack.dumps(response)
     else:
       response_body = json.dumps(response)
-    if self.session and options.hmac_enabled:
-      self.add_header('x-toto-hmac', base64.b64encode(hmac.new(str(self.session.user_id).lower(), response_body, hashlib.sha1).digest()))
+    if options.hmac_enabled and self.session:
+      self.add_header('x-toto-hmac', self.session.hmac(self.session.session_id + response_body))
     self.respond_raw(response_body, self.response_type)
 
   def respond_raw(self, body, content_type, finish=True):
@@ -414,15 +416,22 @@ class TotoHandler(RequestHandler):
   def retrieve_session(self, session_id=None):
     '''Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
     in ``self.session``. Alternatively, pass a ``session_id`` to this function to retrieve that session explicitly.
+
+    If the ``hmac_enabled`` option is set to ``True``, Verify the session against the given request. Expects that
+    the request's ``x-toto-hmac`` header is the sha1 hmac of the request signature signed with the authenticated key.
+
+    The signature takes the form: ``session_id + method + url + body or ''
     '''
     if not self.session or (session_id and self.session.session_id != session_id):
       headers = self.request.headers
       if not session_id and 'x-toto-session-id' in headers:
-        session_id = 'x-toto-session-id' in headers and headers['x-toto-session-id'] or None
+        session_id = headers['x-toto-session-id']
       if session_id:
-        self.session = self.db_connection.retrieve_session(session_id, options.hmac_enabled and headers.get('x-toto-hmac'), options.hmac_enabled and 'x-toto-hmac' in headers and self.request.body or None)
+        self.session = self.db_connection.retrieve_session(session_id)
+      if options.hmac_enabled and self.session:
+        self.session.verify(headers['x-toto-hmac'], session_id + self.request.method + self.request.url + (self.request.body or ''))
     return self.session
-    
+
   def on_finish(self):
     while self.registered_event_handlers:
       self.deregister_event_handler(self.registered_event_handlers[0])
@@ -435,7 +444,7 @@ class TotoHandler(RequestHandler):
 
   @classmethod
   def set_before_handler(cls, handler):
-    '''Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
+    '''Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be
        called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the
        invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
        logged with name ``"<batch>"`` which wraps the entire request. The default handler is a no op.

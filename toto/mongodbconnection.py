@@ -28,11 +28,11 @@ class MongoDBSession(TotoSession):
   def refresh(self):
     session_data = self._refresh_cache() or self._db.sessions.find_one({'session_id': self.session_id})
     self.__init__(self._db, session_data, self._session_cache)
-  
+
   def save(self):
     if not self._verified:
       raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
-    if not self._save_cache(): 
+    if not self._save_cache():
       self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': TotoSession.dumps(self.state)}})
 
 class MongoDBConnection(DBConnection):
@@ -48,7 +48,7 @@ class MongoDBConnection(DBConnection):
     account_indexes = self.db.accounts.index_information()
     if not 'user_id' in account_indexes:
       self.db.accounts.ensure_index('user_id', name='user_id')
-  
+
   def __init__(self, host, port, database, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
     self.db = pymongo.Connection(host, port)[database]
     self._ensure_indexes()
@@ -86,20 +86,17 @@ class MongoDBConnection(DBConnection):
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data=None, data=None):
+  def retrieve_session(self, session_id):
     session_data = self._load_session_data(session_id)
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if user_id and data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
-      raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     expires = time() + (user_id and self.session_renew or self.anon_session_renew)
     if session_data['expires'] < expires:
       session_data['expires'] = expires
       if not self._cache_session_data(session_data):
         self.db.sesions.update({'session_id': session_id}, {'$set': {'expires': session_data['expires']}})
     session = MongoDBSession(self.db, session_data, self._session_cache)
-    session._verified = True
     return session
 
   def remove_session(self, session_id):
@@ -119,7 +116,7 @@ class MongoDBConnection(DBConnection):
     account = self.db.accounts.find_one({'user_id': user_id})
     if not account:
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    pass_chars = string.ascii_letters + string.digits 
+    pass_chars = string.ascii_letters + string.digits
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
     self.db.accounts.update({'user_id': user_id}, {'$set': {'password': secret.password_hash(new_password)}})
     self.clear_sessions(user_id)

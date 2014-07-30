@@ -6,10 +6,7 @@ from datetime import datetime
 from dbconnection import DBConnection
 from uuid import uuid4
 import toto.secret as secret
-import base64
 import uuid
-import hmac
-import hashlib
 import random
 import string
 
@@ -17,7 +14,7 @@ class MySQLdbSession(TotoSession):
   _account = None
 
   class MySQLdbAccount(TotoAccount):
-    
+
     def __init__(self, session):
       super(MySQLdbSession.MySQLdbAccount, self).__init__(session)
       self._properties['account_id'] = session.account_id
@@ -31,7 +28,7 @@ class MySQLdbSession(TotoSession):
     def __setitem__(self, key, value):
       if key != 'account_id':
         super(MySQLdbSession.MySQLdbAccount, self).__setitem__(key, value)
-    
+
   def __init__(self, db, session_data, session_cache=None):
     super(MySQLdbSession, self).__init__(db, session_data, session_cache)
     self.account_id = session_data['account_id']
@@ -42,8 +39,8 @@ class MySQLdbSession(TotoSession):
     return self._account
 
   def session_data(self):
-   return {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state), 'account_id': self.account_id} 
-  
+   return {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state), 'account_id': self.account_id}
+
   def refresh(self):
     session_data = self._refresh_cache() or self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
     self.__init__(self._db, session_data, self._session_cache)
@@ -125,15 +122,12 @@ class MySQLdbConnection(DBConnection):
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if user_id and data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
-      raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     expires = time() + (user_id and self.session_renew or self.anon_session_renew)
     if session_data['expires'] < expires:
       session_data['expires'] = expires
       if not self._cache_session_data(session_data):
         self.db.execute("update session set expires = %s where session_id = %s", session_data['expires'], session_id)
     session = MySQLdbSession(self.db, session_data, self._session_cache)
-    session._verified = True
     return session
 
   def remove_session(self, session_id):

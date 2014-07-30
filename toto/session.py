@@ -1,6 +1,9 @@
 import cPickle as pickle
+import hmac
+from hashlib import sha1
 from uuid import uuid4
 from base64 import b64encode
+from toto.exceptions import *
 
 SESSION_ID_LENGTH = 22
 
@@ -66,13 +69,16 @@ class TotoSession(object):
 
   __serializer = pickle
 
-  def __init__(self, db, session_data, session_cache=None):
+  def __init__(self, db, session_data, session_cache=None, key=None):
     self._db = db
     self._session_cache = session_cache
     self.user_id = session_data['user_id']
     self.expires = session_data['expires']
     self.session_id = session_data['session_id']
     self.state = session_data.get('state') and TotoSession.loads(session_data['state']) or {}
+    key = key or session_data.get('key')
+    if key:
+      self.key = key
     self._verified = False
 
   def get_account(self, *args):
@@ -85,7 +91,10 @@ class TotoSession(object):
   def session_data(self):
     '''Return a session data ``dict`` that could be used to instantiate a session identical to the current one.
     '''
-    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state)}
+    data = {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state)}
+    if hasattr(self, 'key'):
+      data['key'] = self.key
+    return data
 
   def __getitem__(self, key):
     return key in self.state and self.state[key] or None
@@ -131,6 +140,21 @@ class TotoSession(object):
     '''Save the session to the database.
     '''
     raise Exception("Unimplemented operation: save")
+
+  def verify(self, mac, signature):
+    '''Verify the mac and signature with this session's authenticated key.
+    '''
+    if not self.key or not mac or not signature:
+      raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
+    if self.hmac(signature) != mac:
+      raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
+    self._verified = True
+    return self
+
+  def hmac(self, signature):
+    '''Return the hmac of the signature signed with the authenticated key.
+    '''
+    return b64encode(hmac.new(self.key, signature, sha1).digest())
 
   @classmethod
   def set_serializer(cls, serializer):

@@ -45,7 +45,7 @@ class PostgresSession(TotoSession):
   _account = None
 
   class PostgresAccount(TotoAccount):
-    
+
     def __init__(self, session):
       super(PostgresSession.PostgresAccount, self).__init__(session)
       self._properties['account_id'] = session.account_id
@@ -59,7 +59,7 @@ class PostgresSession(TotoSession):
     def __setitem__(self, key, value):
       if key != 'account_id':
         super(PostgresSession.PostgresAccount, self).__setitem__(key, value)
-    
+
   def __init__(self, db, session_data, session_cache=None):
     super(PostgresSession, self).__init__(db, session_data, session_cache)
     self.account_id = session_data['account_id']
@@ -140,20 +140,17 @@ class PostgresConnection(DBConnection):
     session._verified = True
     return session
 
-  def retrieve_session(self, session_id, hmac_data=None, data=None):
+  def retrieve_session(self, session_id):
     session_data = self._load_session_data(session_id)
     if not session_data:
       return None
     user_id = session_data['user_id']
-    if user_id and data and hmac_data != base64.b64encode(hmac.new(str(user_id), data, hashlib.sha1).digest()):
-      raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     expires = time() + (user_id and self.session_renew or self.anon_session_renew)
     if session_data['expires'] < expires:
       session_data['expires'] = expires
       if not self._cache_session_data(session_data):
         self.db.execute("update session set expires = %s where session_id = %s", (session_data['expires'], session_id))
     session = PostgresSession(self.db, session_data, self._session_cache)
-    session._verified = True
     return session
 
   def remove_session(self, session_id):
