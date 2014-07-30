@@ -8,3 +8,4 @@ pycassa>=1.6.0
 pymongo>=2.1
 redis>=2.4.12
 psycopg2>=2.4.5
+pycrypto>=2.6.1

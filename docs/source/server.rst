@@ -74,6 +74,9 @@ Servers, Handlers and Sessions
   .. automethod:: toto.session.TotoSessionCache.store_session
   .. automethod:: toto.session.TotoSessionCache.load_session
 
+  .. autoclass:: toto.clientsessioncache.ClientCache
+  .. autoclass:: toto.clientsessioncache.AESCipher
+
   The TotoAccount class
   ^^^^^^^^^^^^^^^^^^^^^
 

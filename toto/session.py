@@ -89,7 +89,7 @@ class TotoSession(object):
 
   def __getitem__(self, key):
     return key in self.state and self.state[key] or None
-  
+
   def __setitem__(self, key, value):
     self.state[key] = value
 
@@ -121,7 +121,9 @@ class TotoSession(object):
 
   def _save_cache(self):
     if self._session_cache:
-      self._session_cache.store_session(self.session_data())
+      updated_session_id = self._session_cache.store_session(self.session_data())
+      if updated_session_id:
+        self.session_id = updated_session_id
       return True
     return False
 
@@ -166,7 +168,8 @@ class TotoSessionCache(object):
   def store_session(self, session_data):
     '''Store a ``TotoSession`` with the given ``session_data``. ``session_data`` can be expected to contain, at a minimum, ``session_id`` and ``expires``.
     If an existing session matches the ``session_id`` contained in ``session_data``, it should be overwritten. The session is expected to be removed
-    after the time specified by ``expires``.
+    after the time specified by ``expires``. The storage implementation is allowed to change the session's ``session_id`` if needed by returning the new
+    id. Returning any falsey value will not affect the ``session_id``.
     '''
     raise Exception("Unimplemented operation: store_session")
 

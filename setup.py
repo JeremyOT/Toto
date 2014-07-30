@@ -43,6 +43,7 @@ the --database option. Database functionality requires the following modules:
   Redis: redis>=2.4.12, hiredis>=0.1.1 (optional)
   Postres: psycopg2>=2.4.5
   MongoDB: pymongo>=2.1
+  ClientSessionCache: pycrypto>=2.6.1
 
 Toto's event and worker frameworks require pyzmq>=2.2.0
 

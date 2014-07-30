@@ -19,7 +19,7 @@ class TestSession(unittest.TestCase):
     self.assertEqual(len(session_id), SESSION_ID_LENGTH)
     url_safe = urllib.quote_plus(session_id)
     self.assertEqual(session_id, url_safe)
-    
+
   def test_data_storage(self):
     user_id = 'test@toto.li'
     expires = time() + 1000.0
@@ -35,7 +35,7 @@ class TestSession(unittest.TestCase):
     self.assertEqual(session['int'], 1268935)
     self.assertEqual(session['float'], 92385.03)
     self.assertEqual(session['str'], 'some test')
-    
+
   def test_clone(self):
     user_id = 'test@toto.li'
     expires = time() + 1000.0
@@ -52,7 +52,7 @@ class TestSession(unittest.TestCase):
     self.assertEqual(new_session['int'], 1268935)
     self.assertEqual(new_session['float'], 92385.03)
     self.assertEqual(new_session['str'], 'some test')
-    
+
   def test_serialization(self):
     user_id = 'test@toto.li'
     expires = time() + 1000.0
@@ -84,4 +84,3 @@ class TestSession(unittest.TestCase):
     self.assertEqual(TotoSession.loads(pickle_serialized), session)
     TotoSession.set_serializer(json)
     self.assertEqual(TotoSession.loads(json_serialized), session)
-

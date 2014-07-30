@@ -87,7 +87,7 @@ class DBConnection(object):
 
   def _load_uncached_data(self, session_id):
     '''Load a session data ``dict`` from the local database. Called by default and if no ``TotoSessionCache`` has been
-    associated with the current instance of ``DBConnection``. 
+    associated with the current instance of ``DBConnection``.
     '''
     raise NotImplementedError()
 
@@ -96,7 +96,9 @@ class DBConnection(object):
     Returns ``True`` if the session has been written to an associated ``TotoSessionCache``, ``False`` otherwise.
     '''
     if self._session_cache:
-      self._session_cache.store_session(session_data)
+      updated_session_id = self._session_cache.store_session(session_data)
+      if updated_session_id:
+        session_data['session_id'] = updated_session_id
       return True
     return False
 
@@ -121,7 +123,7 @@ define("anon_session_ttl", default=24*60*60, help="The number of seconds after c
 define("session_renew", default=0, help="The number of seconds before a session expires that it should be renewed, or zero to renew on every request")
 define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
 
-def configured_connection():  
+def configured_connection():
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
       return MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
@@ -136,4 +138,4 @@ def configured_connection():
       return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password,  options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
     else:
       from fakeconnection import FakeConnection
-      return FakeConnection() 
+      return FakeConnection()
