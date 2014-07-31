@@ -60,8 +60,6 @@ class TestClientCache(unittest.TestCase):
     session['str'] = 'some test'
     session_data = session.session_data()
     session_id = cache.store_session(session_data)
-    url_safe = urllib.quote_plus(session_id)
-    self.assertEqual(session_id, url_safe)
     new_session_data = cache.load_session(session_id)
     new_session = TotoSession(None, new_session_data)
     del session_data['session_id']
