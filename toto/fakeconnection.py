@@ -1,28 +1,36 @@
 from dbconnection import DBConnection
 
-
 class FakeConnection(DBConnection):
 
   def __init__(self):
     self.db = None
 
-  def create_account(self, user_id, password, additional_values={}, **values):
-    pass
+def _store_account(self, user_id, values):
+  pass
 
-  def create_session(self, user_id=None, password=None):
-    return None
+def _load_uncached_data(self, session_id):
+  pass
 
-  def retrieve_session(self, session_id, hmac_data=None, data=None):
-    return None
+def _get_account(self, user_id):
+  pass
 
-  def remove_session(self, session_id):
-    pass
+def _store_session(self, session_id, session_data):
+  pass
 
-  def clear_sessions(self, user_id):
-    pass
+def _prepare_session(self, account, session_data):
+  pass
 
-  def change_password(self, user_id, password, new_password):
-    pass
+def _instantiate_session(self, session_data, session_cache):
+  pass
 
-  def generate_password(self, user_id):
-    return None
+def _update_expiry(self, session_id, session_data):
+  pass
+
+def _update_password(self, user_id, account, hashed_password):
+  pass
+
+def remove_session(self, session_id):
+  pass
+
+def clear_sessions(self, user_id):
+  pass

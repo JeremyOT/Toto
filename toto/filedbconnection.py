@@ -125,7 +125,10 @@ class FileConnection(DBConnection):
     account = self.get('account', user_id)
     if not account:
       return None
-    return user_id, account['password']
+    return {'password': account['password']}
+
+  def _update_password(self, user_id, hashed_password):
+    self.set('account', user_id, 'password', hashed_password)
 
   def clear(self):
     if self._persistent:

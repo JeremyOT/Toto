@@ -56,14 +56,14 @@ class DBConnection(object):
       user_id = ''
     user_id = user_id.lower()
     account = user_id and self._get_account(user_id)
-    if user_id and (not account or (verify_password and not secret.verify_password(password, account[1]))):
+    if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
     session_id = TotoSession.generate_id()
     expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
     session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
     if key:
       session_data['key'] = key
-    self._prepare_session(session_data)
+    self._prepare_session(account, session_data)
     if not self._cache_session_data(session_data):
       self._store_session(session_id, session_data)
     session = self._instantiate_session(session_data, self._session_cache)
@@ -94,9 +94,9 @@ class DBConnection(object):
     '''
     user_id = user_id.lower()
     account = self._get_account(user_id)
-    if not account or not secret.verify_password(password, account[1]):
+    if not account or not secret.verify_password(password, account['password']):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self._update_password(user_id, secret.password_hash(new_password))
+    self._update_password(user_id, account, secret.password_hash(new_password))
 
   def generate_password(self, user_id):
     '''Generates a new password for the account with the given ``user_id`` and makes it active
@@ -109,7 +109,7 @@ class DBConnection(object):
       raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
     pass_chars = string.ascii_letters + string.digits
     new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self._update_password(user_id, secret.password_hash(new_password))
+    self._update_password(user_id, account, secret.password_hash(new_password))
     return new_password
 
   def remove_session(self, session_id):
@@ -178,13 +178,12 @@ class DBConnection(object):
     raise NotImplementedError()
 
   def _get_account(self, user_id):
-    '''Called by ``DBConnection.create_session`` if ``verify_password=True`` and must return a tuple of ``(user_id, password)``
-    where ``password`` is the hashed password stored for the account with ``user_id`` or ``None`` if no account exists with
-    ``user_id``.
+    '''Called by ``DBConnection.create_session`` if ``verify_password=True`` and must return a dictionry containing
+    at least the pair ``'password':<hashed_password``.
     '''
     raise NotImplementedError()
 
-  def _prepare_session(self, session_data):
+  def _prepare_session(self, account, session_data):
     '''Called by ``DBConnection.create_session`` before the session is written to the database to allow for the
     addition of any extra data that may be needed by the ``subclass.TotoSession`` implementation.
     '''
@@ -221,19 +220,19 @@ define("anon_session_renew", default=0, help="The number of seconds before an an
 def configured_connection():
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
-      return MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      return MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
     elif options.database == "redis":
       from redisconnection import RedisConnection
-      return RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      return RedisConnection(options.db_host, options.db_port or 6379, options.redis_database, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
     elif options.database == "mysql":
       from mysqldbconnection import MySQLdbConnection
-      return MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.mysql_uuid_account_id)
+      return MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew, uuid_account_id=options.mysql_uuid_account_id)
     elif options.database == 'postgres':
       from postgresconnection import PostgresConnection
-      return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
+      return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew, min_connections=options.postgres_min_connections, max_connections=options.postgres_max_connections)
     elif options.database == 'file':
       from filedbconnection import FileConnection
-      return FileConnection(options.db_host, options.db_port, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
+      return FileConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
     else:
       from fakeconnection import FakeConnection
       return FakeConnection()

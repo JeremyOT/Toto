@@ -6,9 +6,6 @@ from datetime import datetime
 from dbconnection import DBConnection
 import base64
 import uuid
-import hmac
-import hashlib
-import toto.secret as secret
 
 def _account_key(user_id):
   return 'account:%s' % user_id
@@ -43,23 +40,26 @@ class RedisSession(TotoSession):
 
 class RedisConnection(DBConnection):
 
-  def __init__(self, host='localhost', port=6379, database=0, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, host='localhost', port=6379, database=0):
+    super(RedisConnection, self).__init__(*args, **kwargs)
     self.db = redis.StrictRedis(host=host, port=port, db=database)
-    self.session_ttl = session_ttl
-    self.anon_session_ttl = anon_session_ttl or self.session_ttl
-    self.session_renew = session_renew or self.session_ttl
-    self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
-  def create_account(self, user_id, password, additional_values={}, **values):
-    if not user_id:
-      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
-    user_id = user_id.lower()
+  def _store_session(self, session_id, session_data):
+    session_key = _session_key(session_id)
+    self.db.setex(session_key, int(float(session_data['expires']) - time()), TotoSession.dumps(session_data))
+
+  def _update_password(self, user_id, account, hashed_password):
     account_key = _account_key(user_id)
-    if self.db.exists(account_key):
-      raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-    values.update(additional_values)
-    values['user_id'] = user_id
-    values['password'] = secret.password_hash(password)
+    self.db.hset(account_key, 'password', hashed_password)
+
+  def _instantiate_session(self, session_data, session_cache):
+    return RedisSession(self.db, session_data, self._session_cache)
+
+  def _get_account(self, user_id):
+    return self.db.hmget(account_key, 'user_id', 'password')
+
+  def _store_account(self, user_id, values):
+    account_key = _account_key(user_id)
     self.db.hmset(account_key, values)
 
   def _load_uncached_data(self, session_id):
@@ -68,63 +68,9 @@ class RedisConnection(DBConnection):
       return TotoSession.loads(data)
     return None
 
-  def create_session(self, user_id=None, password=None, verify_password=True):
-    user_id = user_id.lower()
-    if not user_id:
-      user_id = ''
-    account_key = _account_key(user_id)
-    account = user_id and password and self.db.hmget(account_key, 'user_id', 'password')
-    if user_id and (account[0] != user_id or (verify_password and not secret.verify_password(password, account[1]))):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = RedisSession.generate_id()
-    ttl = (user_id and self.session_ttl or self.anon_session_ttl)
-    expires = time() + ttl
-    session_key = _session_key(session_id)
-    session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
-    if not self._cache_session_data(session_data):
-      self.db.setex(session_key, int(ttl), TotoSession.dumps(session_data))
-    session = RedisSession(self.db, session_data, self._session_cache)
-    session._verified = True
-    return session
-
-  def retrieve_session(self, session_id):
-    session_key = _session_key(session_id)
-    session_data = self._load_session_data(session_id)
-    if not session_data:
-      return None
-    user_id = session_data['user_id']
-    ttl = user_id and self.session_renew or self.anon_session_renew
-    if session_data['expires'] < (time() + ttl):
-      session_data['expires'] = time() + ttl
-      if not self._cache_session_data(session_data):
-        self.db.setex(session_key, int(ttl), TotoSession.dumps(session_data))
-    session = RedisSession(self.db, session_data, self._session_cache)
-    return session
-
   def remove_session(self, session_id):
     session_key = _session_key(session_id)
     self.db.delete(session_key)
-
-  def clear_sessions(self, user_id):
-    pass
-
-  def change_password(self, user_id, password, new_password):
-    user_id = user_id.lower()
-    account_key = _account_key(user_id)
-    account = self.db.hmget(account_key, 'user_id', 'password')
-    if account[0] != user_id or not secret.verify_password(password, account[1]):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.db.hset(account_key, 'password', secret.password_hash(new_password))
-
-  def generate_password(self, user_id):
-    user_id = user_id.lower()
-    account_key = _account_key(user_id)
-    if self.db.hget(account_key, 'user_id') != user_id:
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    pass_chars = string.ascii_letters + string.digits
-    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.hset(account_key, 'password', secret.password_hash(new_password))
-    return new_password
 
 class RedisSessionCache(TotoSessionCache):
 

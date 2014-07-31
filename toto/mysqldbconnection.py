@@ -74,61 +74,38 @@ class MySQLdbConnection(DBConnection):
         foreign key (`account_id`) references `account`(`account_id`)
       )''']))
 
-  def __init__(self, host, database, username, password, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0, uuid_account_id=False):
+  def __init__(self, host, database, username, password, uuid_account_id=False, *args, **kwargs):
+    super(MySQLdbConnection, self).__init__(*args, **kwargs)
     self.db = Connection(host, database, username, password)
     self.uuid_account_id = uuid_account_id
     self.create_tables(database)
-    self.session_ttl = session_ttl
-    self.anon_session_ttl = anon_session_ttl or self.session_ttl
-    self.session_renew = session_renew or self.session_ttl
-    self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
-  def create_account(self, user_id, password, additional_values={}, **values):
-    if not user_id:
-      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
-    user_id = user_id.lower()
-    if self.db.get("select account_id from account where user_id = %s", user_id):
-      raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-    additional_values.pop('account_id', None)
-    values.update(additional_values)
-    values['user_id'] = user_id
-    values['password'] = secret.password_hash(password)
-    if self.uuid_account_id:
-      values['account_id'] = uuid4().bytes
+  def _store_account(self, user_id, values):
     self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
   def _load_uncached_data(self, session_id):
     return self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", session_id, time())
 
-  def create_session(self, user_id=None, password=None, verify_password=True):
-    if not user_id:
-      user_id = ''
-    user_id = user_id.lower()
-    account = user_id and self.db.get("select account_id, password from account where user_id = %s", user_id)
-    if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = MySQLdbSession.generate_id()
-    expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
-    session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id, 'account_id': account['account_id']}
-    if not self._cache_session_data(session_data):
-      self.db.execute("delete from session where account_id = %s and expires <= %s", account['account_id'], time())
-      self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", account['account_id'], expires, session_id)
-    session = MySQLdbSession(self.db, session_data, self._session_cache)
-    session._verified = True
-    return session
+  def _get_account(self, user_id):
+    return self.db.get("select account_id, password from account where user_id = %s", user_id)
 
-  def retrieve_session(self, session_id, hmac_data=None, data=None):
-    session_data = self._load_session_data(session_id)
-    if not session_data:
-      return None
-    user_id = session_data['user_id']
-    expires = time() + (user_id and self.session_renew or self.anon_session_renew)
-    if session_data['expires'] < expires:
-      session_data['expires'] = expires
-      if not self._cache_session_data(session_data):
-        self.db.execute("update session set expires = %s where session_id = %s", session_data['expires'], session_id)
-    session = MySQLdbSession(self.db, session_data, self._session_cache)
-    return session
+  def _store_session(self, session_id, session_data):
+    account_id = session_data['account_id']
+    expires = session_data['expires']
+    self.db.execute("delete from session where account_id = %s and expires <= %s", account_id, time())
+    self.db.execute("insert into session (account_id, expires, session_id) values (%s, %s, %s)", account_id, expires, session_id)
+
+  def _prepare_session(self, account, session_data):
+    session_data['account_id'] = account['account_id']
+
+  def _instantiate_session(self, session_data, session_cache):
+    return MySQLdbSession(self.db, session_data, self._session_cache)
+
+  def _update_expiry(self, session_id, session_data):
+    self.db.execute("update session set expires = %s where session_id = %s", session_data['expires'], session_id)
+
+  def _update_password(self, user_id, account, hashed_password):
+    self.db.execute("update account set password = %s where account_id = %s", hashed_password, account['account_id'])
 
   def remove_session(self, session_id):
     self.db.execute("delete from session where session_id = %s", session_id)
@@ -136,22 +113,3 @@ class MySQLdbConnection(DBConnection):
   def clear_sessions(self, user_id):
     user_id = user_id.lower()
     self.db.execute("delete from session using session join account on account.account_id = session.account_id where account.user_id = %s", user_id)
-
-  def change_password(self, user_id, password, new_password):
-    user_id = user_id.lower()
-    account = self.db.get("select account_id, user_id, password from account where user_id = %s", user_id)
-    if not account or not secret.verify_password(password, account['password']):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.db.execute("update account set password = %s where account_id = %s", secret.password_hash(new_password), account['account_id'])
-    self.clear_sessions(user_id)
-
-  def generate_password(self, user_id):
-    user_id = user_id.lower()
-    account = self.db.get("select account_id, user_id from account where user_id = %s", user_id)
-    if not account:
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
-    pass_chars = string.ascii_letters + string.digits
-    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.db.execute("update account set password = %s where account_id = %s", secret.password_hash(new_password), account['account_id'])
-    self.clear_sessions(user_id)
-    return new_password
