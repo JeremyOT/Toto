@@ -1,6 +1,6 @@
 from toto.session import *
 from copy import copy
-from base64 import urlsafe_b64encode, urlsafe_b64decode
+from base64 import b64encode, b64decode
 
 class AESCipher(object):
   '''A convenient cipher implementation for AES encryption and decryption.
@@ -47,9 +47,9 @@ class ClientCache(TotoSessionCache):
   def store_session(self, session_data):
     persisted_data = copy(session_data)
     del persisted_data['session_id']
-    return urlsafe_b64encode(self.cipher.encrypt(TotoSession.dumps(session_data)))
+    return b64encode(self.cipher.encrypt(TotoSession.dumps(session_data)), '-_')
 
   def load_session(self, session_id):
-    session_data = TotoSession.loads(self.cipher.decrypt(urlsafe_b64decode(session_id)))
+    session_data = TotoSession.loads(self.cipher.decrypt(b64decode(session_id, '-_')))
     session_data['session_id'] = session_id
     return session_data
