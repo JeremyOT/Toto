@@ -157,7 +157,7 @@ class TotoHandler(RequestHandler):
           if session_id:
             self.session = self.db_connection.retrieve_session(session_id)
           if options.hmac_enabled and self.session:
-            self.session.verify('x-toto-hmac' in headers and headers['x-toto-hmac'], self.request.method + self.request.uri + (self.request.body or ''))
+            self._verify_hmac(self.session, self.request, headers)
         if self.session:
           set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
@@ -353,7 +353,7 @@ class TotoHandler(RequestHandler):
     else:
       response_body = json.dumps(response)
     if options.hmac_enabled and self.session:
-      self.add_header('x-toto-hmac', self.session.hmac(self.session.session_id + response_body))
+      self.add_header('x-toto-hmac', self._response_hmac(self.session, response_body))
     self.respond_raw(response_body, self.response_type)
 
   def respond_raw(self, body, content_type, finish=True):
@@ -414,6 +414,12 @@ class TotoHandler(RequestHandler):
     self.session = self.db_connection.create_session(user_id, password, verify_password, key=options.hmac_enabled and TotoSession.generate_id())
     return self.session
 
+  def _verify_hmac(self, session, request, headers):
+    self.session.verify('x-toto-hmac' in headers and headers['x-toto-hmac'], request.method + request.uri + (request.body or ''))
+
+  def _response_hmac(self, session, response_body):
+    return self.session.hmac(session.session_id + response_body)
+
   def retrieve_session(self, session_id=None):
     '''Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
     in ``self.session``. Alternatively, pass a ``session_id`` to this function to retrieve that session explicitly.
@@ -430,7 +436,7 @@ class TotoHandler(RequestHandler):
       if session_id:
         self.session = self.db_connection.retrieve_session(session_id)
       if options.hmac_enabled and self.session:
-        self.session.verify('x-toto-hmac' in headers and headers['x-toto-hmac'], self.request.method + self.request.uri + (self.request.body or ''))
+        self._verify_hmac(self.session, self.request, headers)
     return self.session
 
   def on_finish(self):
@@ -458,3 +464,17 @@ class TotoHandler(RequestHandler):
        where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.
     '''
     cls._after_invoke = handler
+
+  @classmethod
+  def set_hmac_handler(cls, handler):
+    '''Set the hmac verification function. It will be called with ``handler(session, request, headers)`` and may be used to add
+    additional verification or to modify the signature used for validation, e.g. to confirm request time.
+    '''
+    cls._verify_hmac = handler
+
+  @classmethod
+  def set_response_hmac_handler(cls, handler):
+    '''Set the hmac generation function for responses. It will be called with ``handler(session, response_body)`` and may be used to add
+    to modify the signature used for validation. It must return a string.
+    '''
+    cls._response_hmac = handler
