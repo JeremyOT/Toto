@@ -10,6 +10,7 @@ from tornado.httputil import parse_multipart_form_data
 from tornado.ioloop import IOLoop
 from tornado.gen import coroutine, Return, engine
 from tornado.concurrent import return_future, Future
+from toto.session import TotoSession
 from uuid import uuid4
 import logging
 
@@ -156,7 +157,7 @@ class TotoHandler(RequestHandler):
           if session_id:
             self.session = self.db_connection.retrieve_session(session_id)
           if options.hmac_enabled and self.session:
-            self.session.verify(headers['x-toto-hmac'], session_id + self.request.method + self.request.url + (self.request.body or ''))
+            self.session.verify('x-toto-hmac' in headers and headers['x-toto-hmac'], self.request.method + self.request.uri + (self.request.body or ''))
         if self.session:
           set_cookie(self, name='toto-session-id', value=self.session.session_id, expires_days=math.ceil(self.session.expires / (24.0 * 60.0 * 60.0)), domain=options.cookie_domain)
         return self.session
@@ -410,7 +411,7 @@ class TotoHandler(RequestHandler):
     checking the password. This can be used to implement alternative authentication methods like Facebook, Twitter
     and Google+.
     '''
-    self.session = self.db_connection.create_session(user_id, password, verify_password)
+    self.session = self.db_connection.create_session(user_id, password, verify_password, key=options.hmac_enabled and TotoSession.generate_id())
     return self.session
 
   def retrieve_session(self, session_id=None):
@@ -420,7 +421,7 @@ class TotoHandler(RequestHandler):
     If the ``hmac_enabled`` option is set to ``True``, Verify the session against the given request. Expects that
     the request's ``x-toto-hmac`` header is the sha1 hmac of the request signature signed with the authenticated key.
 
-    The signature takes the form: ``session_id + method + url + body or ''
+    The signature takes the form: ``method + uri + body or ''``
     '''
     if not self.session or (session_id and self.session.session_id != session_id):
       headers = self.request.headers
@@ -429,7 +430,7 @@ class TotoHandler(RequestHandler):
       if session_id:
         self.session = self.db_connection.retrieve_session(session_id)
       if options.hmac_enabled and self.session:
-        self.session.verify(headers['x-toto-hmac'], session_id + self.request.method + self.request.url + (self.request.body or ''))
+        self.session.verify('x-toto-hmac' in headers and headers['x-toto-hmac'], self.request.method + self.request.uri + (self.request.body or ''))
     return self.session
 
   def on_finish(self):

@@ -9,6 +9,7 @@ class DBConnection(object):
     * ``toto.mysqldbconnection.MySQLdbConnection``
     * ``toto.postgresconnection.PostgresConnection``
     * ``toto.redisconnection.RedisConnection``
+    * ``toto.filedbconnection.FileConnection`` (For debugging only)
   '''
 
   _session_cache = None
@@ -96,7 +97,7 @@ class DBConnection(object):
 
 from tornado.options import define, options
 
-define("database", metavar='mysql|mongodb|redis|postgres|none', default="none", help="the database driver to use")
+define("database", metavar='mysql|mongodb|redis|postgres|file|none', default="none", help="the database driver to use")
 define("db_host", default='localhost', help="The host to use for database connections.")
 define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
 define("mysql_database", type=str, help="Main MySQL schema name")
@@ -127,7 +128,10 @@ def configured_connection():
       return MySQLdbConnection('%s:%s' % (options.db_host, options.db_port or 3306), options.mysql_database, options.mysql_user, options.mysql_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.mysql_uuid_account_id)
     elif options.database == 'postgres':
       from postgresconnection import PostgresConnection
-      return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password,  options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
+      return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew, options.postgres_min_connections, options.postgres_max_connections)
+    elif options.database == 'file':
+      from filedbconnection import FileConnection
+      return FileConnection(options.db_host, options.db_port, options.session_ttl, options.anon_session_ttl, options.session_renew, options.anon_session_renew)
     else:
       from fakeconnection import FakeConnection
       return FakeConnection()

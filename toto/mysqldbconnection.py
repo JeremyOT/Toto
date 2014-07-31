@@ -42,7 +42,7 @@ class MySQLdbSession(TotoSession):
    return {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state), 'account_id': self.account_id}
 
   def refresh(self):
-    session_data = self._refresh_cache() or self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
+    session_data = self._refresh_cache() or self._db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s", session_id)
     self.__init__(self._db, session_data, self._session_cache)
 
   def save(self):

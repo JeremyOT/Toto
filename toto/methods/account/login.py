@@ -8,4 +8,7 @@ def invoke(handler, params):
   Requires: ``user_id``, ``password``
   '''
   handler.create_session(params['user_id'], params['password'])
-  return {'session_id': handler.session.session_id, 'expires': handler.session.expires, 'user_id': handler.session.user_id}
+  response = {'session_id': handler.session.session_id, 'expires': handler.session.expires, 'user_id': handler.session.user_id}
+  if handler.session.key:
+    response['key'] = handler.session.key
+  return response

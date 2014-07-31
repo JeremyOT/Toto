@@ -77,8 +77,7 @@ class TotoSession(object):
     self.session_id = session_data['session_id']
     self.state = session_data.get('state') and TotoSession.loads(session_data['state']) or {}
     key = key or session_data.get('key')
-    if key:
-      self.key = key
+    self.key = key or None
     self._verified = False
 
   def get_account(self, *args):
@@ -92,7 +91,7 @@ class TotoSession(object):
     '''Return a session data ``dict`` that could be used to instantiate a session identical to the current one.
     '''
     data = {'user_id': self.user_id, 'expires': self.expires, 'session_id': self.session_id, 'state': TotoSession.dumps(self.state)}
-    if hasattr(self, 'key'):
+    if self.key:
       data['key'] = self.key
     return data
 
