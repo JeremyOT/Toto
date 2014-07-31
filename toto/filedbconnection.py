@@ -3,11 +3,6 @@ from toto.session import *
 from time import time, mktime
 from datetime import datetime
 from dbconnection import DBConnection
-from uuid import uuid4
-import toto.secret as secret
-import uuid
-import random
-import string
 import json
 
 class FileSession(TotoSession):
@@ -100,7 +95,8 @@ class FileConnection(DBConnection):
     d = self._get_key(*args[:-1])
     return d and d.get(args[-1])
 
-  def __init__(self, filename=None, persistent=False, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0):
+  def __init__(self, filename=None, persistent=False, *args, **kwargs):
+    super(FileConnection, self).__init__(*args, **kwargs)
     self._file = filename
     self._persistent = self._file and persistent
     self.db = None
@@ -109,75 +105,27 @@ class FileConnection(DBConnection):
         self._data = json.load(f)
     else:
       self._data = {}
-    self.session_ttl = session_ttl
-    self.anon_session_ttl = anon_session_ttl or self.session_ttl
-    self.session_renew = session_renew or self.session_ttl
-    self.anon_session_renew = anon_session_renew or self.anon_session_ttl
 
-  def create_account(self, user_id, password, additional_values={}, **values):
-    if not user_id:
-      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
-    user_id = user_id.lower()
-    if self.get("account", user_id):
-      raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
-    values.update(additional_values)
-    values['user_id'] = user_id
-    values['password'] = secret.password_hash(password)
+  def _store_account(self, user_id, values):
     self.set('account', user_id, values)
 
-  def create_session(self, user_id=None, password=None, verify_password=True, key=None):
-    if not user_id:
-      user_id = ''
-    user_id = user_id.lower()
-    account = user_id and self.get("account", user_id)
-    if user_id and (not account or (verify_password and not secret.verify_password(password, account['password']))):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    session_id = FileSession.generate_id()
-    expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
-    session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
-    if key:
-      session_data['key'] = key
-    if not self._cache_session_data(session_data):
-      self.set('session', session_id, session_data)
-    session = FileSession(self, session_data, self._session_cache)
-    session._verified = True
-    return session
+  def _store_session(self, session_id, session_data):
+    self.set('session', session_id, session_data)
 
-  def retrieve_session(self, session_id, hmac_data=None, data=None):
-    session_data = self._load_session_data(session_id)
-    if not session_data:
-      return None
-    user_id = session_data['user_id']
-    expires = time() + (user_id and self.session_renew or self.anon_session_renew)
-    if session_data['expires'] < expires:
-      session_data['expires'] = expires
-      if not self._cache_session_data(session_data):
-        self.set('session', session_id, 'expires', session_data['expires'])
-    session = FileSession(self, session_data, self._session_cache)
-    return session
+  def _instantiate_session(self, session_data, session_cache):
+    return FileSession(self, session_data, session_cache)
 
   def remove_session(self, session_id):
     self.set('session', session_id, None)
 
-  def change_password(self, user_id, password, new_password):
-    user_id = user_id.lower()
-    account = user_id and self.get("account", user_id)
-    if not account or not secret.verify_password(password, account['password']):
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
-    self.set('account', user_id, 'password', secret.password_hash(new_password))
-
-  def generate_password(self, user_id):
-    user_id = user_id.lower()
-    account = user_id and self.get("account", user_id)
-    if not account:
-      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
-    pass_chars = string.ascii_letters + string.digits
-    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
-    self.set('account', user_id, 'password', secret.password_hash(new_password))
-    return new_password
-
   def _load_uncached_data(self, session_id):
     return self._get_key('session', session_id)
+
+  def _get_account(self, user_id):
+    account = self.get('account', user_id)
+    if not account:
+      return None
+    return user_id, account['password']
 
   def clear(self):
     if self._persistent:

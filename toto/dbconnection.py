@@ -1,3 +1,10 @@
+from toto.exceptions import *
+from toto.session import *
+import toto.secret as secret
+from time import time
+import random
+import string
+
 class DBConnection(object):
   '''Toto uses subclasses of DBConnection to support session and account storage as well as general
     access to the backing database. Usually, direct access to the underlying database driver will
@@ -14,6 +21,12 @@ class DBConnection(object):
 
   _session_cache = None
 
+  def __init__(self, session_ttl=24*60*60*365, anon_session_ttl=24*60*60, session_renew=0, anon_session_renew=0, *args, **kwargs):
+    self.session_ttl = session_ttl
+    self.anon_session_ttl = anon_session_ttl or self.session_ttl
+    self.session_renew = session_renew or self.session_ttl
+    self.anon_session_renew = anon_session_renew or self.anon_session_ttl
+
   def create_account(self, user_id, password, additional_values={}, **values):
     '''Create an account for the given ``user_id`` and ``password``. Optionally set additional account
       values by passing them as keyword arguments (the ``additional_values`` parameter is deprecated).
@@ -21,16 +34,41 @@ class DBConnection(object):
       Note: if your database uses a predefined schema, make sure to create the appropriate columns
       before passing additional arguments to ``create_account``.
     '''
-    raise NotImplementedError()
+    if not user_id:
+      raise TotoException(ERROR_INVALID_USER_ID, "Invalid user ID.")
+    user_id = user_id.lower()
+    account = self._get_account(user_id)
+    if account:
+      raise TotoException(ERROR_USER_ID_EXISTS, "User ID already in use.")
+    values.update(additional_values)
+    values['user_id'] = user_id
+    values['password'] = secret.password_hash(password)
+    self._store_account(user_id, values)
 
-  def create_session(self, user_id=None, password=None, verify_password=True):
+  def create_session(self, user_id=None, password=None, verify_password=True, key=None):
     '''Create a new session for the account with the given ``user_id`` and ``password``, or an anonymous
       session if anonymous sessions are enabled. This method returns a subclass of ``TotoSession``
       designed for the current backing database. Pass ``verify_password=False`` to create a session
       without checking the password. This feature can be used to implement alternative authentication
       methods like Facebook, Twitter or Google+.
     '''
-    raise NotImplementedError()
+    if not user_id:
+      user_id = ''
+    user_id = user_id.lower()
+    account = user_id and self._get_account(user_id)
+    if user_id and (not account or (verify_password and not secret.verify_password(password, account[1]))):
+      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
+    session_id = TotoSession.generate_id()
+    expires = time() + (user_id and self.session_ttl or self.anon_session_ttl)
+    session_data = {'user_id': user_id, 'expires': expires, 'session_id': session_id}
+    if key:
+      session_data['key'] = key
+    self._prepare_session(session_data)
+    if not self._cache_session_data(session_data):
+      self._store_session(session_id, session_data)
+    session = self._instantiate_session(session_data, self._session_cache)
+    session._verified = True
+    return session
 
   def retrieve_session(self, session_id):
     '''Retrieve an existing session with the given ``session_id``. This method returns a
@@ -38,7 +76,41 @@ class DBConnection(object):
 
     The use of HTTPS is strongly recommended for any communication involving sensitive information.
     '''
-    raise NotImplementedError()
+    session_data = self._load_session_data(session_id)
+    if not session_data:
+      return None
+    user_id = session_data['user_id']
+    expires = time() + (user_id and self.session_renew or self.anon_session_renew)
+    if session_data['expires'] < expires:
+      session_data['expires'] = expires
+      if not self._cache_session_data(session_data):
+        self._update_expiry(session_id, session_data)
+    session = self._instantiate_session(session_data, self._session_cache)
+    return session
+
+  def change_password(self, user_id, password, new_password):
+    '''Updates the password for the account with the given ``user_id`` and ``password`` to match
+    ``new_password`` for all future requests.
+    '''
+    user_id = user_id.lower()
+    account = self._get_account(user_id)
+    if not account or not secret.verify_password(password, account[1]):
+      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID or password")
+    self._update_password(user_id, secret.password_hash(new_password))
+
+  def generate_password(self, user_id):
+    '''Generates a new password for the account with the given ``user_id`` and makes it active
+    for all future requests. The new password will be returned. This method is designed to
+    support "forgot password" functionality.
+    '''
+    user_id = user_id.lower()
+    account = self._get_account(user_id)
+    if not account:
+      raise TotoException(ERROR_USER_NOT_FOUND, "Invalid user ID")
+    pass_chars = string.ascii_letters + string.digits
+    new_password = ''.join([random.choice(pass_chars) for x in xrange(10)])
+    self._update_password(user_id, secret.password_hash(new_password))
+    return new_password
 
   def remove_session(self, session_id):
     '''Invalidate the session with the given ``session_id``.
@@ -49,19 +121,6 @@ class DBConnection(object):
     '''If implemented, invalidates all sessions tied to the account with the given ``user_id``.
     '''
     pass
-
-  def change_password(self, user_id, password, new_password):
-    '''Updates the password for the account with the given ``user_id`` and ``password`` to match
-    ``new_password`` for all future requests.
-    '''
-    raise NotImplementedError()
-
-  def generate_password(self, user_id):
-    '''Generates a new password for the account with the given ``user_id`` and makes it active
-    for all future requests. The new password will be returned. This method is designed to
-    support "forgot password" functionality.
-    '''
-    raise NotImplementedError()
 
   def set_session_cache(self, session_cache):
     '''Optionally set an instance of ``TotoSessionCache`` that will be used to store sessions separately from
@@ -94,6 +153,49 @@ class DBConnection(object):
         session_data['session_id'] = updated_session_id
       return True
     return False
+
+  def _store_session(self, session_id, session_data):
+    '''Called by ``DBConnection.create_session``, and by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires``.
+    Will not be called if a session cache has been attached to the ``DBConnection``.
+    '''
+    raise NotImplementedError()
+
+  def _update_expiry(self, session_id, session_data):
+    '''Called by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires`` to allow optional efficient updates.
+    If not implemented, ``self._store_session`` will be called.
+    '''
+    return self._store_session(session_id, session_data)
+
+  def _update_password(self, user_id, hashed_password):
+    '''Called by ``DBConnection.change_password`` and ``DBConnection.generate_password``.
+    '''
+    raise NotImplementedError()
+
+  def _instantiate_session(self, session_data, session_cache):
+    '''Called by ``DBConnection.create_session`` and by ``DBConnection.retrieve_session`` to actually instantiate a ``TotoSession``
+    instance. Must return a new ``TotoSession``.
+    '''
+    raise NotImplementedError()
+
+  def _get_account(self, user_id):
+    '''Called by ``DBConnection.create_session`` if ``verify_password=True`` and must return a tuple of ``(user_id, password)``
+    where ``password`` is the hashed password stored for the account with ``user_id`` or ``None`` if no account exists with
+    ``user_id``.
+    '''
+    raise NotImplementedError()
+
+  def _prepare_session(self, session_data):
+    '''Called by ``DBConnection.create_session`` before the session is written to the database to allow for the
+    addition of any extra data that may be needed by the ``subclass.TotoSession`` implementation.
+    '''
+    pass
+
+  def _store_account(self, user_id, values):
+    '''Must be implemented in subclasses to persist new accounts to the database. Values is a dictionary
+    that will contain, at a minimum, ``user_id`` and ``password``. ``password`` will be the hashed password
+    passed to ``self.create_account()``.
+    '''
+    raise NotImplementedError()
 
 from tornado.options import define, options
 
