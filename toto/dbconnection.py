@@ -16,7 +16,7 @@ class DBConnection(object):
     * ``toto.mysqldbconnection.MySQLdbConnection``
     * ``toto.postgresconnection.PostgresConnection``
     * ``toto.redisconnection.RedisConnection``
-    * ``toto.filedbconnection.FileConnection`` (For debugging only)
+    * ``toto.jsondbconnection.JSONConnection`` (For debugging only)
   '''
 
   _session_cache = None
@@ -198,7 +198,7 @@ class DBConnection(object):
 
 from tornado.options import define, options
 
-define("database", metavar='mysql|mongodb|redis|postgres|file|none', default="none", help="the database driver to use")
+define("database", metavar='mysql|mongodb|redis|postgres|json|none', default="none", help="the database driver to use")
 define("db_host", default='localhost', help="The host to use for database connections.")
 define("db_port", default=0, help="The port to use for database connections. Leave this at zero to use the default for the selected database type")
 define("mysql_database", type=str, help="Main MySQL schema name")
@@ -230,9 +230,9 @@ def configured_connection():
     elif options.database == 'postgres':
       from postgresconnection import PostgresConnection
       return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew, min_connections=options.postgres_min_connections, max_connections=options.postgres_max_connections)
-    elif options.database == 'file':
-      from filedbconnection import FileConnection
-      return FileConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
+    elif options.database == 'json':
+      from jsondbconnection import JSONConnection
+      return JSONConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
     else:
       from fakeconnection import FakeConnection
       return FakeConnection()

@@ -5,13 +5,13 @@ from datetime import datetime
 from dbconnection import DBConnection
 import json
 
-class FileSession(TotoSession):
+class JSONSession(TotoSession):
   _account = None
 
-  class FileAccount(TotoAccount):
+  class JSONAccount(TotoAccount):
 
     def __init__(self, session):
-      super(FileSession.FileAccount, self).__init__(session)
+      super(JSONSession.JSONAccount, self).__init__(session)
 
     def _load_property(self, *args):
       return self._session._db.get('account', self._session.user_id, 'properties')
@@ -21,14 +21,14 @@ class FileSession(TotoSession):
 
     def __setitem__(self, key, value):
       if key != 'account_id':
-        super(FileSession.FileAccount, self).__setitem__(key, value)
+        super(JSONSession.JSONAccount, self).__setitem__(key, value)
 
   def __init__(self, db, session_data, session_cache=None):
-    super(FileSession, self).__init__(db, session_data, session_cache)
+    super(JSONSession, self).__init__(db, session_data, session_cache)
 
   def get_account(self):
     if not self._account:
-      self._account = FileSession.FileAccount(self)
+      self._account = JSONSession.JSONAccount(self)
     return self._account
 
   def session_data(self):
@@ -44,8 +44,8 @@ class FileSession(TotoSession):
     if not self._save_cache():
       self._db.set('session', self.session_id, self.session_data())
 
-class FileConnection(DBConnection):
-  '''A file based implementation of DBConnection. Used for debugging. and not
+class JSONConnection(DBConnection):
+  '''A JSON based implementation of DBConnection. Used for debugging. and not
   recommended for production use. This class is not thread safe.
 
   Data is loaded from the specified ``filename`` and if ``persistent`` is set
@@ -96,7 +96,7 @@ class FileConnection(DBConnection):
     return d and d.get(args[-1])
 
   def __init__(self, filename=None, persistent=False, *args, **kwargs):
-    super(FileConnection, self).__init__(*args, **kwargs)
+    super(JSONConnection, self).__init__(*args, **kwargs)
     self._file = filename
     self._persistent = self._file and persistent
     self.db = None
@@ -113,7 +113,7 @@ class FileConnection(DBConnection):
     self.set('session', session_id, session_data)
 
   def _instantiate_session(self, session_data, session_cache):
-    return FileSession(self, session_data, session_cache)
+    return JSONSession(self, session_data, session_cache)
 
   def remove_session(self, session_id):
     self.set('session', session_id, None)

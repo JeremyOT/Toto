@@ -23,7 +23,7 @@ TotoHandler.set_after_handler(after_handler)
 def run_server(processes=1, daemon='start'):
   db_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'db.json')
   print db_file
-  TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes, daemon=daemon, pidfile='server.pid', database='file', db_host=db_file, db_port=0, hmac_enabled=True).run()
+  TotoServer(method_module='web_methods', port=9000, debug=True, processes=processes, daemon=daemon, pidfile='server.pid', database='json', db_host='', hmac_enabled=True).run()
 
 class TestWeb(unittest.TestCase):
 
