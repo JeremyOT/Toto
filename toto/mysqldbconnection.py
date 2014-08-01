@@ -81,6 +81,8 @@ class MySQLdbConnection(DBConnection):
     self.create_tables(database)
 
   def _store_account(self, user_id, values):
+    if self.uuid_account_id:
+      values['account_id'] = uuid4().bytes
     self.db.execute("insert into account (" + ', '.join([k for k in values]) + ") values (" + ','.join(['%s' for k in values]) + ")", *[values[k] for k in values])
 
   def _load_uncached_data(self, session_id):

@@ -73,10 +73,13 @@ class RedisConnection(DBConnection):
     self.db.delete(session_key)
 
 class RedisSessionCache(TotoSessionCache):
+  '''A ``TotoSessionCache`` implementation that uses Redis for session storage. Useful for improving the speed
+  of authenticated requests while still allowing account data to live in e.g. MySQL.
+
+  ``db`` must be an instance of ``redis.StrictRedis`` initialized to the target database.
+  '''
 
   def __init__(self, db):
-    '''``db`` must be an instance of ``redis.StrictRedis`` initialized to the target database.
-    '''
     self.db = db
 
   def store_session(self, session_data):

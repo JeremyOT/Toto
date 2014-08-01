@@ -6,7 +6,7 @@ Servers, Handlers and Sessions
   Server
   ------
   .. autoclass:: TotoServer
-  
+
   The following method will normally be your only interaction with an instance of ``TotoServer``
 
   .. automethod:: TotoServer.run
@@ -22,7 +22,7 @@ Servers, Handlers and Sessions
   .. automethod:: toto.handler.TotoHandler.respond_raw
   .. automethod:: toto.handler.TotoHandler.on_connection_close
   .. attribute::  toto.handler.TotoHandler.headers_only
-    
+
     Will be set to ``True`` if the handler is expected to send only response headers. By default,
     this will only be set for "HEAD" requests. When ``True``, ``respond()`` and ``respond_raw()``
     will not write a body. Check this property in method implementations to avoid performing
@@ -45,13 +45,15 @@ Servers, Handlers and Sessions
   ^^^^^^^^^^^^^^^
   .. automethod:: toto.handler.TotoHandler.set_before_handler
   .. automethod:: toto.handler.TotoHandler.set_after_handler
-  
+
 
   Sessions
   --------
-  
+
   .. automethod:: toto.handler.TotoHandler.create_session
   .. automethod:: toto.handler.TotoHandler.retrieve_session
+  .. automethod:: toto.handler.TotoHandler.set_hmac_handler
+  .. automethod:: toto.handler.TotoHandler.set_response_hmac_handler
 
   The TotoSession class
   ^^^^^^^^^^^^^^^^^^^^^
@@ -70,12 +72,14 @@ Servers, Handlers and Sessions
   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   .. autoclass:: toto.session.TotoSessionCache
-  
+
   .. automethod:: toto.session.TotoSessionCache.store_session
   .. automethod:: toto.session.TotoSessionCache.load_session
 
   .. autoclass:: toto.clientsessioncache.ClientCache
   .. autoclass:: toto.clientsessioncache.AESCipher
+
+  .. autoclass:: toto.redisconnection.RedisSessionCache
 
   The TotoAccount class
   ^^^^^^^^^^^^^^^^^^^^^

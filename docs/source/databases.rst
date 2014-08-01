@@ -18,6 +18,23 @@ Database Connections
   .. automethod:: DBConnection.change_password
   .. automethod:: DBConnection.generate_password
   .. automethod:: DBConnection.set_session_cache
-  .. automethod:: DBConnection._load_session_data
+
+  Extending ``DBConnection``
+  --------------------------
+
+  The following methods must be implemented for a subclass
+  of ``DBConnection`` to function properly:
+
+  .. automethod:: DBConnection.remove_session
   .. automethod:: DBConnection._load_uncached_data
-  .. automethod:: DBConnection._cache_session_data
+  .. automethod:: DBConnection._store_session
+  .. automethod:: DBConnection._update_password
+  .. automethod:: DBConnection._instantiate_session
+  .. automethod:: DBConnection._get_account
+  .. automethod:: DBConnection._store_account
+
+  The following methods are optional:
+
+  .. automethod:: DBConnection.clear_sessions
+  .. automethod:: DBConnection._update_expiry
+  .. automethod:: DBConnection._prepare_session
