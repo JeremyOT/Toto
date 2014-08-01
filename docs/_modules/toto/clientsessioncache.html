@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.clientsessioncache &mdash; Toto 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><h1 class="heading"><a href="../../index.html">
+          <span>Toto 1.0.0 documentation</span></a></h1>
+        <h2 class="heading"><span>toto.clientsessioncache</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for toto.clientsessioncache</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">toto.session</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">base64</span> <span class="kn">import</span> <span class="n">b64encode</span><span class="p">,</span> <span class="n">b64decode</span>
+
+<div class="viewcode-block" id="AESCipher"><a class="viewcode-back" href="../../server.html#toto.clientsessioncache.AESCipher">[docs]</a><span class="k">class</span> <span class="nc">AESCipher</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A convenient cipher implementation for AES encryption and decryption.</span>
+
+<span class="sd">     Create a new ``AESCipher`` with the given ``key`` and ``iv`` that wraps</span>
+<span class="sd">     ``Crypto.AES`` but is reusable and thread safe. For convenience, both</span>
+<span class="sd">     the ``key`` and ``iv`` may be provided as one string, in which case the</span>
+<span class="sd">     last ``AES.block_size`` (16) bytes will be used for ``iv``.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">iv</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span> <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">block_size</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">iv</span><span class="p">:</span>
+      <span class="n">iv</span> <span class="o">=</span> <span class="n">key</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">block_size</span><span class="p">:]</span>
+      <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="p">[:</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">block_size</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">aes</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span><span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CBC</span><span class="p">,</span> <span class="n">iv</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">encrypt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aes</span><span class="p">()</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">data</span> <span class="o">+</span> <span class="nb">chr</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span> <span class="o">*</span> <span class="n">diff</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">decrypt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">decrypted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aes</span><span class="p">()</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">decrypted</span><span class="p">[:</span><span class="o">-</span><span class="nb">ord</span><span class="p">(</span><span class="n">decrypted</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])]</span>
+</div>
+<div class="viewcode-block" id="ClientCache"><a class="viewcode-back" href="../../server.html#toto.clientsessioncache.ClientCache">[docs]</a><span class="k">class</span> <span class="nc">ClientCache</span><span class="p">(</span><span class="n">TotoSessionCache</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A ``TotoSessionCache`` implementation that stores all session data with the</span>
+<span class="sd">     client. Depending on use, the session may be sent as a header or cookie.</span>
+<span class="sd">     ``ClientCache`` works by storing the encrypted session state in</span>
+<span class="sd">     the session ID and decrypting it on each request. When using this method,</span>
+<span class="sd">     it is important to keep session state small as it can add significant</span>
+<span class="sd">     overhead to each request.</span>
+
+<span class="sd">     ``cipher`` will be used to encrypt and decrypt the session data. It should</span>
+<span class="sd">     be identical between all servers in a deployment to allow proper request</span>
+<span class="sd">     balancing. ``cipher`` is expected to implement ``encrypt(data)`` and</span>
+<span class="sd">     the reverse ``decrypt(data)`` both accepting and returning ``str`` objects.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cipher</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cipher</span> <span class="o">=</span> <span class="n">cipher</span>
+
+  <span class="k">def</span> <span class="nf">store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="n">persisted_data</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">persisted_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">b64encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">session_data</span><span class="p">)),</span> <span class="s">&#39;-_&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">load_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">b64decode</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;-_&#39;</span><span class="p">)))</span>
+    <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_id</span>
+    <span class="k">return</span> <span class="n">session_data</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

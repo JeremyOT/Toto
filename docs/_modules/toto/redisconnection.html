@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>toto.redisconnection &mdash; Toto 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Toto 1.0.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><h1 class="heading"><a href="../../index.html">
+          <span>Toto 1.0.0 documentation</span></a></h1>
+        <h2 class="heading"><span>toto.redisconnection</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for toto.redisconnection</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">redis</span>
+<span class="kn">from</span> <span class="nn">toto.exceptions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">toto.session</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">dbconnection</span> <span class="kn">import</span> <span class="n">DBConnection</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+
+<span class="k">def</span> <span class="nf">_account_key</span><span class="p">(</span><span class="n">user_id</span><span class="p">):</span>
+  <span class="k">return</span> <span class="s">&#39;account:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">user_id</span>
+
+<span class="k">def</span> <span class="nf">_session_key</span><span class="p">(</span><span class="n">session_id</span><span class="p">):</span>
+  <span class="k">return</span> <span class="s">&#39;session:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">session_id</span>
+
+<span class="k">class</span> <span class="nc">RedisSession</span><span class="p">(</span><span class="n">TotoSession</span><span class="p">):</span>
+  <span class="n">_account</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">class</span> <span class="nc">RedisAccount</span><span class="p">(</span><span class="n">TotoAccount</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_load_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+      <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">hmget</span><span class="p">(</span><span class="n">_account_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">user_id</span><span class="p">),</span> <span class="n">args</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">_save_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">hmset</span><span class="p">(</span><span class="n">_account_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">user_id</span><span class="p">),</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">args</span><span class="p">})</span>
+
+  <span class="k">def</span> <span class="nf">get_account</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_account</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_account</span> <span class="o">=</span> <span class="n">RedisSession</span><span class="o">.</span><span class="n">RedisAccount</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_account</span>
+
+  <span class="k">def</span> <span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refresh_cache</span><span class="p">()</span> <span class="ow">or</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_session_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">)))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verified</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_NOT_AUTHORIZED</span><span class="p">,</span> <span class="s">&quot;Not authorized&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_cache</span><span class="p">():</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">setex</span><span class="p">(</span><span class="n">_session_key</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_id</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expires</span> <span class="o">-</span> <span class="n">time</span><span class="p">()),</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_data</span><span class="p">()))</span>
+
+<span class="k">class</span> <span class="nc">RedisConnection</span><span class="p">(</span><span class="n">DBConnection</span><span class="p">):</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">6379</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">RedisConnection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">redis</span><span class="o">.</span><span class="n">StrictRedis</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">database</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="n">session_key</span> <span class="o">=</span> <span class="n">_session_key</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">setex</span><span class="p">(</span><span class="n">session_key</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">session_data</span><span class="p">[</span><span class="s">&#39;expires&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">time</span><span class="p">()),</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">session_data</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_update_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">hashed_password</span><span class="p">):</span>
+    <span class="n">account_key</span> <span class="o">=</span> <span class="n">_account_key</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">hset</span><span class="p">(</span><span class="n">account_key</span><span class="p">,</span> <span class="s">&#39;password&#39;</span><span class="p">,</span> <span class="n">hashed_password</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_instantiate_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span> <span class="n">session_cache</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">RedisSession</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_get_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">hmget</span><span class="p">(</span><span class="n">account_key</span><span class="p">,</span> <span class="s">&#39;user_id&#39;</span><span class="p">,</span> <span class="s">&#39;password&#39;</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_store_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+    <span class="n">account_key</span> <span class="o">=</span> <span class="n">_account_key</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">hmset</span><span class="p">(</span><span class="n">account_key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">_load_uncached_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_session_key</span><span class="p">(</span><span class="n">session_id</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">data</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+  <span class="k">def</span> <span class="nf">remove_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="n">session_key</span> <span class="o">=</span> <span class="n">_session_key</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">session_key</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RedisSessionCache"><a class="viewcode-back" href="../../server.html#toto.redisconnection.RedisSessionCache">[docs]</a><span class="k">class</span> <span class="nc">RedisSessionCache</span><span class="p">(</span><span class="n">TotoSessionCache</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39;A ``TotoSessionCache`` implementation that uses Redis for session storage. Useful for improving the speed</span>
+<span class="sd">  of authenticated requests while still allowing account data to live in e.g. MySQL.</span>
+
+<span class="sd">  ``db`` must be an instance of ``redis.StrictRedis`` initialized to the target database.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+
+  <span class="k">def</span> <span class="nf">store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="n">session_key</span> <span class="o">=</span> <span class="n">_session_key</span><span class="p">(</span><span class="n">session_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">setex</span><span class="p">(</span><span class="n">session_key</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">session_data</span><span class="p">[</span><span class="s">&#39;expires&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">time</span><span class="p">()),</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">session_data</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">load_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="n">session_key</span> <span class="o">=</span> <span class="n">_session_key</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">session_key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">session_data</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.handler &mdash; Toto 0.12.8 documentation</title>
+    <title>toto.handler &mdash; Toto 1.0.0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.12.8',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.8 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 1.0.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.12.8 documentation</span></a></h1>
+          <span>Toto 1.0.0 documentation</span></a></h1>
         <h2 class="heading"><span>toto.handler</span></h2>
       </div>
       <div class="topnav">
@@ -54,6 +54,7 @@
 <span class="kn">from</span> <span class="nn">tornado.ioloop</span> <span class="kn">import</span> <span class="n">IOLoop</span>
 <span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">coroutine</span><span class="p">,</span> <span class="n">Return</span><span class="p">,</span> <span class="n">engine</span>
 <span class="kn">from</span> <span class="nn">tornado.concurrent</span> <span class="kn">import</span> <span class="n">return_future</span><span class="p">,</span> <span class="n">Future</span>
+<span class="kn">from</span> <span class="nn">toto.session</span> <span class="kn">import</span> <span class="n">TotoSession</span>
 <span class="kn">from</span> <span class="nn">uuid</span> <span class="kn">import</span> <span class="n">uuid4</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 
@@ -61,7 +62,7 @@
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;method_select&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;both&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&quot;both|url|parameter&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Selects whether methods can be specified via URL, parameter in the message body or both (default both)&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;bson_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Allows requests to use BSON with content-type application/bson&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;msgpack_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Allows requests to use MessagePack with content-type application/msgpack&quot;</span><span class="p">)</span>
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;hmac_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Uses the x-toto-hmac header to verify authenticated requests.&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;hmac_enabled&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Uses the x-toto-hmac header to verify authenticated requests.&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BatchHandlerProxy"><a class="viewcode-back" href="../../server.html#toto.handler.BatchHandlerProxy">[docs]</a><span class="k">class</span> <span class="nc">BatchHandlerProxy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;A proxy to a handler, this class intercepts calls to ``handler.respond()`` in order to match the</span>
@@ -106,18 +107,18 @@
   <span class="sd">&#39;&#39;&#39;The handler is responsible for processing all requests to the server. An instance</span>
 <span class="sd">  will be initialized for each incoming request and will handle authentication, session</span>
 <span class="sd">  management and method delegation for you.</span>
-<span class="sd">  </span>
+
 <span class="sd">  You can set the module to use for method delegation via the ``method_module`` parameter.</span>
 <span class="sd">  Methods are modules that contain an invoke function::</span>
 
 <span class="sd">    def invoke(handler, parameters)</span>
-<span class="sd">  </span>
+
 <span class="sd">  The request handler will be passed as the first parameter to the invoke function and</span>
 <span class="sd">  provides access to the server&#39;s database connection, the current session and other</span>
 <span class="sd">  useful request properties. Request parameters will be passed as the second argument</span>
 <span class="sd">  to the invoke function. Any return values from ``invoke()`` functions should be</span>
 <span class="sd">  JSON serializable.</span>
-<span class="sd">  </span>
+
 <span class="sd">  Toto methods are generally invoked via a POST request to the server with a JSON</span>
 <span class="sd">  serialized object as the body. The body should contain two properties:</span>
 
@@ -181,7 +182,7 @@
         <span class="k">else</span><span class="p">:</span>
           <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_MISSING_METHOD</span><span class="p">,</span> <span class="s">&quot;Missing method.&quot;</span><span class="p">)</span>
       <span class="n">cls</span><span class="o">.</span><span class="n">__get_method_path</span> <span class="o">=</span> <span class="n">get_method_path</span>
-    
+
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">use_cookies</span><span class="p">:</span>
       <span class="kn">import</span> <span class="nn">math</span>
       <span class="n">set_cookie</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">secure_cookies</span> <span class="ow">and</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_secure_cookie</span> <span class="ow">or</span> <span class="n">cls</span><span class="o">.</span><span class="n">set_cookie</span>
@@ -191,14 +192,16 @@
         <span class="n">set_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;toto-session-id&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="n">expires_days</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span> <span class="o">/</span> <span class="p">(</span><span class="mf">24.0</span> <span class="o">*</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">)),</span> <span class="n">domain</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">cookie_domain</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
       <span class="n">cls</span><span class="o">.</span><span class="n">create_session</span> <span class="o">=</span> <span class="n">create_session</span>
-      
+
       <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="p">(</span><span class="n">session_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span> <span class="o">!=</span> <span class="n">session_id</span><span class="p">):</span>
           <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span>
           <span class="k">if</span> <span class="ow">not</span> <span class="n">session_id</span><span class="p">:</span>
             <span class="n">session_id</span> <span class="o">=</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">get_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;toto-session-id&#39;</span><span class="p">)</span>
           <span class="k">if</span> <span class="n">session_id</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">),</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+          <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_verify_hmac</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
           <span class="n">set_cookie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;toto-session-id&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span><span class="p">,</span> <span class="n">expires_days</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">expires</span> <span class="o">/</span> <span class="p">(</span><span class="mf">24.0</span> <span class="o">*</span> <span class="mf">60.0</span> <span class="o">*</span> <span class="mf">60.0</span><span class="p">)),</span> <span class="n">domain</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">cookie_domain</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
@@ -213,7 +216,7 @@
       <span class="n">cls</span><span class="o">.</span><span class="n">error_info</span> <span class="o">=</span> <span class="n">error_info</span>
     <span class="n">cls</span><span class="o">.</span><span class="n">__method_root</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">method_module</span><span class="p">)</span>
     <span class="n">cls</span><span class="o">.</span><span class="n">__method_cache</span> <span class="o">=</span> <span class="p">{}</span>
-      
+
   <span class="k">def</span> <span class="nf">__get_method_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The default method_select &quot;both&quot; (or any unsupported value) will</span>
 <span class="sd">    call this method. The class method ``configure()`` will update this</span>
@@ -279,7 +282,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-origin&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ACCESS_CONTROL_ALLOW_ORIGIN</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-allow-methods&#39;</span><span class="p">,</span> <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SUPPORTED_METHODS</span><span class="p">))</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;access-control-expose-headers&#39;</span><span class="p">,</span> <span class="s">&#39;x-toto-hmac&#39;</span><span class="p">)</span>
-  
+
   <span class="nd">@coroutine</span>
   <span class="k">def</span> <span class="nf">head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">headers_only</span> <span class="o">=</span> <span class="bp">True</span>
@@ -318,7 +321,7 @@
     <span class="k">else</span><span class="p">:</span>
       <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_request</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="ow">and</span> <span class="s">&#39;parameters&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="p">[</span><span class="s">&#39;parameters&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="p">{})</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_after_invoke</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transaction_id</span><span class="p">)</span>
-  
+
   <span class="nd">@return_future</span>
   <span class="nd">@engine</span>
   <span class="k">def</span> <span class="nf">batch_process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
@@ -338,7 +341,7 @@
         <span class="n">proxy</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">allow_async</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
   <span class="nd">@return_future</span>
-  <span class="nd">@engine</span> 
+  <span class="nd">@engine</span>
   <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">request_body</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_request_callback</span> <span class="o">=</span> <span class="n">callback</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">None</span>
@@ -362,7 +365,7 @@
 <span class="sd">    * application/msgpack - requires msgpack-python</span>
 
 <span class="sd">    The response will also contain any available session information.</span>
-<span class="sd">    </span>
+
 <span class="sd">    To help with error handling in asynchronous methods, calling ``handler.respond(error=&lt;your_error&gt;)`` with a caught</span>
 <span class="sd">    exception will trigger a normal Toto error response, log the error and finish the request. This is the same basic</span>
 <span class="sd">    flow that is used internally when exceptions are raised from synchronous method calls.</span>
@@ -393,8 +396,8 @@
       <span class="n">response_body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msgpack</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="n">response_body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">,</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">response_body</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()))</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">add_header</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_response_hmac</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="n">response_body</span><span class="p">))</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">respond_raw</span><span class="p">(</span><span class="n">response_body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_type</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="TotoHandler.respond_raw"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.respond_raw">[docs]</a>  <span class="k">def</span> <span class="nf">respond_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">content_type</span><span class="p">,</span> <span class="n">finish</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
@@ -452,21 +455,34 @@
 <span class="sd">    checking the password. This can be used to implement alternative authentication methods like Facebook, Twitter</span>
 <span class="sd">    and Google+.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_password</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">create_session</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_password</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">generate_id</span><span class="p">())</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
 </div>
+  <span class="k">def</span> <span class="nf">_verify_hmac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">],</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">+</span> <span class="n">request</span><span class="o">.</span><span class="n">uri</span> <span class="o">+</span> <span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">body</span> <span class="ow">or</span> <span class="s">&#39;&#39;</span><span class="p">))</span>
+
+  <span class="k">def</span> <span class="nf">_response_hmac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">response_body</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">hmac</span><span class="p">(</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span> <span class="o">+</span> <span class="n">response_body</span><span class="p">)</span>
+
 <div class="viewcode-block" id="TotoHandler.retrieve_session"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.retrieve_session">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it</span>
 <span class="sd">    in ``self.session``. Alternatively, pass a ``session_id`` to this function to retrieve that session explicitly.</span>
+
+<span class="sd">    If the ``hmac_enabled`` option is set to ``True``, Verify the session against the given request. Expects that</span>
+<span class="sd">    the request&#39;s ``x-toto-hmac`` header is the sha1 hmac of the request signature signed with the authenticated key.</span>
+
+<span class="sd">    The signature takes the form: ``method + uri + body or &#39;&#39;``</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="ow">or</span> <span class="p">(</span><span class="n">session_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span> <span class="o">!=</span> <span class="n">session_id</span><span class="p">):</span>
       <span class="n">headers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">headers</span>
       <span class="k">if</span> <span class="ow">not</span> <span class="n">session_id</span> <span class="ow">and</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
-        <span class="n">session_id</span> <span class="o">=</span> <span class="s">&#39;x-toto-session-id&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">None</span>
+        <span class="n">session_id</span> <span class="o">=</span> <span class="n">headers</span><span class="p">[</span><span class="s">&#39;x-toto-session-id&#39;</span><span class="p">]</span>
       <span class="k">if</span> <span class="n">session_id</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;x-toto-hmac&#39;</span><span class="p">),</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="s">&#39;x-toto-hmac&#39;</span> <span class="ow">in</span> <span class="n">headers</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span> <span class="ow">or</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db_connection</span><span class="o">.</span><span class="n">retrieve_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">hmac_enabled</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verify_hmac</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span>
-    </div>
+</div>
   <span class="k">def</span> <span class="nf">on_finish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">deregister_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registered_event_handlers</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -479,7 +495,7 @@
 
   <span class="nd">@classmethod</span>
 <div class="viewcode-block" id="TotoHandler.set_before_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.set_before_handler">[docs]</a>  <span class="k">def</span> <span class="nf">set_before_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be </span>
+    <span class="sd">&#39;&#39;&#39;Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be</span>
 <span class="sd">       called with ``handler, transaction_id, method``, where ``transaction_id`` is a UUID and ``method`` is the name of the</span>
 <span class="sd">       invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message</span>
 <span class="sd">       logged with name ``&quot;&lt;batch&gt;&quot;`` which wraps the entire request. The default handler is a no op.</span>
@@ -491,7 +507,21 @@
     <span class="sd">&#39;&#39;&#39;Set the handler that will be called after any method invocation. The handler will be called with ``handler, transaction_id``,</span>
 <span class="sd">       where ``transaction_id`` is the UUID that was passed to the before handler. The default handler is a no op.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">cls</span><span class="o">.</span><span class="n">_after_invoke</span> <span class="o">=</span> <span class="n">handler</span></div></div>
+    <span class="n">cls</span><span class="o">.</span><span class="n">_after_invoke</span> <span class="o">=</span> <span class="n">handler</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoHandler.set_hmac_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.set_hmac_handler">[docs]</a>  <span class="k">def</span> <span class="nf">set_hmac_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Set the hmac verification function. It will be called with ``handler(session, request, headers)`` and may be used to add</span>
+<span class="sd">    additional verification or to modify the signature used for validation, e.g. to confirm request time.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">_verify_hmac</span> <span class="o">=</span> <span class="n">handler</span>
+</div>
+  <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TotoHandler.set_response_hmac_handler"><a class="viewcode-back" href="../../server.html#toto.handler.TotoHandler.set_response_hmac_handler">[docs]</a>  <span class="k">def</span> <span class="nf">set_response_hmac_handler</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Set the hmac generation function for responses. It will be called with ``handler(session, response_body)`` and may be used to add</span>
+<span class="sd">    to modify the signature used for validation. It must return a string.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span><span class="o">.</span><span class="n">_response_hmac</span> <span class="o">=</span> <span class="n">handler</span></div></div>
 </pre></div>
 
       </div>

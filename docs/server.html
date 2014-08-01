@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Servers, Handlers and Sessions &mdash; Toto 0.12.8 documentation</title>
+    <title>Servers, Handlers and Sessions &mdash; Toto 1.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.12.8',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.8 documentation" href="index.html" />
+    <link rel="top" title="Toto 1.0.0 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Method Decorators" href="invocation.html" />
     <link rel="prev" title="The Toto web server" href="web.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.12.8 documentation</span></a></h1>
+          <span>Toto 1.0.0 documentation</span></a></h1>
         <h2 class="heading"><span>Servers, Handlers and Sessions</span></h2>
       </div>
       <div class="topnav">
@@ -227,7 +227,7 @@ the combined response will passed to the underlying handler&#8217;s <tt class="d
 <dl class="classmethod">
 <dt id="toto.handler.TotoHandler.set_before_handler">
 <em class="property">classmethod </em><tt class="descclassname">TotoHandler.</tt><tt class="descname">set_before_handler</tt><big>(</big><em>handler</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.set_before_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.set_before_handler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be 
+<dd><p>Set the handler that will be called before any method invocation. This is useful for instrumentation. The handler will be
 called with <tt class="docutils literal"><span class="pre">handler,</span> <span class="pre">transaction_id,</span> <span class="pre">method</span></tt>, where <tt class="docutils literal"><span class="pre">transaction_id</span></tt> is a UUID and <tt class="docutils literal"><span class="pre">method</span></tt> is the name of the
 invoked method. For batch requests each invocation will be tracked and logged separately, but there will also be a message
 logged with name <tt class="docutils literal"><span class="pre">&quot;&lt;batch&gt;&quot;</span></tt> which wraps the entire request. The default handler is a no op.</p>
@@ -259,13 +259,30 @@ and Google+.</p>
 <tt class="descclassname">TotoHandler.</tt><tt class="descname">retrieve_session</tt><big>(</big><em>session_id=None</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.retrieve_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.retrieve_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve the session specified by the request headers (or if enabled, the request cookie) and store it
 in <tt class="docutils literal"><span class="pre">self.session</span></tt>. Alternatively, pass a <tt class="docutils literal"><span class="pre">session_id</span></tt> to this function to retrieve that session explicitly.</p>
+<p>If the <tt class="docutils literal"><span class="pre">hmac_enabled</span></tt> option is set to <tt class="docutils literal"><span class="pre">True</span></tt>, Verify the session against the given request. Expects that
+the request&#8217;s <tt class="docutils literal"><span class="pre">x-toto-hmac</span></tt> header is the sha1 hmac of the request signature signed with the authenticated key.</p>
+<p>The signature takes the form: <tt class="docutils literal"><span class="pre">method</span> <span class="pre">+</span> <span class="pre">uri</span> <span class="pre">+</span> <span class="pre">body</span> <span class="pre">or</span> <span class="pre">''</span></tt></p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.handler.TotoHandler.set_hmac_handler">
+<em class="property">classmethod </em><tt class="descclassname">TotoHandler.</tt><tt class="descname">set_hmac_handler</tt><big>(</big><em>handler</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.set_hmac_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.set_hmac_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the hmac verification function. It will be called with <tt class="docutils literal"><span class="pre">handler(session,</span> <span class="pre">request,</span> <span class="pre">headers)</span></tt> and may be used to add
+additional verification or to modify the signature used for validation, e.g. to confirm request time.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.handler.TotoHandler.set_response_hmac_handler">
+<em class="property">classmethod </em><tt class="descclassname">TotoHandler.</tt><tt class="descname">set_response_hmac_handler</tt><big>(</big><em>handler</em><big>)</big><a class="reference internal" href="_modules/toto/handler.html#TotoHandler.set_response_hmac_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.handler.TotoHandler.set_response_hmac_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the hmac generation function for responses. It will be called with <tt class="docutils literal"><span class="pre">handler(session,</span> <span class="pre">response_body)</span></tt> and may be used to add
+to modify the signature used for validation. It must return a string.</p>
 </dd></dl>
 
 <div class="section" id="the-totosession-class">
 <h3>The TotoSession class<a class="headerlink" href="#the-totosession-class" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="toto.session.TotoSession">
-<em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSession</tt><big>(</big><em>db</em>, <em>session_data</em>, <em>session_cache=None</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">toto.session.</tt><tt class="descname">TotoSession</tt><big>(</big><em>db</em>, <em>session_data</em>, <em>session_cache=None</em>, <em>key=None</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSession"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSession" title="Permalink to this definition">¶</a></dt>
 <dd><p>Instances of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> provide dictionary-like access to current session variables, and the current
 account (if authenticated).</p>
 </dd></dl>
@@ -332,7 +349,8 @@ for each authenticated request, it can be useful to keep them in a specialized d
 <tt class="descclassname">TotoSessionCache.</tt><tt class="descname">store_session</tt><big>(</big><em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSessionCache.store_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSessionCache.store_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Store a <tt class="docutils literal"><span class="pre">TotoSession</span></tt> with the given <tt class="docutils literal"><span class="pre">session_data</span></tt>. <tt class="docutils literal"><span class="pre">session_data</span></tt> can be expected to contain, at a minimum, <tt class="docutils literal"><span class="pre">session_id</span></tt> and <tt class="docutils literal"><span class="pre">expires</span></tt>.
 If an existing session matches the <tt class="docutils literal"><span class="pre">session_id</span></tt> contained in <tt class="docutils literal"><span class="pre">session_data</span></tt>, it should be overwritten. The session is expected to be removed
-after the time specified by <tt class="docutils literal"><span class="pre">expires</span></tt>.</p>
+after the time specified by <tt class="docutils literal"><span class="pre">expires</span></tt>. The storage implementation is allowed to change the session&#8217;s <tt class="docutils literal"><span class="pre">session_id</span></tt> if needed by returning the new
+id. Returning any falsey value will not affect the <tt class="docutils literal"><span class="pre">session_id</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -340,6 +358,39 @@ after the time specified by <tt class="docutils literal"><span class="pre">expir
 <tt class="descclassname">TotoSessionCache.</tt><tt class="descname">load_session</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/session.html#TotoSessionCache.load_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.session.TotoSessionCache.load_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve the session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>. This method should return the <tt class="docutils literal"><span class="pre">session_data</span></tt> <tt class="docutils literal"><span class="pre">dict</span></tt> that was originally passed to
 <tt class="docutils literal"><span class="pre">store_session()</span></tt>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="toto.clientsessioncache.ClientCache">
+<em class="property">class </em><tt class="descclassname">toto.clientsessioncache.</tt><tt class="descname">ClientCache</tt><big>(</big><em>cipher</em><big>)</big><a class="reference internal" href="_modules/toto/clientsessioncache.html#ClientCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.clientsessioncache.ClientCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> implementation that stores all session data with the
+client. Depending on use, the session may be sent as a header or cookie.
+<tt class="docutils literal"><span class="pre">ClientCache</span></tt> works by storing the encrypted session state in
+the session ID and decrypting it on each request. When using this method,
+it is important to keep session state small as it can add significant
+overhead to each request.</p>
+<p><tt class="docutils literal"><span class="pre">cipher</span></tt> will be used to encrypt and decrypt the session data. It should
+be identical between all servers in a deployment to allow proper request
+balancing. <tt class="docutils literal"><span class="pre">cipher</span></tt> is expected to implement <tt class="docutils literal"><span class="pre">encrypt(data)</span></tt> and
+the reverse <tt class="docutils literal"><span class="pre">decrypt(data)</span></tt> both accepting and returning <tt class="docutils literal"><span class="pre">str</span></tt> objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="toto.clientsessioncache.AESCipher">
+<em class="property">class </em><tt class="descclassname">toto.clientsessioncache.</tt><tt class="descname">AESCipher</tt><big>(</big><em>key</em>, <em>iv=None</em><big>)</big><a class="reference internal" href="_modules/toto/clientsessioncache.html#AESCipher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.clientsessioncache.AESCipher" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenient cipher implementation for AES encryption and decryption.</p>
+<p>Create a new <tt class="docutils literal"><span class="pre">AESCipher</span></tt> with the given <tt class="docutils literal"><span class="pre">key</span></tt> and <tt class="docutils literal"><span class="pre">iv</span></tt> that wraps
+<tt class="docutils literal"><span class="pre">Crypto.AES</span></tt> but is reusable and thread safe. For convenience, both
+the <tt class="docutils literal"><span class="pre">key</span></tt> and <tt class="docutils literal"><span class="pre">iv</span></tt> may be provided as one string, in which case the
+last <tt class="docutils literal"><span class="pre">AES.block_size</span></tt> (16) bytes will be used for <tt class="docutils literal"><span class="pre">iv</span></tt>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="toto.redisconnection.RedisSessionCache">
+<em class="property">class </em><tt class="descclassname">toto.redisconnection.</tt><tt class="descname">RedisSessionCache</tt><big>(</big><em>db</em><big>)</big><a class="reference internal" href="_modules/toto/redisconnection.html#RedisSessionCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.redisconnection.RedisSessionCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> implementation that uses Redis for session storage. Useful for improving the speed
+of authenticated requests while still allowing account data to live in e.g. MySQL.</p>
+<p><tt class="docutils literal"><span class="pre">db</span></tt> must be an instance of <tt class="docutils literal"><span class="pre">redis.StrictRedis</span></tt> initialized to the target database.</p>
 </dd></dl>
 
 </div>

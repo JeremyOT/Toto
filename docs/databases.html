@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Database Connections &mdash; Toto 0.12.8 documentation</title>
+    <title>Database Connections &mdash; Toto 1.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.12.8',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.8 documentation" href="index.html" />
+    <link rel="top" title="Toto 1.0.0 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Exceptions" href="exceptions.html" />
     <link rel="prev" title="Method Decorators" href="invocation.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.12.8 documentation</span></a></h1>
+          <span>Toto 1.0.0 documentation</span></a></h1>
         <h2 class="heading"><span>Database Connections</span></h2>
       </div>
       <div class="topnav">
@@ -51,7 +51,7 @@
 <span id="database-connections"></span><h1>Database Connections<a class="headerlink" href="#module-toto.dbconnection" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="toto.dbconnection.DBConnection">
-<em class="property">class </em><tt class="descclassname">toto.dbconnection.</tt><tt class="descname">DBConnection</tt><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">toto.dbconnection.</tt><tt class="descname">DBConnection</tt><big>(</big><em>session_ttl=31536000</em>, <em>anon_session_ttl=86400</em>, <em>session_renew=0</em>, <em>anon_session_renew=0</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Toto uses subclasses of DBConnection to support session and account storage as well as general
 access to the backing database. Usually, direct access to the underlying database driver will
 be available via the <tt class="docutils literal"><span class="pre">DBConnection.db</span></tt> property.</p>
@@ -61,6 +61,7 @@ be available via the <tt class="docutils literal"><span class="pre">DBConnection
 <li><tt class="docutils literal"><span class="pre">toto.mysqldbconnection.MySQLdbConnection</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">toto.postgresconnection.PostgresConnection</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">toto.redisconnection.RedisConnection</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">toto.jsondbconnection.JSONConnection</span></tt> (For debugging only)</li>
 </ul>
 </dd></dl>
 
@@ -77,7 +78,7 @@ before passing additional arguments to <tt class="docutils literal"><span class=
 
 <dl class="method">
 <dt id="toto.dbconnection.DBConnection.create_session">
-<tt class="descclassname">DBConnection.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em>, <em>verify_password=True</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_session" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">DBConnection.</tt><tt class="descname">create_session</tt><big>(</big><em>user_id=None</em>, <em>password=None</em>, <em>verify_password=True</em>, <em>key=None</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.create_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.create_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new session for the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>, or an anonymous
 session if anonymous sessions are enabled. This method returns a subclass of <tt class="docutils literal"><span class="pre">TotoSession</span></tt>
 designed for the current backing database. Pass <tt class="docutils literal"><span class="pre">verify_password=False</span></tt> to create a session
@@ -87,16 +88,9 @@ methods like Facebook, Twitter or Google+.</p>
 
 <dl class="method">
 <dt id="toto.dbconnection.DBConnection.retrieve_session">
-<tt class="descclassname">DBConnection.</tt><tt class="descname">retrieve_session</tt><big>(</big><em>session_id</em>, <em>hmac_data=None</em>, <em>data=None</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.retrieve_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.retrieve_session" title="Permalink to this definition">¶</a></dt>
-<dd><p>Retrieve an existing session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>. Pass the request body and the value
-of the <tt class="docutils literal"><span class="pre">x-toto-hmac</span></tt> header as <tt class="docutils literal"><span class="pre">data</span></tt> and <tt class="docutils literal"><span class="pre">hmac_data</span></tt> respectively to verify an authenticated request.
-If <tt class="docutils literal"><span class="pre">hmac_data</span></tt> and <tt class="docutils literal"><span class="pre">data</span></tt> are both <tt class="docutils literal"><span class="pre">None</span></tt>, HMAC verification will be skipped. This method returns a
-subclasses of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> designed for the current backing database.</p>
-<p>Toto uses HMAC verification to ensure that requests and responses are not corrupted in transmission.
-The session&#8217;s <tt class="docutils literal"><span class="pre">user_id</span></tt> is used as the key which makes it easy for an attacker to forge a request
-so long as they have an active session ID and the associated user ID - both of which are contained
-in the response body of each authenticated request. A future update may contain an option to use
-a secret key for HMAC verification instead.</p>
+<tt class="descclassname">DBConnection.</tt><tt class="descname">retrieve_session</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.retrieve_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection.retrieve_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve an existing session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>. This method returns a
+subclass of <tt class="docutils literal"><span class="pre">TotoSession</span></tt> designed for the current backing database.</p>
 <p>The use of HTTPS is strongly recommended for any communication involving sensitive information.</p>
 </dd></dl>
 
@@ -134,12 +128,15 @@ support &#8220;forgot password&#8221; functionality.</p>
 this database.</p>
 </dd></dl>
 
+</div>
+<div class="section" id="extending-dbconnection">
+<h2>Extending <tt class="docutils literal"><span class="pre">DBConnection</span></tt><a class="headerlink" href="#extending-dbconnection" title="Permalink to this headline">¶</a></h2>
+<p>The following methods must be implemented for a subclass
+of <tt class="docutils literal"><span class="pre">DBConnection</span></tt> to function properly:</p>
 <dl class="method">
-<dt id="toto.dbconnection.DBConnection._load_session_data">
-<tt class="descclassname">DBConnection.</tt><tt class="descname">_load_session_data</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._load_session_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._load_session_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt>. Will attempt to load data from an associated <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt>.
-If no <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt> is associated with the current instance, the result of <tt class="docutils literal"><span class="pre">self._load_uncached_data(session_id)</span></tt>
-is returned.</p>
+<dt>
+<tt class="descclassname">DBConnection.</tt><tt class="descname">remove_session</tt><big>(</big><em>session_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.remove_session"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Invalidate the session with the given <tt class="docutils literal"><span class="pre">session_id</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -150,10 +147,59 @@ associated with the current instance of <tt class="docutils literal"><span class
 </dd></dl>
 
 <dl class="method">
-<dt id="toto.dbconnection.DBConnection._cache_session_data">
-<tt class="descclassname">DBConnection.</tt><tt class="descname">_cache_session_data</tt><big>(</big><em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._cache_session_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._cache_session_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt> and by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt> if there is a change in <tt class="docutils literal"><span class="pre">TotoSession.expires</span></tt>.
-Returns <tt class="docutils literal"><span class="pre">True</span></tt> if the session has been written to an associated <tt class="docutils literal"><span class="pre">TotoSessionCache</span></tt>, <tt class="docutils literal"><span class="pre">False</span></tt> otherwise.</p>
+<dt id="toto.dbconnection.DBConnection._store_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_store_session</tt><big>(</big><em>session_id</em>, <em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._store_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._store_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt>, and by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt> if there is a change in <tt class="docutils literal"><span class="pre">TotoSession.expires</span></tt>.
+Will not be called if a session cache has been attached to the <tt class="docutils literal"><span class="pre">DBConnection</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._update_password">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_update_password</tt><big>(</big><em>user_id</em>, <em>hashed_password</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._update_password"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._update_password" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.change_password</span></tt> and <tt class="docutils literal"><span class="pre">DBConnection.generate_password</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._instantiate_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_instantiate_session</tt><big>(</big><em>session_data</em>, <em>session_cache</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._instantiate_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._instantiate_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt> and by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt> to actually instantiate a <tt class="docutils literal"><span class="pre">TotoSession</span></tt>
+instance. Must return a new <tt class="docutils literal"><span class="pre">TotoSession</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._get_account">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_get_account</tt><big>(</big><em>user_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._get_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._get_account" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt> if <tt class="docutils literal"><span class="pre">verify_password=True</span></tt> and must return a dictionry containing
+at least the pair <tt class="docutils literal"><span class="pre">'password':&lt;hashed_password</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._store_account">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_store_account</tt><big>(</big><em>user_id</em>, <em>values</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._store_account"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._store_account" title="Permalink to this definition">¶</a></dt>
+<dd><p>Must be implemented in subclasses to persist new accounts to the database. Values is a dictionary
+that will contain, at a minimum, <tt class="docutils literal"><span class="pre">user_id</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt>. <tt class="docutils literal"><span class="pre">password</span></tt> will be the hashed password
+passed to <tt class="docutils literal"><span class="pre">self.create_account()</span></tt>.</p>
+</dd></dl>
+
+<p>The following methods are optional:</p>
+<dl class="method">
+<dt>
+<tt class="descclassname">DBConnection.</tt><tt class="descname">clear_sessions</tt><big>(</big><em>user_id</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection.clear_sessions"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>If implemented, invalidates all sessions tied to the account with the given <tt class="docutils literal"><span class="pre">user_id</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._update_expiry">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_update_expiry</tt><big>(</big><em>session_id</em>, <em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._update_expiry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._update_expiry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.retrieve_session</span></tt> if there is a change in <tt class="docutils literal"><span class="pre">TotoSession.expires</span></tt> to allow optional efficient updates.
+If not implemented, <tt class="docutils literal"><span class="pre">self._store_session</span></tt> will be called.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.dbconnection.DBConnection._prepare_session">
+<tt class="descclassname">DBConnection.</tt><tt class="descname">_prepare_session</tt><big>(</big><em>account</em>, <em>session_data</em><big>)</big><a class="reference internal" href="_modules/toto/dbconnection.html#DBConnection._prepare_session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.dbconnection.DBConnection._prepare_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by <tt class="docutils literal"><span class="pre">DBConnection.create_session</span></tt> before the session is written to the database to allow for the
+addition of any extra data that may be needed by the <tt class="docutils literal"><span class="pre">subclass.TotoSession</span></tt> implementation.</p>
 </dd></dl>
 
 </div>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Index &mdash; Toto 0.12.8 documentation</title>
+    <title>Index &mdash; Toto 1.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.12.8',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,11 +24,11 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.8 documentation" href="index.html" /> 
+    <link rel="top" title="Toto 1.0.0 documentation" href="index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 0.12.8 documentation</span></a></h1>
+          <span>Toto 1.0.0 documentation</span></a></h1>
         <h2 class="heading"><span>Index</span></h2>
       </div>
       <div class="topnav">
@@ -78,21 +78,41 @@
   </dt>
 
       
-  <dt><a href="databases.html#toto.dbconnection.DBConnection._cache_session_data">_cache_session_data() (toto.dbconnection.DBConnection method)</a>
+  <dt><a href="invocation.html#toto.invocation._copy_attributes">_copy_attributes() (in module toto.invocation)</a>
+  </dt>
+
+      
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._get_account">_get_account() (toto.dbconnection.DBConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._instantiate_session">_instantiate_session() (toto.dbconnection.DBConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._load_uncached_data">_load_uncached_data() (toto.dbconnection.DBConnection method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="invocation.html#toto.invocation._copy_attributes">_copy_attributes() (in module toto.invocation)</a>
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._prepare_session">_prepare_session() (toto.dbconnection.DBConnection method)</a>
   </dt>
 
       
-  <dt><a href="databases.html#toto.dbconnection.DBConnection._load_session_data">_load_session_data() (toto.dbconnection.DBConnection method)</a>
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._store_account">_store_account() (toto.dbconnection.DBConnection method)</a>
   </dt>
 
       
-  <dt><a href="databases.html#toto.dbconnection.DBConnection._load_uncached_data">_load_uncached_data() (toto.dbconnection.DBConnection method)</a>
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._store_session">_store_session() (toto.dbconnection.DBConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._update_expiry">_update_expiry() (toto.dbconnection.DBConnection method)</a>
+  </dt>
+
+      
+  <dt><a href="databases.html#toto.dbconnection.DBConnection._update_password">_update_password() (toto.dbconnection.DBConnection method)</a>
   </dt>
 
   </dl></td>
@@ -107,6 +127,10 @@
 
       
   <dt><a href="tasks.html#toto.tasks.TaskQueue.add_task">add_task() (toto.tasks.TaskQueue method)</a>
+  </dt>
+
+      
+  <dt><a href="server.html#toto.clientsessioncache.AESCipher">AESCipher (class in toto.clientsessioncache)</a>
   </dt>
 
       
@@ -148,7 +172,11 @@
   </dt>
 
       
-  <dt><a href="databases.html#toto.dbconnection.DBConnection.clear_sessions">clear_sessions() (toto.dbconnection.DBConnection method)</a>
+  <dt><a href="databases.html#toto.dbconnection.DBConnection.clear_sessions">clear_sessions() (toto.dbconnection.DBConnection method)</a>, <a href="databases.html#toto.dbconnection.DBConnection.clear_sessions">[1]</a>
+  </dt>
+
+      
+  <dt><a href="server.html#toto.clientsessioncache.ClientCache">ClientCache (class in toto.clientsessioncache)</a>
   </dt>
 
   </dl></td>
@@ -378,6 +406,10 @@
   </dt>
 
       
+  <dt><a href="server.html#toto.redisconnection.RedisSessionCache">RedisSessionCache (class in toto.redisconnection)</a>
+  </dt>
+
+      
   <dt><a href="server.html#toto.session.TotoSession.refresh">refresh() (toto.session.TotoSession method)</a>
   </dt>
 
@@ -416,7 +448,7 @@
   </dt>
 
       
-  <dt><a href="databases.html#toto.dbconnection.DBConnection.remove_session">remove_session() (toto.dbconnection.DBConnection method)</a>
+  <dt><a href="databases.html#toto.dbconnection.DBConnection.remove_session">remove_session() (toto.dbconnection.DBConnection method)</a>, <a href="databases.html#toto.dbconnection.DBConnection.remove_session">[1]</a>
   </dt>
 
       
@@ -497,10 +529,18 @@
   <dt><a href="server.html#toto.handler.TotoHandler.set_before_handler">set_before_handler() (toto.handler.TotoHandler class method)</a>
   </dt>
 
+      
+  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.set_connections">set_connections() (toto.workerconnection.WorkerConnection method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.set_connections">set_connections() (toto.workerconnection.WorkerConnection method)</a>
+  <dt><a href="server.html#toto.handler.TotoHandler.set_hmac_handler">set_hmac_handler() (toto.handler.TotoHandler class method)</a>
+  </dt>
+
+      
+  <dt><a href="server.html#toto.handler.TotoHandler.set_response_hmac_handler">set_response_hmac_handler() (toto.handler.TotoHandler class method)</a>
   </dt>
 
       

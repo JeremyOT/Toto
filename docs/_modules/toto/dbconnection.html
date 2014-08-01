@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.dbconnection &mdash; Toto 0.12.8 documentation</title>
+    <title>toto.dbconnection &mdash; Toto 1.0.0 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '0.12.8',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 0.12.8 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 1.0.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 0.12.8 documentation</span></a></h1>
+          <span>Toto 1.0.0 documentation</span></a></h1>
         <h2 class="heading"><span>toto.dbconnection</span></h2>
       </div>
       <div class="topnav">
@@ -42,6 +42,13 @@
         
         
   <h1>Source code for toto.dbconnection</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">toto.exceptions</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">toto.session</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">toto.secret</span> <span class="kn">as</span> <span class="nn">secret</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">string</span>
+
 <div class="viewcode-block" id="DBConnection"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection">[docs]</a><span class="k">class</span> <span class="nc">DBConnection</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Toto uses subclasses of DBConnection to support session and account storage as well as general</span>
 <span class="sd">    access to the backing database. Usually, direct access to the underlying database driver will</span>
@@ -53,9 +60,16 @@
 <span class="sd">    * ``toto.mysqldbconnection.MySQLdbConnection``</span>
 <span class="sd">    * ``toto.postgresconnection.PostgresConnection``</span>
 <span class="sd">    * ``toto.redisconnection.RedisConnection``</span>
+<span class="sd">    * ``toto.jsondbconnection.JSONConnection`` (For debugging only)</span>
 <span class="sd">  &#39;&#39;&#39;</span>
 
   <span class="n">_session_cache</span> <span class="o">=</span> <span class="bp">None</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="mi">24</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">365</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="mi">24</span><span class="o">*</span><span class="mi">60</span><span class="o">*</span><span class="mi">60</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session_ttl</span> <span class="o">=</span> <span class="n">session_ttl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">anon_session_ttl</span> <span class="o">=</span> <span class="n">anon_session_ttl</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_ttl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">session_renew</span> <span class="o">=</span> <span class="n">session_renew</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_ttl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">anon_session_renew</span> <span class="o">=</span> <span class="n">anon_session_renew</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">anon_session_ttl</span>
 
 <div class="viewcode-block" id="DBConnection.create_account"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_account">[docs]</a>  <span class="k">def</span> <span class="nf">create_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">additional_values</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">values</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Create an account for the given ``user_id`` and ``password``. Optionally set additional account</span>
@@ -64,32 +78,83 @@
 <span class="sd">      Note: if your database uses a predefined schema, make sure to create the appropriate columns</span>
 <span class="sd">      before passing additional arguments to ``create_account``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user_id</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_INVALID_USER_ID</span><span class="p">,</span> <span class="s">&quot;Invalid user ID.&quot;</span><span class="p">)</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_account</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">account</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_USER_ID_EXISTS</span><span class="p">,</span> <span class="s">&quot;User ID already in use.&quot;</span><span class="p">)</span>
+    <span class="n">values</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">additional_values</span><span class="p">)</span>
+    <span class="n">values</span><span class="p">[</span><span class="s">&#39;user_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">user_id</span>
+    <span class="n">values</span><span class="p">[</span><span class="s">&#39;password&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">secret</span><span class="o">.</span><span class="n">password_hash</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_store_account</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
 </div>
-<div class="viewcode-block" id="DBConnection.create_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+<div class="viewcode-block" id="DBConnection.create_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.create_session">[docs]</a>  <span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verify_password</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Create a new session for the account with the given ``user_id`` and ``password``, or an anonymous</span>
 <span class="sd">      session if anonymous sessions are enabled. This method returns a subclass of ``TotoSession``</span>
 <span class="sd">      designed for the current backing database. Pass ``verify_password=False`` to create a session</span>
 <span class="sd">      without checking the password. This feature can be used to implement alternative authentication</span>
 <span class="sd">      methods like Facebook, Twitter or Google+.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user_id</span><span class="p">:</span>
+      <span class="n">user_id</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="n">user_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_account</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">user_id</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">account</span> <span class="ow">or</span> <span class="p">(</span><span class="n">verify_password</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">secret</span><span class="o">.</span><span class="n">verify_password</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">account</span><span class="p">[</span><span class="s">&#39;password&#39;</span><span class="p">]))):</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_USER_NOT_FOUND</span><span class="p">,</span> <span class="s">&quot;Invalid user ID or password&quot;</span><span class="p">)</span>
+    <span class="n">session_id</span> <span class="o">=</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">generate_id</span><span class="p">()</span>
+    <span class="n">expires</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="n">user_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_ttl</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">)</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;user_id&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="s">&#39;expires&#39;</span><span class="p">:</span> <span class="n">expires</span><span class="p">,</span> <span class="s">&#39;session_id&#39;</span><span class="p">:</span> <span class="n">session_id</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">key</span><span class="p">:</span>
+      <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;key&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">key</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_session</span><span class="p">(</span><span class="n">account</span><span class="p">,</span> <span class="n">session_data</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_store_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_instantiate_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">_verified</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="n">session</span>
 </div>
-<div class="viewcode-block" id="DBConnection.retrieve_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.retrieve_session">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">hmac_data</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Retrieve an existing session with the given ``session_id``. Pass the request body and the value</span>
-<span class="sd">    of the ``x-toto-hmac`` header as ``data`` and ``hmac_data`` respectively to verify an authenticated request.</span>
-<span class="sd">    If ``hmac_data`` and ``data`` are both ``None``, HMAC verification will be skipped. This method returns a</span>
-<span class="sd">    subclasses of ``TotoSession`` designed for the current backing database.</span>
-
-<span class="sd">    Toto uses HMAC verification to ensure that requests and responses are not corrupted in transmission.</span>
-<span class="sd">    The session&#39;s ``user_id`` is used as the key which makes it easy for an attacker to forge a request</span>
-<span class="sd">    so long as they have an active session ID and the associated user ID - both of which are contained</span>
-<span class="sd">    in the response body of each authenticated request. A future update may contain an option to use</span>
-<span class="sd">    a secret key for HMAC verification instead.</span>
+<div class="viewcode-block" id="DBConnection.retrieve_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.retrieve_session">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Retrieve an existing session with the given ``session_id``. This method returns a</span>
+<span class="sd">    subclass of ``TotoSession`` designed for the current backing database.</span>
 
 <span class="sd">    The use of HTTPS is strongly recommended for any communication involving sensitive information.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_session_data</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">session_data</span><span class="p">:</span>
+      <span class="k">return</span> <span class="bp">None</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;user_id&#39;</span><span class="p">]</span>
+    <span class="n">expires</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="p">(</span><span class="n">user_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_renew</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;expires&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">expires</span><span class="p">:</span>
+      <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;expires&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">expires</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_expiry</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_instantiate_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">session</span>
+</div>
+<div class="viewcode-block" id="DBConnection.change_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.change_password">[docs]</a>  <span class="k">def</span> <span class="nf">change_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">new_password</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Updates the password for the account with the given ``user_id`` and ``password`` to match</span>
+<span class="sd">    ``new_password`` for all future requests.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_account</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">account</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">secret</span><span class="o">.</span><span class="n">verify_password</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">account</span><span class="p">[</span><span class="s">&#39;password&#39;</span><span class="p">]):</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_USER_NOT_FOUND</span><span class="p">,</span> <span class="s">&quot;Invalid user ID or password&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_update_password</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">secret</span><span class="o">.</span><span class="n">password_hash</span><span class="p">(</span><span class="n">new_password</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="DBConnection.generate_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.generate_password">[docs]</a>  <span class="k">def</span> <span class="nf">generate_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Generates a new password for the account with the given ``user_id`` and makes it active</span>
+<span class="sd">    for all future requests. The new password will be returned. This method is designed to</span>
+<span class="sd">    support &quot;forgot password&quot; functionality.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">user_id</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">account</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_account</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">account</span><span class="p">:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="n">ERROR_USER_NOT_FOUND</span><span class="p">,</span> <span class="s">&quot;Invalid user ID&quot;</span><span class="p">)</span>
+    <span class="n">pass_chars</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span> <span class="o">+</span> <span class="n">string</span><span class="o">.</span><span class="n">digits</span>
+    <span class="n">new_password</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">pass_chars</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_update_password</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">secret</span><span class="o">.</span><span class="n">password_hash</span><span class="p">(</span><span class="n">new_password</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">new_password</span>
 </div>
 <div class="viewcode-block" id="DBConnection.remove_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.remove_session">[docs]</a>  <span class="k">def</span> <span class="nf">remove_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Invalidate the session with the given ``session_id``.</span>
@@ -101,26 +166,13 @@
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">pass</span>
 </div>
-<div class="viewcode-block" id="DBConnection.change_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.change_password">[docs]</a>  <span class="k">def</span> <span class="nf">change_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">new_password</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Updates the password for the account with the given ``user_id`` and ``password`` to match</span>
-<span class="sd">    ``new_password`` for all future requests.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
-</div>
-<div class="viewcode-block" id="DBConnection.generate_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.generate_password">[docs]</a>  <span class="k">def</span> <span class="nf">generate_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Generates a new password for the account with the given ``user_id`` and makes it active</span>
-<span class="sd">    for all future requests. The new password will be returned. This method is designed to</span>
-<span class="sd">    support &quot;forgot password&quot; functionality.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
-</div>
 <div class="viewcode-block" id="DBConnection.set_session_cache"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection.set_session_cache">[docs]</a>  <span class="k">def</span> <span class="nf">set_session_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_cache</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Optionally set an instance of ``TotoSessionCache`` that will be used to store sessions separately from</span>
 <span class="sd">    this database.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span> <span class="o">=</span> <span class="n">session_cache</span>
 </div>
-<div class="viewcode-block" id="DBConnection._load_session_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._load_session_data">[docs]</a>  <span class="k">def</span> <span class="nf">_load_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_load_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.retrieve_session``. Will attempt to load data from an associated ``TotoSessionCache``.</span>
 <span class="sd">    If no ``TotoSessionCache`` is associated with the current instance, the result of ``self._load_uncached_data(session_id)``</span>
 <span class="sd">    is returned.</span>
@@ -128,25 +180,69 @@
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
       <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">load_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_uncached_data</span><span class="p">(</span><span class="n">session_id</span><span class="p">)</span>
-</div>
+
 <div class="viewcode-block" id="DBConnection._load_uncached_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._load_uncached_data">[docs]</a>  <span class="k">def</span> <span class="nf">_load_uncached_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Load a session data ``dict`` from the local database. Called by default and if no ``TotoSessionCache`` has been</span>
-<span class="sd">    associated with the current instance of ``DBConnection``. </span>
+<span class="sd">    associated with the current instance of ``DBConnection``.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
 </div>
-<div class="viewcode-block" id="DBConnection._cache_session_data"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._cache_session_data">[docs]</a>  <span class="k">def</span> <span class="nf">_cache_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">_cache_session_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session`` and by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires``.</span>
 <span class="sd">    Returns ``True`` if the session has been written to an associated ``TotoSessionCache``, ``False`` otherwise.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">store_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span>
+      <span class="n">updated_session_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_cache</span><span class="o">.</span><span class="n">store_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">updated_session_id</span><span class="p">:</span>
+        <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">updated_session_id</span>
       <span class="k">return</span> <span class="bp">True</span>
     <span class="k">return</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="DBConnection._store_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._store_session">[docs]</a>  <span class="k">def</span> <span class="nf">_store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session``, and by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires``.</span>
+<span class="sd">    Will not be called if a session cache has been attached to the ``DBConnection``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection._update_expiry"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._update_expiry">[docs]</a>  <span class="k">def</span> <span class="nf">_update_expiry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.retrieve_session`` if there is a change in ``TotoSession.expires`` to allow optional efficient updates.</span>
+<span class="sd">    If not implemented, ``self._store_session`` will be called.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="n">session_data</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DBConnection._update_password"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._update_password">[docs]</a>  <span class="k">def</span> <span class="nf">_update_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">hashed_password</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.change_password`` and ``DBConnection.generate_password``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection._instantiate_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._instantiate_session">[docs]</a>  <span class="k">def</span> <span class="nf">_instantiate_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span> <span class="n">session_cache</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session`` and by ``DBConnection.retrieve_session`` to actually instantiate a ``TotoSession``</span>
+<span class="sd">    instance. Must return a new ``TotoSession``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection._get_account"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._get_account">[docs]</a>  <span class="k">def</span> <span class="nf">_get_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session`` if ``verify_password=True`` and must return a dictionry containing</span>
+<span class="sd">    at least the pair ``&#39;password&#39;:&lt;hashed_password``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="DBConnection._prepare_session"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._prepare_session">[docs]</a>  <span class="k">def</span> <span class="nf">_prepare_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">account</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Called by ``DBConnection.create_session`` before the session is written to the database to allow for the</span>
+<span class="sd">    addition of any extra data that may be needed by the ``subclass.TotoSession`` implementation.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="DBConnection._store_account"><a class="viewcode-back" href="../../databases.html#toto.dbconnection.DBConnection._store_account">[docs]</a>  <span class="k">def</span> <span class="nf">_store_account</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Must be implemented in subclasses to persist new accounts to the database. Values is a dictionary</span>
+<span class="sd">    that will contain, at a minimum, ``user_id`` and ``password``. ``password`` will be the hashed password</span>
+<span class="sd">    passed to ``self.create_account()``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
 </div></div>
 <span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">define</span><span class="p">,</span> <span class="n">options</span>
 
-<span class="n">define</span><span class="p">(</span><span class="s">&quot;database&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;mysql|mongodb|redis|postgres|none&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;none&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;the database driver to use&quot;</span><span class="p">)</span>
+<span class="n">define</span><span class="p">(</span><span class="s">&quot;database&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;mysql|mongodb|redis|postgres|json|none&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;none&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;the database driver to use&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;db_host&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The host to use for database connections.&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;db_port&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The port to use for database connections. Leave this at zero to use the default for the selected database type&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;mysql_database&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;Main MySQL schema name&quot;</span><span class="p">)</span>
@@ -165,22 +261,25 @@
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;session_renew&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds before a session expires that it should be renewed, or zero to renew on every request&quot;</span><span class="p">)</span>
 <span class="n">define</span><span class="p">(</span><span class="s">&quot;anon_session_renew&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s">&quot;The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request&quot;</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">configured_connection</span><span class="p">():</span>  
+<span class="k">def</span> <span class="nf">configured_connection</span><span class="p">():</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;mongodb&quot;</span><span class="p">:</span>
       <span class="kn">from</span> <span class="nn">mongodbconnection</span> <span class="kn">import</span> <span class="n">MongoDBConnection</span>
-      <span class="k">return</span> <span class="n">MongoDBConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">27017</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mongodb_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">MongoDBConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">27017</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mongodb_database</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;redis&quot;</span><span class="p">:</span>
       <span class="kn">from</span> <span class="nn">redisconnection</span> <span class="kn">import</span> <span class="n">RedisConnection</span>
-      <span class="k">return</span> <span class="n">RedisConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">6379</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">redis_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">RedisConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">6379</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">redis_database</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&quot;mysql&quot;</span><span class="p">:</span>
       <span class="kn">from</span> <span class="nn">mysqldbconnection</span> <span class="kn">import</span> <span class="n">MySQLdbConnection</span>
-      <span class="k">return</span> <span class="n">MySQLdbConnection</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">3306</span><span class="p">),</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_password</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_uuid_account_id</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">MySQLdbConnection</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">3306</span><span class="p">),</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">mysql_password</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">,</span> <span class="n">uuid_account_id</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">mysql_uuid_account_id</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&#39;postgres&#39;</span><span class="p">:</span>
       <span class="kn">from</span> <span class="nn">postgresconnection</span> <span class="kn">import</span> <span class="n">PostgresConnection</span>
-      <span class="k">return</span> <span class="n">PostgresConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">5432</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_password</span><span class="p">,</span>  <span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_min_connections</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_max_connections</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">PostgresConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span> <span class="ow">or</span> <span class="mi">5432</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_database</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_user</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">postgres_password</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">,</span> <span class="n">min_connections</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">postgres_min_connections</span><span class="p">,</span> <span class="n">max_connections</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">postgres_max_connections</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">database</span> <span class="o">==</span> <span class="s">&#39;json&#39;</span><span class="p">:</span>
+      <span class="kn">from</span> <span class="nn">jsondbconnection</span> <span class="kn">import</span> <span class="n">JSONConnection</span>
+      <span class="k">return</span> <span class="n">JSONConnection</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">db_host</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">db_port</span><span class="p">,</span> <span class="n">session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_ttl</span><span class="p">,</span> <span class="n">anon_session_ttl</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_ttl</span><span class="p">,</span> <span class="n">session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">session_renew</span><span class="p">,</span> <span class="n">anon_session_renew</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">anon_session_renew</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="kn">from</span> <span class="nn">fakeconnection</span> <span class="kn">import</span> <span class="n">FakeConnection</span>
-      <span class="k">return</span> <span class="n">FakeConnection</span><span class="p">()</span> 
+      <span class="k">return</span> <span class="n">FakeConnection</span><span class="p">()</span>
 </pre></div>
 
       </div>
