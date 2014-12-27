@@ -126,7 +126,7 @@ class PostgresConnection(DBConnection):
   def _load_uncached_data(self, session_id):
     return self.db.get("select session.session_id, session.expires, session.state, account.user_id, account.account_id from session join account on account.account_id = session.account_id where session.session_id = %s and session.expires > %s", (session_id, time()))
 
-  def remove_session(self, session_id):
+  def _remove_session(self, session_id):
     self.db.execute("delete from session where session_id = %s", (session_id,))
 
   def clear_sessions(self, user_id):

@@ -53,3 +53,6 @@ class ClientCache(TotoSessionCache):
     session_data = TotoSession.loads(self.cipher.decrypt(b64decode(session_id, '-_')))
     session_data['session_id'] = session_id
     return session_data
+
+  def remove_session(self, session_id):
+    pass

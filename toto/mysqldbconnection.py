@@ -5,6 +5,7 @@ from time import time, mktime
 from datetime import datetime
 from dbconnection import DBConnection
 from uuid import uuid4
+from queue import Queue
 import toto.secret as secret
 import uuid
 import random
@@ -74,7 +75,7 @@ class MySQLdbConnection(DBConnection):
         foreign key (`account_id`) references `account`(`account_id`)
       )''']))
 
-  def __init__(self, host, database, username, password, uuid_account_id=False, *args, **kwargs):
+  def __init__(self, host, database, username, password, uuid_account_id=False, pool_size=1, *args, **kwargs):
     super(MySQLdbConnection, self).__init__(*args, **kwargs)
     self.db = Connection(host, database, username, password)
     self.uuid_account_id = uuid_account_id
@@ -109,7 +110,7 @@ class MySQLdbConnection(DBConnection):
   def _update_password(self, user_id, account, hashed_password):
     self.db.execute("update account set password = %s where account_id = %s", hashed_password, account['account_id'])
 
-  def remove_session(self, session_id):
+  def _remove_session(self, session_id):
     self.db.execute("delete from session where session_id = %s", session_id)
 
   def clear_sessions(self, user_id):

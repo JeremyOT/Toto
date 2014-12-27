@@ -99,7 +99,7 @@ class MongoDBConnection(DBConnection):
     session = MongoDBSession(self.db, session_data, self._session_cache)
     return session
 
-  def remove_session(self, session_id):
+  def _remove_session(self, session_id):
     self.db.sessions.remove({'session_id': session_id})
 
   def clear_sessions(self, user_id):

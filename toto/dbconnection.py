@@ -4,6 +4,7 @@ import toto.secret as secret
 from time import time
 import random
 import string
+from toto.tasks import InstancePool
 
 class DBConnection(object):
   '''Toto uses subclasses of DBConnection to support session and account storage as well as general
@@ -114,6 +115,14 @@ class DBConnection(object):
 
   def remove_session(self, session_id):
     '''Invalidate the session with the given ``session_id``.
+    '''
+    if self._session_cache:
+      self._session_cache.remove_session(session_id)
+    else:
+      self._remove_session(session_id)
+
+  def _remove_session(self, session_id):
+    '''Called by ``DBConnection.remove_session`` to invalidate the specified session when no session cache is in use.
     '''
     raise NotImplementedError()
 
@@ -232,7 +241,8 @@ def configured_connection():
       return PostgresConnection(options.db_host, options.db_port or 5432, options.postgres_database, options.postgres_user, options.postgres_password, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew, min_connections=options.postgres_min_connections, max_connections=options.postgres_max_connections)
     elif options.database == 'json':
       from jsondbconnection import JSONConnection
-      return JSONConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
+      # return JSONConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
+      return InstancePool(JSONConnection(options.db_host, options.db_port, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew))
     else:
       from fakeconnection import FakeConnection
       return FakeConnection()

@@ -6,6 +6,7 @@ run for a long time, look at Toto's worker functionality instead.
 from threading import Thread, Lock
 from collections import deque
 from tornado.gen import coroutine, Task, Return
+from Queue import Queue
 import logging
 import traceback
 
@@ -20,7 +21,7 @@ class TaskQueue():
     self.lock = Lock()
     self.threads = set()
     self.thread_count = thread_count
-  
+
   def add_task(self, fn, *args, **kwargs):
     '''Add the function ``fn`` to the queue to be invoked with
     ``args`` and ``kwargs`` as arguments. If the ``TaskQueue``
@@ -46,7 +47,7 @@ class TaskQueue():
       def caller():
         value = yield TaskQueue.instance('myqueue').yield_task(add, 1, 2)
         print value #prints 3
-    
+
     '''
     def call(callback):
       result = None
@@ -107,3 +108,44 @@ class TaskQueue():
     except KeyError:
       cls._task_queues[name] = cls(thread_count)
       return cls._task_queues[name]
+
+class InstancePool(object):
+
+  def __init__(self, instances, default_queue="pool"):
+    pool = Queue()
+    if hasattr(instances, '__iter__'):
+      for i in instances:
+        pool.put(i)
+    else:
+      pool.put(instances)
+    self._pool = pool
+    self._default_queue = default_queue
+
+  def __getattr__(self, key):
+    def call(*args, **kwargs):
+      c = self._pool.get()
+      try:
+        return getattr(c, key)(*args, **kwargs)
+      finally:
+        self._pool.put(c)
+    return call
+
+  def await(self, name=None):
+    if not name:
+      name = self._default_queue
+    return AwaitableInstance(self, name)
+
+  def _get(self):
+    return self._pool.get()
+
+  def _put(self, i):
+    return self._pool.put(i)
+
+class AwaitableInstance(object):
+
+  def __init__(self, instance, name="pool"):
+    self.instance = instance
+    self.task_queue = TaskQueue.instance(name)
+
+  def __getattr__(self, key):
+    return lambda *args, **kwargs: self.task_queue.yield_task(getattr(self.instance, key), *args, **kwargs)
