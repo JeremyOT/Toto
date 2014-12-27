@@ -5,7 +5,6 @@ from time import time, mktime
 from datetime import datetime
 from dbconnection import DBConnection
 from uuid import uuid4
-from queue import Queue
 import toto.secret as secret
 import uuid
 import random
