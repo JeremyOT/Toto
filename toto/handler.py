@@ -275,7 +275,7 @@ class TotoHandler(RequestHandler):
     if self.body and 'batch' in self.body:
       yield self.batch_process_request(self.body['batch'])
     else:
-      yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or {})
+      yield self.process_request(path, self.body, self.body and 'parameters' in self.body and self.body['parameters'] or self.body or {})
     self._after_invoke(self.transaction_id)
 
   @return_future
