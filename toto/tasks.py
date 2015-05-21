@@ -5,8 +5,11 @@ run for a long time, look at Toto's worker functionality instead.
 '''
 from threading import Thread, Lock
 from collections import deque
-from tornado.gen import coroutine, Task, Return
+from tornado.gen import coroutine, Return
+from tornado.concurrent import Future
+from tornado.ioloop import IOLoop
 from Queue import Queue
+from sys import exc_info
 import logging
 import traceback
 
@@ -32,7 +35,6 @@ class TaskQueue():
     self.run()
     self.lock.release()
 
-  @coroutine
   def yield_task(self, fn, *args, **kwargs):
     '''Like add_task but will call the function as a coroutine, allowing you
     to yield the return value from within a function decorated with ``@tornado.gen.coroutine``
@@ -49,18 +51,26 @@ class TaskQueue():
         print value #prints 3
 
     '''
-    def call(callback):
+
+    ioloop = IOLoop.instance()
+    future = Future()
+    def call():
       result = None
       error = None
       try:
         result = fn(*args, **kwargs)
       except Exception as e:
-        error = e
-      callback(result, error)
-    (result, error), _ = yield Task(lambda callback: self.add_task(call, callback))
-    if error:
-      raise error
-    raise Return(result)
+        info = exc_info()
+        def set_exception(e, info):
+          future.set_exception(e)
+          future.set_exc_info()
+        # tornado future is not threadsafe
+        ioloop.add_callback(set_exception, e, exc_info())
+      else:
+        # tornado future is not threadsafe
+        ioloop.add_callback(future.set_result, result)
+    self.add_task(call)
+    return future
 
   def run(self):
     '''Start processing jobs in the queue. You should not need
