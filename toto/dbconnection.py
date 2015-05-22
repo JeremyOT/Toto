@@ -227,6 +227,8 @@ define("session_renew", default=0, help="The number of seconds before a session 
 define("anon_session_renew", default=0, help="The number of seconds before an anonymous session expires that it should be renewed, or zero to renew on every request")
 
 def configured_connection():
+    '''Returns a new database connection based on the configuration options
+    '''
     if options.database == "mongodb":
       from mongodbconnection import MongoDBConnection
       return MongoDBConnection(options.db_host, options.db_port or 27017, options.mongodb_database, session_ttl=options.session_ttl, anon_session_ttl=options.anon_session_ttl, session_renew=options.session_renew, anon_session_renew=options.anon_session_renew)
