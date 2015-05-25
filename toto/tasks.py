@@ -16,7 +16,8 @@ import traceback
 
 class TaskQueue():
   '''Instances will run up to ``thread_count`` tasks at a time
-  whenever there are tasks in the queue.
+  whenever there are tasks in the queue. Theads will be killed
+  if unused for longer than ``idle_timeout`` seconds.
   '''
 
   def __init__(self, thread_count=1, idle_timeout=60, name='TaskQueue'):
@@ -55,7 +56,7 @@ class TaskQueue():
 
     '''
 
-    ioloop = IOLoop.instance()
+    ioloop = IOLoop.current()
     future = Future()
     def call():
       result = None
@@ -63,12 +64,7 @@ class TaskQueue():
       try:
         result = fn(*args, **kwargs)
       except Exception as e:
-        info = exc_info()
-        def set_exception(e, info):
-          future.set_exception(e)
-          future.set_exc_info()
-        # tornado future is not threadsafe
-        ioloop.add_callback(set_exception, e, exc_info())
+        ioloop.add_callback(future.set_exc_info, exc_info())
       else:
         # tornado future is not threadsafe
         ioloop.add_callback(future.set_result, result)
@@ -98,7 +94,10 @@ class TaskQueue():
     '''A convenience method for accessing shared instances of ``TaskQueue``.
     If ``name`` references an existing instance created with this method,
     that instance will be returned. Otherwise, a new ``TaskQueue`` will be
-    instantiated with ``thread_count`` threads and stored under ``name``.
+    instantiated with ``thread_count`` threads and the specified ``idle_timeout``
+    then stored under ``name``.
+
+    All arguments after name are ignored after the queue is created.
     '''
     if not hasattr(cls, '_task_queues'):
       cls._task_queues = {}
@@ -146,6 +145,17 @@ class TaskQueue():
             self.in_use = False
 
 class InstancePool(object):
+  ''' Create a pool wrapping one or more instances of a class. The pool has convenience methods for
+  asynchronous execution and transactions. May be used e.g. to share non-threadsafe classes among
+  various threads.
+
+  Invoking a method other than those documented below will remove an instance from the pool, invoke
+  the method, then return it to the pool.
+
+  ``instances`` should be either a single instance or a collection of instances.
+
+  ``default_queue`` is the name of the ``TaskQueue`` that will be used for all asynchronous operations.
+  '''
 
   def __init__(self, instances, default_queue="pool"):
     pool = Queue()
@@ -167,23 +177,46 @@ class InstancePool(object):
     return call
 
   def await(self, queue_name=None):
+    ''' Create an AwaitableInstance wrapping this queue.
+    '''
     if not queue_name:
       queue_name = self._default_queue
     return AwaitableInstance(self, queue_name)
 
   def instance(self):
-    return self.__InstanceTransaction(self)
+    ''' For use with the ``with`` operator. Allows multiple methods to be called on a single instance
+    instance in the pool and returns it when complete.
+
+    For example::
+
+      with pool.instance() as i:
+        i.operation1()
+        i.operation2()
+
+    Will remove an instance from the pool, call two methods on it, then return it to the queue.
+    '''
+    return self.__InstanceTransaction(self._pool)
 
   def transaction(self, function):
+    ''' Calls ``function`` with an instance from the pool as the single argument. Returns the result
+    of ``function(instance)``
+    '''
     with self.instance() as i:
       return function(i)
 
   def async_transaction(self, function, queue_name=None):
+    ''' Like ``transaction()`` but runs the operation in a ``TaskQueue``. ``queue_name`` may be specified
+    to override the default.
+    '''
     if not queue_name:
       queue_name = self._default_queue
     TaskQueue.instance(queue_name).add_task(self.transaction, function)
 
   def await_transaction(self, function, queue_name=None):
+    ''' Like ``transaction()`` but runs the operation in a ``TaskQueue`` and returns a ``Future`` that
+    may be used to retrieve the result. Must be called from a Tornado ``IOLoop``. ``queue_name`` may
+    be specified to override the default.
+    '''
     if not queue_name:
       queue_name = self._default_queue
     return TaskQueue.instance(queue_name).yield_task(self.transaction, function)
@@ -197,16 +230,32 @@ class InstancePool(object):
   class __InstanceTransaction(object):
 
     def __init__(self, pool):
-      self._pool = _pool
+      self._pool = pool
 
     def __enter__(self):
       self._instance = self._pool.get()
       return self._instance
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
       self._pool.put(self._instance)
 
 class AwaitableInstance(object):
+  ''' Use ``AwaitableInstance(instance)`` to create a wrapper around ``instance`` that may be used to
+  automatically execute any of ``instance`` methods in a ``TaskQueue``. Use ``queue_name`` to specify
+  the name of the ``TaskQueue`` to use.
+
+  Usage::
+
+    class MyClass(object):
+      def do_something(self, arg):
+        ...
+        return result
+
+    awaitable = AwaitableInstance(MyClass())
+    result = yield awaitable.do_something(args)
+
+  The above will call ``do_something()`` in a ``TaskQueue`` and await the result.
+  '''
 
   def __init__(self, instance, queue_name="pool"):
     self.instance = instance

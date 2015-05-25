@@ -86,7 +86,7 @@ class TestWeb(unittest.TestCase):
     req = urllib2.Request('http://127.0.0.1:9000/', json.dumps(request), headers)
     f = urllib2.urlopen(req)
     response = json.loads(f.read())['result']
-    self.assertFalse(response['parameters'])
+    self.assertEquals(response['parameters'], {'method': 'return_value'})
 
   def test_url_method(self):
     request = {}
