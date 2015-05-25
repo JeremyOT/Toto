@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Task Queues &mdash; Toto 1.0.1 documentation</title>
+    <title>Task Queues &mdash; Toto 1.0.4 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.0.1',
+        VERSION:     '1.0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,14 +23,14 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.1 documentation" href="index.html" />
+    <link rel="top" title="Toto 1.0.4 documentation" href="index.html" />
     <link rel="up" title="The Toto web server" href="web.html" />
     <link rel="next" title="Events" href="events.html" />
     <link rel="prev" title="Exceptions" href="exceptions.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 1.0.1 documentation</span></a></h1>
+          <span>Toto 1.0.4 documentation</span></a></h1>
         <h2 class="heading"><span>Task Queues</span></h2>
       </div>
       <div class="topnav">
@@ -55,18 +55,21 @@ shorter, lightweight jobs. For CPU intensive tasks or tasks that are expected to
 run for a long time, look at Toto&#8217;s worker functionality instead.</p>
 <dl class="class">
 <dt id="toto.tasks.TaskQueue">
-<em class="property">class </em><tt class="descclassname">toto.tasks.</tt><tt class="descname">TaskQueue</tt><big>(</big><em>thread_count=1</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">toto.tasks.</tt><tt class="descname">TaskQueue</tt><big>(</big><em>thread_count=1</em>, <em>idle_timeout=60</em>, <em>name='TaskQueue'</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue" title="Permalink to this definition">¶</a></dt>
 <dd><p>Instances will run up to <tt class="docutils literal"><span class="pre">thread_count</span></tt> tasks at a time
-whenever there are tasks in the queue.</p>
+whenever there are tasks in the queue. Theads will be killed
+if unused for longer than <tt class="docutils literal"><span class="pre">idle_timeout</span></tt> seconds.</p>
 </dd></dl>
 
 <dl class="classmethod">
 <dt id="toto.tasks.TaskQueue.instance">
-<em class="property">classmethod </em><tt class="descclassname">TaskQueue.</tt><tt class="descname">instance</tt><big>(</big><em>name</em>, <em>thread_count=1</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue.instance" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><tt class="descclassname">TaskQueue.</tt><tt class="descname">instance</tt><big>(</big><em>name</em>, <em>thread_count=1</em>, <em>idle_timeout=60</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue.instance" title="Permalink to this definition">¶</a></dt>
 <dd><p>A convenience method for accessing shared instances of <tt class="docutils literal"><span class="pre">TaskQueue</span></tt>.
 If <tt class="docutils literal"><span class="pre">name</span></tt> references an existing instance created with this method,
 that instance will be returned. Otherwise, a new <tt class="docutils literal"><span class="pre">TaskQueue</span></tt> will be
-instantiated with <tt class="docutils literal"><span class="pre">thread_count</span></tt> threads and stored under <tt class="docutils literal"><span class="pre">name</span></tt>.</p>
+instantiated with <tt class="docutils literal"><span class="pre">thread_count</span></tt> threads and the specified <tt class="docutils literal"><span class="pre">idle_timeout</span></tt>
+then stored under <tt class="docutils literal"><span class="pre">name</span></tt>.</p>
+<p>All arguments after name are ignored after the queue is created.</p>
 </dd></dl>
 
 <div class="section" id="tasks">
@@ -80,12 +83,30 @@ is not currently running, it will be started now.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="toto.tasks.TaskQueue.yield_task">
+<tt class="descclassname">TaskQueue.</tt><tt class="descname">yield_task</tt><big>(</big><em>fn</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue.yield_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue.yield_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like add_task but will call the function as a coroutine, allowing you
+to yield the return value from within a function decorated with <tt class="docutils literal"><span class="pre">&#64;tornado.gen.coroutine</span></tt>
+or <tt class="docutils literal"><span class="pre">&#64;tornado.gen.engine</span></tt>.</p>
+<p>Usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">arg1</span> <span class="o">+</span> <span class="n">arg2</span>
+
+<span class="nd">@tornado.gen.engine</span>
+<span class="k">def</span> <span class="nf">caller</span><span class="p">():</span>
+  <span class="n">value</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">TaskQueue</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="s">&#39;myqueue&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">yield_task</span><span class="p">(</span><span class="n">add</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+  <span class="k">print</span> <span class="n">value</span> <span class="c">#prints 3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="toto.tasks.TaskQueue.run">
 <tt class="descclassname">TaskQueue.</tt><tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue.run" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start processing jobs in the queue. You should not need
 to call this as <tt class="docutils literal"><span class="pre">add_task</span></tt> automatically starts the queue.
 Processing threads will stop when there are no jobs available
-in the queue.</p>
+in the queue for at least <tt class="docutils literal"><span class="pre">idle_timeout</span></tt> seconds.</p>
 </dd></dl>
 
 <dl class="method">
@@ -93,6 +114,85 @@ in the queue.</p>
 <tt class="descclassname">TaskQueue.</tt><tt class="descname">__len__</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#TaskQueue.__len__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.TaskQueue.__len__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the number of active threads plus the number of
 queued tasks/</p>
+</dd></dl>
+
+</div>
+<div class="section" id="awaitableinstance">
+<h2>AwaitableInstance<a class="headerlink" href="#awaitableinstance" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="toto.tasks.AwaitableInstance">
+<em class="property">class </em><tt class="descclassname">toto.tasks.</tt><tt class="descname">AwaitableInstance</tt><big>(</big><em>instance</em>, <em>queue_name='pool'</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#AwaitableInstance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.AwaitableInstance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use <tt class="docutils literal"><span class="pre">AwaitableInstance(instance)</span></tt> to create a wrapper around <tt class="docutils literal"><span class="pre">instance</span></tt> that may be used to
+automatically execute any of <tt class="docutils literal"><span class="pre">instance</span></tt> methods in a <tt class="docutils literal"><span class="pre">TaskQueue</span></tt>. Use <tt class="docutils literal"><span class="pre">queue_name</span></tt> to specify
+the name of the <tt class="docutils literal"><span class="pre">TaskQueue</span></tt> to use.</p>
+<p>Usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">do_something</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="n">awaitable</span> <span class="o">=</span> <span class="n">AwaitableInstance</span><span class="p">(</span><span class="n">MyClass</span><span class="p">())</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">awaitable</span><span class="o">.</span><span class="n">do_something</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above will call <tt class="docutils literal"><span class="pre">do_something()</span></tt> in a <tt class="docutils literal"><span class="pre">TaskQueue</span></tt> and await the result.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="instancepool">
+<h2>InstancePool<a class="headerlink" href="#instancepool" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="toto.tasks.InstancePool">
+<em class="property">class </em><tt class="descclassname">toto.tasks.</tt><tt class="descname">InstancePool</tt><big>(</big><em>instances</em>, <em>default_queue='pool'</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a pool wrapping one or more instances of a class. The pool has convenience methods for
+asynchronous execution and transactions. May be used e.g. to share non-threadsafe classes among
+various threads.</p>
+<p>Invoking a method other than those documented below will remove an instance from the pool, invoke
+the method, then return it to the pool.</p>
+<p><tt class="docutils literal"><span class="pre">instances</span></tt> should be either a single instance or a collection of instances.</p>
+<p><tt class="docutils literal"><span class="pre">default_queue</span></tt> is the name of the <tt class="docutils literal"><span class="pre">TaskQueue</span></tt> that will be used for all asynchronous operations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.tasks.InstancePool.await">
+<tt class="descclassname">InstancePool.</tt><tt class="descname">await</tt><big>(</big><em>queue_name=None</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool.await"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool.await" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an AwaitableInstance wrapping this queue.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.tasks.InstancePool.instance">
+<tt class="descclassname">InstancePool.</tt><tt class="descname">instance</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>For use with the <tt class="docutils literal"><span class="pre">with</span></tt> operator. Allows multiple methods to be called on a single instance
+instance in the pool and returns it when complete.</p>
+<p>For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+  <span class="n">i</span><span class="o">.</span><span class="n">operation1</span><span class="p">()</span>
+  <span class="n">i</span><span class="o">.</span><span class="n">operation2</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Will remove an instance from the pool, call two methods on it, then return it to the queue.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.tasks.InstancePool.transaction">
+<tt class="descclassname">InstancePool.</tt><tt class="descname">transaction</tt><big>(</big><em>function</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool.transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool.transaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls <tt class="docutils literal"><span class="pre">function</span></tt> with an instance from the pool as the single argument. Returns the result
+of <tt class="docutils literal"><span class="pre">function(instance)</span></tt></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.tasks.InstancePool.async_transaction">
+<tt class="descclassname">InstancePool.</tt><tt class="descname">async_transaction</tt><big>(</big><em>function</em>, <em>queue_name=None</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool.async_transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool.async_transaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <tt class="docutils literal"><span class="pre">transaction()</span></tt> but runs the operation in a <tt class="docutils literal"><span class="pre">TaskQueue</span></tt>. <tt class="docutils literal"><span class="pre">queue_name</span></tt> may be specified
+to override the default.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.tasks.InstancePool.await_transaction">
+<tt class="descclassname">InstancePool.</tt><tt class="descname">await_transaction</tt><big>(</big><em>function</em>, <em>queue_name=None</em><big>)</big><a class="reference internal" href="_modules/toto/tasks.html#InstancePool.await_transaction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.tasks.InstancePool.await_transaction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <tt class="docutils literal"><span class="pre">transaction()</span></tt> but runs the operation in a <tt class="docutils literal"><span class="pre">TaskQueue</span></tt> and returns a <tt class="docutils literal"><span class="pre">Future</span></tt> that
+may be used to retrieve the result. Must be called from a Tornado <tt class="docutils literal"><span class="pre">IOLoop</span></tt>. <tt class="docutils literal"><span class="pre">queue_name</span></tt> may
+be specified to override the default.</p>
 </dd></dl>
 
 </div>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Index &mdash; Toto 1.0.1 documentation</title>
+    <title>Index &mdash; Toto 1.0.4 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.0.1',
+        VERSION:     '1.0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -24,11 +24,11 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.1 documentation" href="index.html" /> 
+    <link rel="top" title="Toto 1.0.4 documentation" href="index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 1.0.1 documentation</span></a></h1>
+          <span>Toto 1.0.4 documentation</span></a></h1>
         <h2 class="heading"><span>Index</span></h2>
       </div>
       <div class="topnav">
@@ -63,7 +63,7 @@
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
- | <a href="#W"><strong>W</strong></a>
+ | <a href="#Y"><strong>Y</strong></a>
  
 </div>
 <h2 id="_">_</h2>
@@ -126,10 +126,6 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.add_connection">add_connection() (toto.workerconnection.WorkerConnection method)</a>
-  </dt>
-
-      
   <dt><a href="tasks.html#toto.tasks.TaskQueue.add_task">add_task() (toto.tasks.TaskQueue method)</a>
   </dt>
 
@@ -141,18 +137,34 @@
   <dt><a href="invocation.html#toto.invocation.anonymous_session">anonymous_session() (in module toto.invocation)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="tasks.html#toto.tasks.InstancePool.async_transaction">async_transaction() (toto.tasks.InstancePool method)</a>
+  </dt>
+
       
   <dt><a href="invocation.html#toto.invocation.asynchronous">asynchronous() (in module toto.invocation)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="invocation.html#toto.invocation.authenticated">authenticated() (in module toto.invocation)</a>
   </dt>
 
       
   <dt><a href="invocation.html#toto.invocation.authenticated_with_parameter">authenticated_with_parameter() (in module toto.invocation)</a>
+  </dt>
+
+      
+  <dt><a href="tasks.html#toto.tasks.InstancePool.await">await() (toto.tasks.InstancePool method)</a>
+  </dt>
+
+      
+  <dt><a href="tasks.html#toto.tasks.InstancePool.await_transaction">await_transaction() (toto.tasks.InstancePool method)</a>
+  </dt>
+
+      
+  <dt><a href="tasks.html#toto.tasks.AwaitableInstance">AwaitableInstance (class in toto.tasks)</a>
   </dt>
 
   </dl></td>
@@ -234,12 +246,6 @@
   </dt>
 
   </dl></td>
-  <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="events.html#toto.events.EventManager">EventManager (class in toto.events)</a>
-  </dt>
-
-  </dl></td>
 </tr></table>
 
 <h2 id="F">F</h2>
@@ -286,7 +292,7 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="events.html#toto.events.EventManager.instance">instance() (toto.events.EventManager class method)</a>
+  <dt><a href="tasks.html#toto.tasks.InstancePool.instance">instance() (toto.tasks.InstancePool method)</a>
   </dt>
 
       <dd><dl>
@@ -294,11 +300,11 @@
   <dt><a href="tasks.html#toto.tasks.TaskQueue.instance">(toto.tasks.TaskQueue class method)</a>
   </dt>
 
-        
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.instance">(toto.workerconnection.WorkerConnection class method)</a>
+      </dl></dd>
+      
+  <dt><a href="tasks.html#toto.tasks.InstancePool">InstancePool (class in toto.tasks)</a>
   </dt>
 
-      </dl></dd>
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
@@ -316,10 +322,6 @@
 
         
   <dt><a href="methods.html#toto.methods.client_error.invoke">(in module toto.methods.client_error)</a>
-  </dt>
-
-        
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.invoke">(toto.workerconnection.WorkerConnection method)</a>
   </dt>
 
       </dl></dd>
@@ -418,43 +420,15 @@
   </dt>
 
       
-  <dt><a href="events.html#toto.events.EventManager.refresh_server_queue">refresh_server_queue() (toto.events.EventManager method)</a>
-  </dt>
-
-      
   <dt><a href="server.html#toto.handler.TotoHandler.register_event_handler">register_event_handler() (toto.handler.TotoHandler method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.register_handler">register_handler() (toto.events.EventManager method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.register_server">register_server() (toto.events.EventManager method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.remove_all_servers">remove_all_servers() (toto.events.EventManager method)</a>
-  </dt>
-
-      
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.remove_connection">remove_connection() (toto.workerconnection.WorkerConnection method)</a>
-  </dt>
-
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="events.html#toto.events.EventManager.remove_handler">remove_handler() (toto.events.EventManager method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.remove_server">remove_server() (toto.events.EventManager method)</a>
   </dt>
 
       
   <dt><a href="databases.html#toto.dbconnection.DBConnection.remove_session">remove_session() (toto.dbconnection.DBConnection method)</a>, <a href="databases.html#toto.dbconnection.DBConnection.remove_session">[1]</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="invocation.html#toto.invocation.requires">requires() (in module toto.invocation)</a>
   </dt>
@@ -496,10 +470,6 @@
   <dt><a href="tasks.html#toto.tasks.TaskQueue.run">(toto.tasks.TaskQueue method)</a>
   </dt>
 
-        
-  <dt><a href="worker.html#toto.worker.TotoWorkerService.run">(toto.worker.TotoWorkerService method)</a>
-  </dt>
-
       </dl></dd>
   </dl></td>
 </tr></table>
@@ -518,14 +488,6 @@
 
       </dl></dd>
       
-  <dt><a href="events.html#toto.events.EventManager.send">send() (toto.events.EventManager method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.send_to_server">send_to_server() (toto.events.EventManager method)</a>
-  </dt>
-
-      
   <dt><a href="server.html#toto.handler.TotoHandler.set_after_handler">set_after_handler() (toto.handler.TotoHandler class method)</a>
   </dt>
 
@@ -534,15 +496,11 @@
   </dt>
 
       
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection.set_connections">set_connections() (toto.workerconnection.WorkerConnection method)</a>
+  <dt><a href="server.html#toto.handler.TotoHandler.set_hmac_handler">set_hmac_handler() (toto.handler.TotoHandler class method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="server.html#toto.handler.TotoHandler.set_hmac_handler">set_hmac_handler() (toto.handler.TotoHandler class method)</a>
-  </dt>
-
       
   <dt><a href="server.html#toto.handler.TotoHandler.set_response_hmac_handler">set_response_hmac_handler() (toto.handler.TotoHandler class method)</a>
   </dt>
@@ -553,10 +511,6 @@
 
       
   <dt><a href="databases.html#toto.dbconnection.DBConnection.set_session_cache">set_session_cache() (toto.dbconnection.DBConnection method)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#toto.events.EventManager.start_listening">start_listening() (toto.events.EventManager method)</a>
   </dt>
 
       
@@ -575,10 +529,6 @@
 
       
   <dt><a href="databases.html#module-toto.dbconnection">toto.dbconnection (module)</a>
-  </dt>
-
-      
-  <dt><a href="events.html#module-toto.events">toto.events (module)</a>
   </dt>
 
       
@@ -612,10 +562,6 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="work.html#module-toto.worker">toto.worker (module)</a>
-  </dt>
-
-      
   <dt><a href="server.html#toto.session.TotoAccount">TotoAccount (class in toto.session)</a>
   </dt>
 
@@ -644,21 +590,17 @@
   </dt>
 
       
-  <dt><a href="worker.html#toto.worker.TotoWorker">TotoWorker (class in toto.worker)</a>
-  </dt>
-
-      
-  <dt><a href="worker.html#toto.worker.TotoWorkerService">TotoWorkerService (class in toto.worker)</a>
+  <dt><a href="tasks.html#toto.tasks.InstancePool.transaction">transaction() (toto.tasks.InstancePool method)</a>
   </dt>
 
   </dl></td>
 </tr></table>
 
-<h2 id="W">W</h2>
+<h2 id="Y">Y</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="workerconnection.html#toto.workerconnection.WorkerConnection">WorkerConnection (class in toto.workerconnection)</a>
+  <dt><a href="tasks.html#toto.tasks.TaskQueue.yield_task">yield_task() (toto.tasks.TaskQueue method)</a>
   </dt>
 
   </dl></td>

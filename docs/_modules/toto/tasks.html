@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.tasks &mdash; Toto 1.0.1 documentation</title>
+    <title>toto.tasks &mdash; Toto 1.0.4 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '1.0.1',
+        VERSION:     '1.0.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.1 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 1.0.4 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 1.0.1 documentation</span></a></h1>
+          <span>Toto 1.0.4 documentation</span></a></h1>
         <h2 class="heading"><span>toto.tasks</span></h2>
       </div>
       <div class="topnav">
@@ -47,37 +47,43 @@
 <span class="sd">shorter, lightweight jobs. For CPU intensive tasks or tasks that are expected to</span>
 <span class="sd">run for a long time, look at Toto&#39;s worker functionality instead.</span>
 <span class="sd">&#39;&#39;&#39;</span>
-<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span><span class="p">,</span> <span class="n">Condition</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
-<span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">coroutine</span><span class="p">,</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Return</span>
-<span class="kn">from</span> <span class="nn">Queue</span> <span class="kn">import</span> <span class="n">Queue</span>
+<span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">coroutine</span><span class="p">,</span> <span class="n">Return</span>
+<span class="kn">from</span> <span class="nn">tornado.concurrent</span> <span class="kn">import</span> <span class="n">Future</span>
+<span class="kn">from</span> <span class="nn">tornado.ioloop</span> <span class="kn">import</span> <span class="n">IOLoop</span>
+<span class="kn">from</span> <span class="nn">Queue</span> <span class="kn">import</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Empty</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">exc_info</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">count</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
 
 <div class="viewcode-block" id="TaskQueue"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue">[docs]</a><span class="k">class</span> <span class="nc">TaskQueue</span><span class="p">():</span>
   <span class="sd">&#39;&#39;&#39;Instances will run up to ``thread_count`` tasks at a time</span>
-<span class="sd">  whenever there are tasks in the queue.</span>
+<span class="sd">  whenever there are tasks in the queue. Theads will be killed</span>
+<span class="sd">  if unused for longer than ``idle_timeout`` seconds.</span>
 <span class="sd">  &#39;&#39;&#39;</span>
 
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">idle_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;TaskQueue&#39;</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="bp">False</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="n">Condition</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">threads</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout</span> <span class="o">=</span> <span class="n">idle_timeout</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">thread_count</span> <span class="o">=</span> <span class="n">thread_count</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
 
 <div class="viewcode-block" id="TaskQueue.add_task"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.add_task">[docs]</a>  <span class="k">def</span> <span class="nf">add_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Add the function ``fn`` to the queue to be invoked with</span>
 <span class="sd">    ``args`` and ``kwargs`` as arguments. If the ``TaskQueue``</span>
 <span class="sd">    is not currently running, it will be started now.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fn</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fn</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">notify</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </div>
-  <span class="nd">@coroutine</span>
-  <span class="k">def</span> <span class="nf">yield_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="TaskQueue.yield_task"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.yield_task">[docs]</a>  <span class="k">def</span> <span class="nf">yield_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Like add_task but will call the function as a coroutine, allowing you</span>
 <span class="sd">    to yield the return value from within a function decorated with ``@tornado.gen.coroutine``</span>
 <span class="sd">    or ``@tornado.gen.engine``.</span>
@@ -93,45 +99,34 @@
 <span class="sd">        print value #prints 3</span>
 
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">callback</span><span class="p">):</span>
+
+    <span class="n">ioloop</span> <span class="o">=</span> <span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span>
+    <span class="n">future</span> <span class="o">=</span> <span class="n">Future</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">call</span><span class="p">():</span>
       <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
       <span class="n">error</span> <span class="o">=</span> <span class="bp">None</span>
       <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
       <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">error</span> <span class="o">=</span> <span class="n">e</span>
-      <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
-    <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Task</span><span class="p">(</span><span class="k">lambda</span> <span class="n">callback</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">call</span><span class="p">,</span> <span class="n">callback</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
-      <span class="k">raise</span> <span class="n">error</span>
-    <span class="k">raise</span> <span class="n">Return</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-
+        <span class="n">ioloop</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">future</span><span class="o">.</span><span class="n">set_exc_info</span><span class="p">,</span> <span class="n">exc_info</span><span class="p">())</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="c"># tornado future is not threadsafe</span>
+        <span class="n">ioloop</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">future</span><span class="o">.</span><span class="n">set_result</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">call</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">future</span>
+</div>
 <div class="viewcode-block" id="TaskQueue.run"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.run">[docs]</a>  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Start processing jobs in the queue. You should not need</span>
 <span class="sd">    to call this as ``add_task`` automatically starts the queue.</span>
 <span class="sd">    Processing threads will stop when there are no jobs available</span>
-<span class="sd">    in the queue.</span>
+<span class="sd">    in the queue for at least ``idle_timeout`` seconds.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread_count</span><span class="p">:</span>
-      <span class="k">return</span>
-    <span class="n">thread</span> <span class="o">=</span> <span class="bp">None</span>
-    <span class="k">def</span> <span class="nf">task_loop</span><span class="p">():</span>
-      <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
-        <span class="k">try</span><span class="p">:</span>
-          <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
-        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">thread</span><span class="p">)</span>
-          <span class="k">return</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-          <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
-        <span class="k">finally</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-        <span class="n">task</span><span class="p">[</span><span class="mi">0</span><span class="p">](</span><span class="o">*</span><span class="n">task</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">**</span><span class="n">task</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-    <span class="n">thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">task_loop</span><span class="p">)</span>
-    <span class="n">thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">thread</span><span class="p">)</span>
-    <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="p">:</span>
+      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread_count</span><span class="p">:</span>
+        <span class="k">return</span>
+      <span class="n">thread</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__TaskLoop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">thread</span><span class="p">)</span>
+      <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 </div>
 <div class="viewcode-block" id="TaskQueue.__len__"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.__len__">[docs]</a>  <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Returns the number of active threads plus the number of</span>
@@ -139,21 +134,72 @@
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span>
 </div>
   <span class="nd">@classmethod</span>
-<div class="viewcode-block" id="TaskQueue.instance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.instance">[docs]</a>  <span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<div class="viewcode-block" id="TaskQueue.instance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.TaskQueue.instance">[docs]</a>  <span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">thread_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">idle_timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;A convenience method for accessing shared instances of ``TaskQueue``.</span>
 <span class="sd">    If ``name`` references an existing instance created with this method,</span>
 <span class="sd">    that instance will be returned. Otherwise, a new ``TaskQueue`` will be</span>
-<span class="sd">    instantiated with ``thread_count`` threads and stored under ``name``.</span>
+<span class="sd">    instantiated with ``thread_count`` threads and the specified ``idle_timeout``</span>
+<span class="sd">    then stored under ``name``.</span>
+
+<span class="sd">    All arguments after name are ignored after the queue is created.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="s">&#39;_task_queues&#39;</span><span class="p">):</span>
       <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">try</span><span class="p">:</span>
       <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-      <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">thread_count</span><span class="p">)</span>
+      <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="n">thread_count</span><span class="p">,</span> <span class="n">idle_timeout</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
       <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_task_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-</div></div>
-<span class="k">class</span> <span class="nc">InstancePool</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+</div>
+  <span class="k">class</span> <span class="nc">__TaskLoop</span><span class="p">(</span><span class="n">Thread</span><span class="p">):</span>
+
+    <span class="n">thread_id</span> <span class="o">=</span> <span class="n">count</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">):</span>
+      <span class="n">Thread</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">-</span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">queue</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread_id</span><span class="o">.</span><span class="n">next</span><span class="p">()))</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">condition</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">tasks</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">idle_timeout</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">threads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">threads</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">in_use</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">):</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+              <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+              <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Idle timeout: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">in_use</span> <span class="o">=</span> <span class="bp">False</span>
+              <span class="k">return</span>
+          <span class="k">try</span><span class="p">:</span>
+            <span class="n">task</span><span class="p">[</span><span class="mi">0</span><span class="p">](</span><span class="o">*</span><span class="n">task</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">**</span><span class="n">task</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+          <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+      <span class="k">finally</span><span class="p">:</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span><span class="p">:</span>
+          <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_use</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_use</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="InstancePool"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool">[docs]</a><span class="k">class</span> <span class="nc">InstancePool</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39; Create a pool wrapping one or more instances of a class. The pool has convenience methods for</span>
+<span class="sd">  asynchronous execution and transactions. May be used e.g. to share non-threadsafe classes among</span>
+<span class="sd">  various threads.</span>
+
+<span class="sd">  Invoking a method other than those documented below will remove an instance from the pool, invoke</span>
+<span class="sd">  the method, then return it to the pool.</span>
+
+<span class="sd">  ``instances`` should be either a single instance or a collection of instances.</span>
+
+<span class="sd">  ``default_queue`` is the name of the ``TaskQueue`` that will be used for all asynchronous operations.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
 
   <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instances</span><span class="p">,</span> <span class="n">default_queue</span><span class="o">=</span><span class="s">&quot;pool&quot;</span><span class="p">):</span>
     <span class="n">pool</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
@@ -174,25 +220,93 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">call</span>
 
-  <span class="k">def</span> <span class="nf">await</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
-      <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_queue</span>
-    <span class="k">return</span> <span class="n">AwaitableInstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+<div class="viewcode-block" id="InstancePool.await"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool.await">[docs]</a>  <span class="k">def</span> <span class="nf">await</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Create an AwaitableInstance wrapping this queue.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_name</span><span class="p">:</span>
+      <span class="n">queue_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_queue</span>
+    <span class="k">return</span> <span class="n">AwaitableInstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue_name</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="InstancePool.instance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool.instance">[docs]</a>  <span class="k">def</span> <span class="nf">instance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; For use with the ``with`` operator. Allows multiple methods to be called on a single instance</span>
+<span class="sd">    instance in the pool and returns it when complete.</span>
 
+<span class="sd">    For example::</span>
+
+<span class="sd">      with pool.instance() as i:</span>
+<span class="sd">        i.operation1()</span>
+<span class="sd">        i.operation2()</span>
+
+<span class="sd">    Will remove an instance from the pool, call two methods on it, then return it to the queue.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__InstanceTransaction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="InstancePool.transaction"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool.transaction">[docs]</a>  <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Calls ``function`` with an instance from the pool as the single argument. Returns the result</span>
+<span class="sd">    of ``function(instance)``</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+      <span class="k">return</span> <span class="n">function</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="InstancePool.async_transaction"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool.async_transaction">[docs]</a>  <span class="k">def</span> <span class="nf">async_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">queue_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Like ``transaction()`` but runs the operation in a ``TaskQueue``. ``queue_name`` may be specified</span>
+<span class="sd">    to override the default.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_name</span><span class="p">:</span>
+      <span class="n">queue_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_queue</span>
+    <span class="n">TaskQueue</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="n">queue_name</span><span class="p">)</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="p">,</span> <span class="n">function</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="InstancePool.await_transaction"><a class="viewcode-back" href="../../tasks.html#toto.tasks.InstancePool.await_transaction">[docs]</a>  <span class="k">def</span> <span class="nf">await_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">queue_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Like ``transaction()`` but runs the operation in a ``TaskQueue`` and returns a ``Future`` that</span>
+<span class="sd">    may be used to retrieve the result. Must be called from a Tornado ``IOLoop``. ``queue_name`` may</span>
+<span class="sd">    be specified to override the default.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_name</span><span class="p">:</span>
+      <span class="n">queue_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_queue</span>
+    <span class="k">return</span> <span class="n">TaskQueue</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="n">queue_name</span><span class="p">)</span><span class="o">.</span><span class="n">yield_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transaction</span><span class="p">,</span> <span class="n">function</span><span class="p">)</span>
+</div>
   <span class="k">def</span> <span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
 
   <span class="k">def</span> <span class="nf">_put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 
-<span class="k">class</span> <span class="nc">AwaitableInstance</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="k">class</span> <span class="nc">__InstanceTransaction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;pool&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pool</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span> <span class="o">=</span> <span class="n">pool</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_instance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_instance</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">_pool</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_instance</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AwaitableInstance"><a class="viewcode-back" href="../../tasks.html#toto.tasks.AwaitableInstance">[docs]</a><span class="k">class</span> <span class="nc">AwaitableInstance</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&#39;&#39;&#39; Use ``AwaitableInstance(instance)`` to create a wrapper around ``instance`` that may be used to</span>
+<span class="sd">  automatically execute any of ``instance`` methods in a ``TaskQueue``. Use ``queue_name`` to specify</span>
+<span class="sd">  the name of the ``TaskQueue`` to use.</span>
+
+<span class="sd">  Usage::</span>
+
+<span class="sd">    class MyClass(object):</span>
+<span class="sd">      def do_something(self, arg):</span>
+<span class="sd">        ...</span>
+<span class="sd">        return result</span>
+
+<span class="sd">    awaitable = AwaitableInstance(MyClass())</span>
+<span class="sd">    result = yield awaitable.do_something(args)</span>
+
+<span class="sd">  The above will call ``do_something()`` in a ``TaskQueue`` and await the result.</span>
+<span class="sd">  &#39;&#39;&#39;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">queue_name</span><span class="o">=</span><span class="s">&quot;pool&quot;</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">instance</span> <span class="o">=</span> <span class="n">instance</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="n">TaskQueue</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="n">TaskQueue</span><span class="o">.</span><span class="n">instance</span><span class="p">(</span><span class="n">queue_name</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-    <span class="k">return</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">yield_task</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">yield_task</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instance</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 </pre></div>
 
       </div>
