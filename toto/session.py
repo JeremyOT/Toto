@@ -78,7 +78,6 @@ class TotoSession(object):
     self.state = session_data.get('state') and TotoSession.loads(session_data['state']) or {}
     key = key or session_data.get('key')
     self.key = key or None
-    self._verified = False
 
   def get_account(self, *args):
     '''Load the account associated with this session (if authenticated). Session properties are
@@ -147,7 +146,6 @@ class TotoSession(object):
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
     if self.hmac(signature) != mac:
       raise TotoException(ERROR_INVALID_HMAC, "Invalid HMAC")
-    self._verified = True
     return self
 
   def hmac(self, signature):

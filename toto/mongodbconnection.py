@@ -30,8 +30,6 @@ class MongoDBSession(TotoSession):
     self.__init__(self._db, session_data, self._session_cache)
 
   def save(self):
-    if not self._verified:
-      raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     if not self._save_cache():
       self._db.sessions.update({'session_id': self.session_id}, {'$set': {'state': TotoSession.dumps(self.state)}})
 
@@ -83,7 +81,6 @@ class MongoDBConnection(DBConnection):
       self.db.sessions.remove({'user_id': user_id, 'expires': {'$lt': time()}})
       self.db.sessions.insert(session_data)
     session = MongoDBSession(self.db, session_data, self._session_cache)
-    session._verified = True
     return session
 
   def retrieve_session(self, session_id):

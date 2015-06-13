@@ -68,7 +68,6 @@ class DBConnection(object):
     if not self._cache_session_data(session_data):
       self._store_session(session_id, session_data)
     session = self._instantiate_session(session_data, self._session_cache)
-    session._verified = True
     return session
 
   def retrieve_session(self, session_id):

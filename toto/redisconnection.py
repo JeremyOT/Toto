@@ -33,8 +33,6 @@ class RedisSession(TotoSession):
     self.__init__(self._db, session_data, self._session_cache)
 
   def save(self):
-    if not self._verified:
-      raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     if not self._save_cache():
       self._db.setex(_session_key(self.session_id), int(self.expires - time()), TotoSession.dumps(self.session_data()))
 

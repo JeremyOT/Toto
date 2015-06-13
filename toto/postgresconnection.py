@@ -73,8 +73,6 @@ class PostgresSession(TotoSession):
     self.__init__(session_data, self._session_cache)
 
   def save(self):
-    if not self._verified:
-      raise TotoException(ERROR_NOT_AUTHORIZED, "Not authorized")
     if not self._save_cache():
       self._db.execute("update session set state = %s where session_id = %s", (TotoSession.dumps(self.state), self.session_id))
 
