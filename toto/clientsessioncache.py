@@ -1,6 +1,13 @@
+import hmac
+import os
+from hashlib import sha1
 from toto.session import *
 from copy import copy
 from base64 import b64encode, b64decode
+
+HMAC_ALGORITHM = sha1
+HMAC_SIZE = HMAC_ALGORITHM().digest_size
+PREFIX_PADDING_SIZE=16
 
 class AESCipher(object):
   '''A convenient cipher implementation for AES encryption and decryption.
@@ -41,16 +48,26 @@ class ClientCache(TotoSessionCache):
      the reverse ``decrypt(data)`` both accepting and returning ``str`` objects.
   '''
 
-  def __init__(self, cipher):
+  def __init__(self, cipher, hmac_key):
     self.cipher = cipher
+    self.hmac_key = hmac_key
+
+  def hmac(self, data):
+    return hmac.new(self.hmac_key, data, HMAC_ALGORITHM).digest()
 
   def store_session(self, session_data):
     persisted_data = copy(session_data)
     del persisted_data['session_id']
-    return b64encode(self.cipher.encrypt(TotoSession.dumps(session_data)), '-_')
+    encrypted = self.cipher.encrypt(os.urandom(PREFIX_PADDING_SIZE) + TotoSession.dumps(session_data))
+    return b64encode(encrypted + self.hmac(encrypted), '-_')
 
   def load_session(self, session_id):
-    session_data = TotoSession.loads(self.cipher.decrypt(b64decode(session_id, '-_')))
+    raw = b64decode(session_id, '-_')
+    encrypted = raw[:-HMAC_SIZE]
+    if self.hmac(encrypted) != raw[-HMAC_SIZE:]:
+      raise TotoException(-1, 'Invalid session HMAC')
+    data = self.cipher.decrypt(encrypted)
+    session_data = TotoSession.loads(data[PREFIX_PADDING_SIZE:])
     session_data['session_id'] = session_id
     return session_data
 

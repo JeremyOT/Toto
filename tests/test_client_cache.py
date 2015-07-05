@@ -45,7 +45,7 @@ class TestClientCache(unittest.TestCase):
     sleep(0.5)
 
   def test_session_storage(self):
-    cache = ClientCache(AESCipher('12345678901234561234567890123456'))
+    cache = ClientCache(AESCipher('12345678901234561234567890123456'), '12345678901234561234567890123456')
     user_id = 'test@toto.li'
     expires = time() + 1000.0
     session_id = TotoSession.generate_id()
