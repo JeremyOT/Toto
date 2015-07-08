@@ -13,7 +13,7 @@ from toto.options import safe_define
 
 safe_define("worker_compression_module", type=str, help="The module to use for compressing and decompressing messages to workers. The module must have 'decompress' and 'compress' methods. If not specified, no compression will be used. Only the default instance will be affected")
 safe_define("worker_serialization_module", type=str, help="The module to use for serializing and deserializing messages to workers. The module must have 'dumps' and 'loads' methods. If not specified, cPickle will be used. Only the default instance will be affected")
-safe_define("worker_serialization_mime", type=str, help="Used by HttpWorkerConnection in its Content-Type header.")
+safe_define("worker_serialization_mime", type=str, default='application/pickle', help="Used by HttpWorkerConnection in its Content-Type header.")
 safe_define("worker_timeout", default=10.0, help="The default worker (instance()) will wait at least this many seconds before retrying a request (if retry is true), or timing out (if retry is false). Negative values will never retry or timeout. Note: This abs(value) is also the minimum resolution of any request-specific timeouts. Must not be 0.")
 safe_define("worker_auto_retry", default=False, help="If True, the default timeout behavior of a worker RPC will be to retry instead of failing when the timeout is reached.")
 safe_define("worker_retry_count", default=0, help="The maximum number of times to retry a request after timeout. Used by HttpWorkerConnection instead of worker_auto_retry.")
@@ -61,7 +61,7 @@ class WorkerConnection(object):
       your ``TotoService`` and run it with ``--help`` to see all available options.
     '''
     if not hasattr(cls, '_instance'):
-      if options.transport == 'http':
+      if options.worker_transport == 'http':
         from toto.httpworkerconnection import HTTPWorkerConnection
         cls._instance = HTTPWorkerConnection.instance()
       else:

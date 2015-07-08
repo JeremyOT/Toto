@@ -8,8 +8,9 @@ from tornado.options import options
 from tornado.gen import coroutine, Return
 from tornado.ioloop import IOLoop
 from collections import deque
-from tornado.httpclient import HTTPRequest, AsyncHTTPClient
+from tornado.httpclient import HTTPRequest, AsyncHTTPClient, HTTPError
 from tornado.concurrent import Future
+from sys import exc_info
 from time import time
 from uuid import uuid4
 from traceback import format_exc
@@ -81,15 +82,18 @@ class HTTPWorkerConnection(WorkerConnection):
     try:
       del(self.__active_requests[request.request_id])
       if response.error:
-        if response.error.code == 599: #tornado special
-          request.future.set_exception(response.error)
+        if isinstance(response.error, HTTPError):
+          if response.error.code == 599: #tornado special
+            request.future.set_exception(response.error)
+          else:
+            request.future.set_result(self.loads(response.body))
         else:
-          request.future.set_result(self.loads(response.body))    
+          request.future.set_exception(response.error)
         return
       request.future.set_result(self.loads(response.body))
     except Exception as e:
       self.log_error(e)
-      request.future.set_exception(e)
+      request.future.set_exc_info(exc_info())
 
   def handle_timeout(self, request):
     if request.request_id not in self.__active_requests:
