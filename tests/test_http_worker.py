@@ -5,7 +5,6 @@ import os
 import signal
 from uuid import uuid4
 from toto.secret import *
-from toto.worker import TotoWorkerService
 from toto.httpworkerconnection import HTTPWorkerConnection
 from tornado.gen import coroutine
 from tornado.concurrent import Future
