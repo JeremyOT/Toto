@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.clientsessioncache &mdash; Toto 1.0.4 documentation</title>
+    <title>toto.clientsessioncache &mdash; Toto 1.0.8 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '1.0.4',
+        VERSION:     '1.0.8',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.4 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 1.0.8 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 1.0.4 documentation</span></a></h1>
+          <span>Toto 1.0.8 documentation</span></a></h1>
         <h2 class="heading"><span>toto.clientsessioncache</span></h2>
       </div>
       <div class="topnav">
@@ -42,9 +42,16 @@
         
         
   <h1>Source code for toto.clientsessioncache</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">hmac</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="kn">import</span> <span class="n">sha1</span>
 <span class="kn">from</span> <span class="nn">toto.session</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
 <span class="kn">from</span> <span class="nn">base64</span> <span class="kn">import</span> <span class="n">b64encode</span><span class="p">,</span> <span class="n">b64decode</span>
+
+<span class="n">HMAC_ALGORITHM</span> <span class="o">=</span> <span class="n">sha1</span>
+<span class="n">HMAC_SIZE</span> <span class="o">=</span> <span class="n">HMAC_ALGORITHM</span><span class="p">()</span><span class="o">.</span><span class="n">digest_size</span>
+<span class="n">PREFIX_PADDING_SIZE</span><span class="o">=</span><span class="mi">16</span>
 
 <div class="viewcode-block" id="AESCipher"><a class="viewcode-back" href="../../server.html#toto.clientsessioncache.AESCipher">[docs]</a><span class="k">class</span> <span class="nc">AESCipher</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;A convenient cipher implementation for AES encryption and decryption.</span>
@@ -85,16 +92,26 @@
 <span class="sd">     the reverse ``decrypt(data)`` both accepting and returning ``str`` objects.</span>
 <span class="sd">  &#39;&#39;&#39;</span>
 
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cipher</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cipher</span><span class="p">,</span> <span class="n">hmac_key</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cipher</span> <span class="o">=</span> <span class="n">cipher</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span> <span class="o">=</span> <span class="n">hmac_key</span>
+
+  <span class="k">def</span> <span class="nf">hmac</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">HMAC_ALGORITHM</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
 
   <span class="k">def</span> <span class="nf">store_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_data</span><span class="p">):</span>
     <span class="n">persisted_data</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span>
     <span class="k">del</span> <span class="n">persisted_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">b64encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">session_data</span><span class="p">)),</span> <span class="s">&#39;-_&#39;</span><span class="p">)</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="n">PREFIX_PADDING_SIZE</span><span class="p">)</span> <span class="o">+</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">session_data</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">b64encode</span><span class="p">(</span><span class="n">encrypted</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">hmac</span><span class="p">(</span><span class="n">encrypted</span><span class="p">),</span> <span class="s">&#39;-_&#39;</span><span class="p">)</span>
 
   <span class="k">def</span> <span class="nf">load_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
-    <span class="n">session_data</span> <span class="o">=</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">b64decode</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;-_&#39;</span><span class="p">)))</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">session_id</span><span class="p">,</span> <span class="s">&#39;-_&#39;</span><span class="p">)</span>
+    <span class="n">encrypted</span> <span class="o">=</span> <span class="n">raw</span><span class="p">[:</span><span class="o">-</span><span class="n">HMAC_SIZE</span><span class="p">]</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hmac</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span> <span class="o">!=</span> <span class="n">raw</span><span class="p">[</span><span class="o">-</span><span class="n">HMAC_SIZE</span><span class="p">:]:</span>
+      <span class="k">raise</span> <span class="n">TotoException</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s">&#39;Invalid session HMAC&#39;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span>
+    <span class="n">session_data</span> <span class="o">=</span> <span class="n">TotoSession</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">PREFIX_PADDING_SIZE</span><span class="p">:])</span>
     <span class="n">session_data</span><span class="p">[</span><span class="s">&#39;session_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_id</span>
     <span class="k">return</span> <span class="n">session_data</span>
 
@@ -112,7 +129,7 @@
       </div>
 
     <div class="footer">
-        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
+        &copy; Copyright 2015, Jeremy Olmsted-Thompson.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>

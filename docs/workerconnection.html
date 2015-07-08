@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>WorkerConnection &mdash; Toto 1.0.4 documentation</title>
+    <title>WorkerConnection &mdash; Toto 1.0.8 documentation</title>
     
     <link rel="stylesheet" href="_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.0.4',
+        VERSION:     '1.0.8',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,13 +23,13 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.4 documentation" href="index.html" />
+    <link rel="top" title="Toto 1.0.8 documentation" href="index.html" />
     <link rel="up" title="Workers and Connections" href="work.html" />
     <link rel="prev" title="TotoWorker" href="worker.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="index.html">
-          <span>Toto 1.0.4 documentation</span></a></h1>
+          <span>Toto 1.0.8 documentation</span></a></h1>
         <h2 class="heading"><span>WorkerConnection</span></h2>
       </div>
       <div class="topnav">
@@ -46,6 +46,155 @@
         
   <div class="section" id="workerconnection">
 <h1>WorkerConnection<a class="headerlink" href="#workerconnection" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="toto.workerconnection.WorkerConnection">
+<em class="property">class </em><tt class="descclassname">toto.workerconnection.</tt><tt class="descname">WorkerConnection</tt><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use a <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> to make RPCs to the remote worker service(s) or worker/router specified by <tt class="docutils literal"><span class="pre">address</span></tt>.
+<tt class="docutils literal"><span class="pre">address</span></tt> may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
+and timeouts will happen by at most every <tt class="docutils literal"><span class="pre">abs(timeout)</span></tt> seconds when a periodic callback runs through all active
+messages and checks for prolonged requests. This is also the default timeout for any new calls. <tt class="docutils literal"><span class="pre">timeout</span></tt> must not be
+<tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">compress</span></tt> and <tt class="docutils literal"><span class="pre">decompress</span></tt> methods as the <tt class="docutils literal"><span class="pre">compression</span></tt> parameter to
+compress messages. The module must implement the same algorithm used on the worker service. By default, messages are not
+compressed.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">dumps</span></tt> and <tt class="docutils literal"><span class="pre">loads</span></tt> methods that convert an <tt class="docutils literal"><span class="pre">object</span></tt> to and from a
+<tt class="docutils literal"><span class="pre">str</span></tt> to replace the default <tt class="docutils literal"><span class="pre">cPickle</span></tt> serialization with a protocol of your choice.</p>
+<p>Use <tt class="docutils literal"><span class="pre">auto_retry</span></tt> to specify whether or not messages should be retried by default. Retrying messages can cause substantial
+congestion in your worker service. Use with caution.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.workerconnection.WorkerConnection.instance">
+<em class="property">classmethod </em><tt class="descclassname">WorkerConnection.</tt><tt class="descname">instance</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/workerconnection.html#WorkerConnection.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.workerconnection.WorkerConnection.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the default instance of <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> as configured by the options prefixed
+with <tt class="docutils literal"><span class="pre">worker_</span></tt>, instantiating it if necessary. Import the <tt class="docutils literal"><span class="pre">workerconnection</span></tt> module within
+your <tt class="docutils literal"><span class="pre">TotoService</span></tt> and run it with <tt class="docutils literal"><span class="pre">--help</span></tt> to see all available options.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection">
+<em class="property">class </em><tt class="descclassname">toto.zmqworkerconnection.</tt><tt class="descname">ZMQWorkerConnection</tt><big>(</big><em>address</em>, <em>timeout=10.0</em>, <em>compression=None</em>, <em>serialization=None</em>, <em>auto_retry=False</em><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use a <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> to make RPCs to the remote worker service(s) or worker/router specified by <tt class="docutils literal"><span class="pre">address</span></tt>.
+<tt class="docutils literal"><span class="pre">address</span></tt> may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
+and timeouts will happen by at most every <tt class="docutils literal"><span class="pre">abs(timeout)</span></tt> seconds when a periodic callback runs through all active
+messages and checks for prolonged requests. This is also the default timeout for any new calls. <tt class="docutils literal"><span class="pre">timeout</span></tt> must not be
+<tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">compress</span></tt> and <tt class="docutils literal"><span class="pre">decompress</span></tt> methods as the <tt class="docutils literal"><span class="pre">compression</span></tt> parameter to
+compress messages. The module must implement the same algorithm used on the worker service. By default, messages are not
+compressed.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">dumps</span></tt> and <tt class="docutils literal"><span class="pre">loads</span></tt> methods that convert an <tt class="docutils literal"><span class="pre">object</span></tt> to and from a
+<tt class="docutils literal"><span class="pre">str</span></tt> to replace the default <tt class="docutils literal"><span class="pre">cPickle</span></tt> serialization with a protocol of your choice.</p>
+<p>Use <tt class="docutils literal"><span class="pre">auto_retry</span></tt> to specify whether or not messages should be retried by default. Retrying messages can cause substantial
+congestion in your worker service. Use with caution.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection.instance">
+<em class="property">classmethod </em><tt class="descclassname">ZMQWorkerConnection.</tt><tt class="descname">instance</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the default instance of <tt class="docutils literal"><span class="pre">ZMQWorkerConnection</span></tt> as configured by the options prefixed
+with <tt class="docutils literal"><span class="pre">worker_</span></tt>, instantiating it if necessary. Import the <tt class="docutils literal"><span class="pre">workerconnection</span></tt> module within
+your <tt class="docutils literal"><span class="pre">TotoService</span></tt> and run it with <tt class="docutils literal"><span class="pre">--help</span></tt> to see all available options.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection.invoke">
+<tt class="descclassname">ZMQWorkerConnection.</tt><tt class="descname">invoke</tt><big>(</big><em>method</em>, <em>parameters={}</em>, <em>callback=None</em>, <em>timeout=0</em>, <em>auto_retry=None</em>, <em>await=False</em><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection.invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke a <tt class="docutils literal"><span class="pre">method</span></tt> to be run on a remote worker process with the given <tt class="docutils literal"><span class="pre">parameters</span></tt>. If specified, <tt class="docutils literal"><span class="pre">callback</span></tt> will be
+invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
+current <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> but <tt class="docutils literal"><span class="pre">timeout</span></tt> and <tt class="docutils literal"><span class="pre">auto_retry</span></tt> can be used for invocation specific behavior.</p>
+<p>Note: <tt class="docutils literal"><span class="pre">callback</span></tt> will be invoked with <tt class="docutils literal"><span class="pre">{'error':</span> <span class="pre">'timeout'}</span></tt> on <tt class="docutils literal"><span class="pre">timeout</span></tt> if <tt class="docutils literal"><span class="pre">auto_retry</span></tt> is false. Invocations
+set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for
+critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative
+values of <tt class="docutils literal"><span class="pre">timeout</span></tt> will prevent messages from ever expiring or retrying regardless of <tt class="docutils literal"><span class="pre">auto_retry</span></tt>. The default
+values of <tt class="docutils literal"><span class="pre">timeout</span></tt> and <tt class="docutils literal"><span class="pre">auto_retry</span></tt> cause a fallback to the values used to initialize <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt>.</p>
+<p>Passing <tt class="docutils literal"><span class="pre">await=True</span></tt> will wrap the call in a <tt class="docutils literal"><span class="pre">tornado.gen.Task</span></tt> allowing you to <tt class="docutils literal"><span class="pre">yield</span></tt> the response from the worker.
+The <tt class="docutils literal"><span class="pre">Task</span></tt> replaces <tt class="docutils literal"><span class="pre">callback</span></tt> so any user supplied callback will be ignored when <tt class="docutils literal"><span class="pre">await=True</span></tt>.</p>
+<p>Alternatively, you can invoke methods with <tt class="docutils literal"><span class="pre">WorkerConnection.&lt;module&gt;.&lt;method&gt;(*args,</span> <span class="pre">**kwargs)</span></tt>
+where <tt class="docutils literal"><span class="pre">&quot;&lt;module&gt;.&lt;method&gt;&quot;</span></tt> will be passed as the <tt class="docutils literal"><span class="pre">method</span></tt> argument to <tt class="docutils literal"><span class="pre">invoke()</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection.add_connection">
+<tt class="descclassname">ZMQWorkerConnection.</tt><tt class="descname">add_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection.add_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection.add_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection.remove_connection">
+<tt class="descclassname">ZMQWorkerConnection.</tt><tt class="descname">remove_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection.remove_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection.remove_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disconnect from the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.zmqworkerconnection.ZMQWorkerConnection.set_connections">
+<tt class="descclassname">ZMQWorkerConnection.</tt><tt class="descname">set_connections</tt><big>(</big><em>addresses</em><big>)</big><a class="reference internal" href="_modules/toto/zmqworkerconnection.html#ZMQWorkerConnection.set_connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.zmqworkerconnection.ZMQWorkerConnection.set_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method to set the connected addresses. A connection will be made to any new address included in the <tt class="docutils literal"><span class="pre">addresses</span></tt>
+enumerable and any currently connected address not included in <tt class="docutils literal"><span class="pre">addresses</span></tt> will be disconnected. If an address in <tt class="docutils literal"><span class="pre">addresses</span></tt>
+is already connected, it will not be affected.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection">
+<em class="property">class </em><tt class="descclassname">toto.httpworkerconnection.</tt><tt class="descname">HTTPWorkerConnection</tt><big>(</big><em>address</em>, <em>timeout=10.0</em>, <em>compression=None</em>, <em>serialization=None</em>, <em>serialization_mime='application/pickle'</em>, <em>auto_retry_count=0</em><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use a <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> to make RPCs to the remote worker service(s) or worker/router specified by <tt class="docutils literal"><span class="pre">address</span></tt>.
+<tt class="docutils literal"><span class="pre">address</span></tt> may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
+and timeouts will happen by at most every <tt class="docutils literal"><span class="pre">abs(timeout)</span></tt> seconds when a periodic callback runs through all active
+messages and checks for prolonged requests. This is also the default timeout for any new calls. <tt class="docutils literal"><span class="pre">timeout</span></tt> must not be
+<tt class="docutils literal"><span class="pre">0</span></tt>.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">compress</span></tt> and <tt class="docutils literal"><span class="pre">decompress</span></tt> methods as the <tt class="docutils literal"><span class="pre">compression</span></tt> parameter to
+compress messages. The module must implement the same algorithm used on the worker service. By default, messages are not
+compressed.</p>
+<p>Optionally pass any object or module with <tt class="docutils literal"><span class="pre">dumps</span></tt> and <tt class="docutils literal"><span class="pre">loads</span></tt> methods that convert an <tt class="docutils literal"><span class="pre">object</span></tt> to and from a
+<tt class="docutils literal"><span class="pre">str</span></tt> to replace the default <tt class="docutils literal"><span class="pre">cPickle</span></tt> serialization with a protocol of your choice.</p>
+<p>Pass <tt class="docutils literal"><span class="pre">serialization_mime</span></tt> to set the <tt class="docutils literal"><span class="pre">Content-Type</span></tt> header for worker requests.</p>
+<p>Use <tt class="docutils literal"><span class="pre">auto_retry_count</span></tt> to specify whether or not messages should be retried by default. Retrying messages can cause substantial
+congestion in your worker service. Use with caution.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection.instance">
+<em class="property">classmethod </em><tt class="descclassname">HTTPWorkerConnection.</tt><tt class="descname">instance</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection.instance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection.instance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the default instance of <tt class="docutils literal"><span class="pre">HTTPWorkerConnection</span></tt> as configured by the options prefixed
+with <tt class="docutils literal"><span class="pre">worker_</span></tt>, instantiating it if necessary. Import the <tt class="docutils literal"><span class="pre">workerconnection</span></tt> module within
+your <tt class="docutils literal"><span class="pre">TotoService</span></tt> and run it with <tt class="docutils literal"><span class="pre">--help</span></tt> to see all available options.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection.invoke">
+<tt class="descclassname">HTTPWorkerConnection.</tt><tt class="descname">invoke</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection.invoke"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection.invoke" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoke a <tt class="docutils literal"><span class="pre">method</span></tt> to be run on a remote worker process with the given <tt class="docutils literal"><span class="pre">parameters</span></tt>. If specified, <tt class="docutils literal"><span class="pre">callback</span></tt> will be
+invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
+current <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt> but <tt class="docutils literal"><span class="pre">timeout</span></tt> and <tt class="docutils literal"><span class="pre">auto_retry_count</span></tt> can be used for invocation specific behavior.</p>
+<p><tt class="docutils literal"><span class="pre">invoke()</span></tt> returns a future that may be used to yield the result.</p>
+<p>Note: <tt class="docutils literal"><span class="pre">callback</span></tt> will be invoked with <tt class="docutils literal"><span class="pre">{'error':</span> <span class="pre">'timeout'}</span></tt> on <tt class="docutils literal"><span class="pre">timeout</span></tt> if <tt class="docutils literal"><span class="pre">auto_retry</span></tt> is false. Invocations
+set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for
+critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative
+values of <tt class="docutils literal"><span class="pre">timeout</span></tt> will prevent messages from ever expiring or retrying regardless of <tt class="docutils literal"><span class="pre">auto_retry</span></tt>. The default
+values of <tt class="docutils literal"><span class="pre">timeout</span></tt> and <tt class="docutils literal"><span class="pre">auto_retry</span></tt> cause a fallback to the values used to initialize <tt class="docutils literal"><span class="pre">WorkerConnection</span></tt>.</p>
+<p>Alternatively, you can invoke methods with <tt class="docutils literal"><span class="pre">WorkerConnection.&lt;module&gt;.&lt;method&gt;(*args,</span> <span class="pre">**kwargs)</span></tt>
+where <tt class="docutils literal"><span class="pre">&quot;&lt;module&gt;.&lt;method&gt;&quot;</span></tt> will be passed as the <tt class="docutils literal"><span class="pre">method</span></tt> argument to <tt class="docutils literal"><span class="pre">invoke()</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection.add_connection">
+<tt class="descclassname">HTTPWorkerConnection.</tt><tt class="descname">add_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection.add_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection.add_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection.remove_connection">
+<tt class="descclassname">HTTPWorkerConnection.</tt><tt class="descname">remove_connection</tt><big>(</big><em>address</em><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection.remove_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection.remove_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disconnect from the worker at <tt class="docutils literal"><span class="pre">address</span></tt>. Worker invocations will be round robin load balanced between all connected workers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="toto.httpworkerconnection.HTTPWorkerConnection.set_connections">
+<tt class="descclassname">HTTPWorkerConnection.</tt><tt class="descname">set_connections</tt><big>(</big><em>addresses</em><big>)</big><a class="reference internal" href="_modules/toto/httpworkerconnection.html#HTTPWorkerConnection.set_connections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#toto.httpworkerconnection.HTTPWorkerConnection.set_connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>A convenience method to set the connected addresses. A connection will be made to any new address included in the <tt class="docutils literal"><span class="pre">addresses</span></tt>
+enumerable and any currently connected address not included in <tt class="docutils literal"><span class="pre">addresses</span></tt> will be disconnected. If an address in <tt class="docutils literal"><span class="pre">addresses</span></tt>
+is already connected, it will not be affected.</p>
+</dd></dl>
+
 </div>
 
 
@@ -61,7 +210,7 @@
       </div>
 
     <div class="footer">
-        &copy; Copyright 2014, Jeremy Olmsted-Thompson.
+        &copy; Copyright 2015, Jeremy Olmsted-Thompson.
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>
