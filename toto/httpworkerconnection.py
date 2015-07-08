@@ -1,5 +1,4 @@
 import toto
-import zmq
 import cPickle as pickle
 import zlib
 import logging
