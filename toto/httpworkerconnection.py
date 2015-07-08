@@ -38,6 +38,24 @@ class _Request(object):
     client.fetch(self.request(url), callback=self.handle_response, raise_error=False)
 
 class HTTPWorkerConnection(WorkerConnection):
+  '''Use a ``WorkerConnection`` to make RPCs to the remote worker service(s) or worker/router specified by ``address``.
+     ``address`` may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
+     and timeouts will happen by at most every ``abs(timeout)`` seconds when a periodic callback runs through all active
+     messages and checks for prolonged requests. This is also the default timeout for any new calls. ``timeout`` must not be
+     ``0``.
+
+     Optionally pass any object or module with ``compress`` and ``decompress`` methods as the ``compression`` parameter to
+     compress messages. The module must implement the same algorithm used on the worker service. By default, messages are not
+     compressed.
+
+     Optionally pass any object or module with ``dumps`` and ``loads`` methods that convert an ``object`` to and from a
+     ``str`` to replace the default ``cPickle`` serialization with a protocol of your choice.
+
+     Pass ``serialization_mime`` to set the ``Content-Type`` header for worker requests.
+
+     Use ``auto_retry_count`` to specify whether or not messages should be retried by default. Retrying messages can cause substantial
+     congestion in your worker service. Use with caution.
+  '''
 
   def __init__(self, address, timeout=10.0, compression=None, serialization=None, serialization_mime='application/pickle', auto_retry_count=0):
     if not address:
@@ -89,16 +107,15 @@ class HTTPWorkerConnection(WorkerConnection):
   def invoke(self, method, parameters={}, callback=None, timeout=None, auto_retry_count=None, **kwargs):
     '''Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
-       current ``WorkerConnection`` but ``timeout`` and ``auto_retry`` can be used for invocation specific behavior.
+       current ``WorkerConnection`` but ``timeout`` and ``auto_retry_count`` can be used for invocation specific behavior.
+
+       ``invoke()`` returns a future that may be used to yield the result.
 
        Note: ``callback`` will be invoked with ``{'error': 'timeout'}`` on ``timeout`` if ``auto_retry`` is false. Invocations
        set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for
        critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative
        values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default
        values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.
-
-       Passing ``await=True`` will wrap the call in a ``tornado.gen.Task`` allowing you to ``yield`` the response from the worker.
-       The ``Task`` replaces ``callback`` so any user supplied callback will be ignored when ``await=True``.
 
        Alternatively, you can invoke methods with ``WorkerConnection.<module>.<method>(*args, **kwargs)``
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
@@ -163,7 +180,7 @@ class HTTPWorkerConnection(WorkerConnection):
 
   @classmethod
   def instance(cls):
-    '''Returns the default instance of ``WorkerConnection`` as configured by the options prefixed
+    '''Returns the default instance of ``HTTPWorkerConnection`` as configured by the options prefixed
       with ``worker_``, instantiating it if necessary. Import the ``workerconnection`` module within
       your ``TotoService`` and run it with ``--help`` to see all available options.
     '''

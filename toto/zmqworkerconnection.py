@@ -200,7 +200,7 @@ class ZMQWorkerConnection(WorkerConnection):
 
   @classmethod
   def instance(cls):
-    '''Returns the default instance of ``WorkerConnection`` as configured by the options prefixed
+    '''Returns the default instance of ``ZMQWorkerConnection`` as configured by the options prefixed
       with ``worker_``, instantiating it if necessary. Import the ``workerconnection`` module within
       your ``TotoService`` and run it with ``--help`` to see all available options.
     '''
