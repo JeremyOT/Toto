@@ -5,14 +5,17 @@ import os
 import signal
 from uuid import uuid4
 from toto.secret import *
-from multiprocessing import Process, active_children
 from toto.worker import TotoWorkerService
-from toto.zmqworkerconnection import ZMQWorkerConnection
+from toto.httpworkerconnection import HTTPWorkerConnection
 from tornado.gen import coroutine
 from tornado.concurrent import Future
 from tornado.ioloop import IOLoop
 from time import sleep, time
-from threading import Thread
+from threading import Thread, local
+import tornado.web
+import atexit
+
+SERVER_LOOPS = []
 
 def run_loop(func):
   def wrapper():
@@ -26,8 +29,35 @@ def run_loop(func):
     thread.start()
   return wrapper
 
+class TestHandler(tornado.web.RequestHandler):
+  def initialize(self, port):
+    self.port = port
+
+  def post(self):
+    request = json.loads(self.request.body)
+    if request['method'] == 'bad_method':
+      self.set_status(404)
+      self.write({'error': {'code': 1000, 'value': "'module' object has no attribute 'bad_method'"}})
+    elif request['method'] == 'throw_exception':
+      self.set_status(500)
+      self.write({'error': {'code': 1000, 'value': "Test Exception"}})
+    elif request['method'] == 'throw_toto_exception':
+      self.set_status(500)
+      self.write({'error': {'code': 4242, 'value': "Test Toto Exception"}})
+    elif request['method'] == 'return_pid':
+      self.write({'pid': self.port})
+    else:
+      self.write({'parameters': request['parameters']})
+
 def run_server(port, daemon='start'):
-  TotoWorkerService(method_module='worker_methods', worker_bind_address='tcp://*:%d' % port, worker_socket_address='ipc:///tmp/workerservice%d.sock' % port, control_socket_address='ipc:///tmp/workercontrol%d.sock', debug=True, daemon=daemon, pidfile='worker-%d.pid' % port).run()
+    application = tornado.web.Application([
+        (r"/", TestHandler, {'port': port}),
+    ])
+    ioloop = IOLoop()
+    ioloop.make_current()
+    SERVER_LOOPS.append(ioloop)
+    application.listen(port)
+    ioloop.start()
 
 def invoke_synchronously(worker, method, parameters, **kwargs):
   resp = []
@@ -43,17 +73,19 @@ class TestWorker(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     print 'Starting worker'
-    for p in [Process(target=run_server, args=[9001 + i]) for i in xrange(3)]:
+    cls.processes = [Thread(target=run_server, args=[10001 + i]) for i in xrange(3)]
+    for p in cls.processes:
+      p.daemon = False
       p.start()
     sleep(0.5)
-    cls.worker_addresses = ['tcp://127.0.0.1:%d' % (9001 + i) for i in xrange(3)]
-    cls.worker = ZMQWorkerConnection(cls.worker_addresses[0])
+    cls.worker_addresses = ['http://127.0.0.1:%d' % (10001 + i) for i in xrange(3)]
+    cls.worker = HTTPWorkerConnection(cls.worker_addresses[0], serialization=json, serialization_mime='application/json')
+    cls.worker.enable_traceback_logging()
 
   @classmethod
   def tearDownClass(cls):
-    print 'Stopping worker'
-    for p in [Process(target=run_server, args=[9001 + i, 'stop']) for i in xrange(3)]:
-      p.start()
+    for l in SERVER_LOOPS:
+      l.add_callback(l.stop)
     sleep(0.5)
   
   def test_method(self):
@@ -61,7 +93,11 @@ class TestWorker(unittest.TestCase):
     def cb(response):
       resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    self.worker.invoke('return_value', parameters, callback=cb)
+    @run_loop
+    @coroutine
+    def run():
+      yield self.worker.invoke('return_value', parameters, callback=cb)
+    run()
     while not resp:
       sleep(0.1)
     self.assertEqual(parameters, resp[0]['parameters'])
@@ -83,7 +119,11 @@ class TestWorker(unittest.TestCase):
     def cb(response):
       resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    self.worker.return_value(parameters, callback=cb)
+    @run_loop
+    @coroutine
+    def run():
+      yield self.worker.return_value(parameters, callback=cb)
+    run()
     while not resp:
       sleep(0.1)
     self.assertEqual(parameters, resp[0]['parameters'])
@@ -105,7 +145,11 @@ class TestWorker(unittest.TestCase):
     def cb(response):
       resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    self.worker.invoke('bad_method', parameters, callback=cb)
+    @run_loop
+    @coroutine
+    def run():
+      yield self.worker.invoke('bad_method', parameters, callback=cb)
+    run()
     while not resp:
       sleep(0.1)
     self.assertEqual(resp[0]['error']['code'], 1000)
@@ -116,7 +160,11 @@ class TestWorker(unittest.TestCase):
     def cb(response):
       resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    self.worker.invoke('throw_exception', parameters, callback=cb)
+    @run_loop
+    @coroutine
+    def run():
+      yield self.worker.invoke('throw_exception', parameters, callback=cb)
+    run()
     while not resp:
       sleep(0.1)
     self.assertEqual(resp[0]['error']['code'], 1000)
@@ -140,7 +188,11 @@ class TestWorker(unittest.TestCase):
     def cb(response):
       resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
-    self.worker.invoke('throw_toto_exception', parameters, callback=cb)
+    @run_loop
+    @coroutine
+    def run():
+      yield self.worker.invoke('throw_toto_exception', parameters, callback=cb)
+    run()
     while not resp:
       sleep(0.1)
     self.assertEqual(resp[0]['error']['code'], 4242)
@@ -213,7 +265,11 @@ class TestWorker(unittest.TestCase):
     sleep(0.1)
     worker_ids = list()
     for i in xrange(3):
-      self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      @run_loop
+      @coroutine
+      def run():
+        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      run()
     while len(worker_ids) < 3:
       sleep(0.1)
     self.assertEqual(len(set(worker_ids)), 3)
@@ -221,7 +277,11 @@ class TestWorker(unittest.TestCase):
     sleep(0.1)
     worker_ids = list()
     for i in xrange(3):
-      self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      @run_loop
+      @coroutine
+      def run():
+        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      run()
     while len(worker_ids) < 3:
       sleep(0.1)
     self.assertEqual(len(set(worker_ids)), 1)
@@ -232,7 +292,11 @@ class TestWorker(unittest.TestCase):
     worker_ids = list()
     for i in xrange(30):
       sleep(0.01)
-      self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      @run_loop
+      @coroutine
+      def run():
+        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+      run()
     while len(worker_ids) < 30:
       sleep(0.1)
     self.worker.set_connections(self.worker_addresses[:1])
