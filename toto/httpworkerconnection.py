@@ -2,6 +2,7 @@ import toto
 import cPickle as pickle
 import zlib
 import logging
+from toto.exceptions import *
 from toto.workerconnection import WorkerConnection
 from threading import Thread, Lock
 from tornado.options import options
