@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>toto.httpworkerconnection &mdash; Toto 1.0.8 documentation</title>
+    <title>toto.httpworkerconnection &mdash; Toto 1.0.10 documentation</title>
     
     <link rel="stylesheet" href="../../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '1.0.8',
+        VERSION:     '1.0.10',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,12 +23,12 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Toto 1.0.8 documentation" href="../../index.html" />
+    <link rel="top" title="Toto 1.0.10 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
       <div class="header"><h1 class="heading"><a href="../../index.html">
-          <span>Toto 1.0.8 documentation</span></a></h1>
+          <span>Toto 1.0.10 documentation</span></a></h1>
         <h2 class="heading"><span>toto.httpworkerconnection</span></h2>
       </div>
       <div class="topnav">
@@ -43,18 +43,19 @@
         
   <h1>Source code for toto.httpworkerconnection</h1><div class="highlight"><pre>
 <span class="kn">import</span> <span class="nn">toto</span>
-<span class="kn">import</span> <span class="nn">zmq</span>
 <span class="kn">import</span> <span class="nn">cPickle</span> <span class="kn">as</span> <span class="nn">pickle</span>
 <span class="kn">import</span> <span class="nn">zlib</span>
 <span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">toto.exceptions</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">toto.workerconnection</span> <span class="kn">import</span> <span class="n">WorkerConnection</span>
 <span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
 <span class="kn">from</span> <span class="nn">tornado.options</span> <span class="kn">import</span> <span class="n">options</span>
 <span class="kn">from</span> <span class="nn">tornado.gen</span> <span class="kn">import</span> <span class="n">coroutine</span><span class="p">,</span> <span class="n">Return</span>
 <span class="kn">from</span> <span class="nn">tornado.ioloop</span> <span class="kn">import</span> <span class="n">IOLoop</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
-<span class="kn">from</span> <span class="nn">tornado.httpclient</span> <span class="kn">import</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="n">AsyncHTTPClient</span>
+<span class="kn">from</span> <span class="nn">tornado.httpclient</span> <span class="kn">import</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="n">AsyncHTTPClient</span><span class="p">,</span> <span class="n">HTTPError</span>
 <span class="kn">from</span> <span class="nn">tornado.concurrent</span> <span class="kn">import</span> <span class="n">Future</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">exc_info</span>
 <span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
 <span class="kn">from</span> <span class="nn">uuid</span> <span class="kn">import</span> <span class="n">uuid4</span>
 <span class="kn">from</span> <span class="nn">traceback</span> <span class="kn">import</span> <span class="n">format_exc</span>
@@ -80,6 +81,7 @@
   <span class="k">def</span> <span class="nf">run_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
     <span class="n">client</span> <span class="o">=</span> <span class="n">AsyncHTTPClient</span><span class="p">()</span>
     <span class="n">client</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="n">url</span><span class="p">),</span> <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_response</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="HTTPWorkerConnection"><a class="viewcode-back" href="../../workerconnection.html#toto.httpworkerconnection.HTTPWorkerConnection">[docs]</a><span class="k">class</span> <span class="nc">HTTPWorkerConnection</span><span class="p">(</span><span class="n">WorkerConnection</span><span class="p">):</span>
   <span class="sd">&#39;&#39;&#39;Use a ``WorkerConnection`` to make RPCs to the remote worker service(s) or worker/router specified by ``address``.</span>
@@ -126,15 +128,18 @@
     <span class="k">try</span><span class="p">:</span>
       <span class="k">del</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__active_requests</span><span class="p">[</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">])</span>
       <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="mi">599</span><span class="p">:</span> <span class="c">#tornado special</span>
-          <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">HTTPError</span><span class="p">):</span>
+          <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="mi">599</span><span class="p">:</span> <span class="c">#tornado special</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
-          <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">))</span>    
+          <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
         <span class="k">return</span>
       <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">))</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-      <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+      <span class="n">request</span><span class="o">.</span><span class="n">future</span><span class="o">.</span><span class="n">set_exc_info</span><span class="p">(</span><span class="n">exc_info</span><span class="p">())</span>
 
   <span class="k">def</span> <span class="nf">handle_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">request_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__active_requests</span><span class="p">:</span>
@@ -147,19 +152,12 @@
     <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">retry_count</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">timeout</span><span class="p">:</span>
       <span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span><span class="o">.</span><span class="n">add_timeout</span><span class="p">(</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">request</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_timeout</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
 
-  <span class="nd">@coroutine</span>
-<div class="viewcode-block" id="HTTPWorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.httpworkerconnection.HTTPWorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">callback</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">auto_retry_count</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="HTTPWorkerConnection.invoke"><a class="viewcode-back" href="../../workerconnection.html#toto.httpworkerconnection.HTTPWorkerConnection.invoke">[docs]</a>  <span class="k">def</span> <span class="nf">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">auto_retry_count</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be</span>
 <span class="sd">       invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the</span>
 <span class="sd">       current ``WorkerConnection`` but ``timeout`` and ``auto_retry_count`` can be used for invocation specific behavior.</span>
 
 <span class="sd">       ``invoke()`` returns a future that may be used to yield the result.</span>
-
-<span class="sd">       Note: ``callback`` will be invoked with ``{&#39;error&#39;: &#39;timeout&#39;}`` on ``timeout`` if ``auto_retry`` is false. Invocations</span>
-<span class="sd">       set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for</span>
-<span class="sd">       critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative</span>
-<span class="sd">       values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default</span>
-<span class="sd">       values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.</span>
 
 <span class="sd">       Alternatively, you can invoke methods with ``WorkerConnection.&lt;module&gt;.&lt;method&gt;(*args, **kwargs)``</span>
 <span class="sd">       where ``&quot;&lt;module&gt;.&lt;method&gt;&quot;`` will be passed as the ``method`` argument to ``invoke()``.</span>
@@ -176,11 +174,7 @@
     <span class="n">request</span><span class="o">.</span><span class="n">run_request</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__next_endpoint</span><span class="p">())</span>
     <span class="k">if</span> <span class="n">auto_retry_count</span> <span class="ow">and</span> <span class="n">timeout</span><span class="p">:</span>
       <span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span><span class="o">.</span><span class="n">add_timeout</span><span class="p">(</span><span class="n">time</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_timeout</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">future</span>
-    <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
-      <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-    <span class="k">raise</span> <span class="n">Return</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">future</span>
 </div>
   <span class="k">def</span> <span class="nf">__update_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="n">ordered_connections</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_connections</span><span class="p">)</span>
