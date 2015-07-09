@@ -38,6 +38,7 @@ class _Request(object):
     client = AsyncHTTPClient()
     client.fetch(self.request(url), callback=self.handle_response, raise_error=False)
 
+
 class HTTPWorkerConnection(WorkerConnection):
   '''Use a ``WorkerConnection`` to make RPCs to the remote worker service(s) or worker/router specified by ``address``.
      ``address`` may be either an enumerable of address strings or a string of comma separated addresses. RPC retries
@@ -107,19 +108,12 @@ class HTTPWorkerConnection(WorkerConnection):
     if request.retry_count and request.timeout:
       IOLoop.current().add_timeout(time() + request.timeout, self.handle_timeout, request)
 
-  @coroutine
-  def invoke(self, method, parameters={}, callback=None, timeout=None, auto_retry_count=None, **kwargs):
+  def invoke(self, method, parameters={}, timeout=None, auto_retry_count=None, **kwargs):
     '''Invoke a ``method`` to be run on a remote worker process with the given ``parameters``. If specified, ``callback`` will be
        invoked with any response from the remote worker. By default the worker will timeout or retry based on the settings of the
        current ``WorkerConnection`` but ``timeout`` and ``auto_retry_count`` can be used for invocation specific behavior.
 
        ``invoke()`` returns a future that may be used to yield the result.
-
-       Note: ``callback`` will be invoked with ``{'error': 'timeout'}`` on ``timeout`` if ``auto_retry`` is false. Invocations
-       set to retry will never timeout and will instead be re-sent until a response is received. This behavior can be useful for
-       critical operations but has the potential to cause substantial congestion in the worker system. Use with caution. Negative
-       values of ``timeout`` will prevent messages from ever expiring or retrying regardless of ``auto_retry``. The default
-       values of ``timeout`` and ``auto_retry`` cause a fallback to the values used to initialize ``WorkerConnection``.
 
        Alternatively, you can invoke methods with ``WorkerConnection.<module>.<method>(*args, **kwargs)``
        where ``"<module>.<method>"`` will be passed as the ``method`` argument to ``invoke()``.
@@ -136,11 +130,7 @@ class HTTPWorkerConnection(WorkerConnection):
     request.run_request(self.__next_endpoint())
     if auto_retry_count and timeout:
       IOLoop.current().add_timeout(time() + timeout, self.handle_timeout, request)
-
-    result = yield future
-    if callback:
-      callback(result)
-    raise Return(result)
+    return future
 
   def __update_addresses(self):
     ordered_connections = list(self.active_connections)

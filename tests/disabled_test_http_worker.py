@@ -58,15 +58,6 @@ def run_server(port, daemon='start'):
     application.listen(port)
     ioloop.start()
 
-def invoke_synchronously(worker, method, parameters, **kwargs):
-  resp = []
-  def cb(response):
-    resp.append(response)
-  worker.invoke(method, parameters, callback=cb, **kwargs)
-  while not resp:
-    sleep(0.1)
-  return resp[0]
-
 class TestWorker(unittest.TestCase):
   
   @classmethod
@@ -86,54 +77,26 @@ class TestWorker(unittest.TestCase):
     for l in SERVER_LOOPS:
       l.add_callback(l.stop)
     sleep(0.5)
-  
+
   def test_method(self):
     resp = []
-    def cb(response):
-      resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
     @run_loop
     @coroutine
     def run():
-      yield self.worker.invoke('return_value', parameters, callback=cb)
+      resp.append((yield self.worker.invoke('return_value', parameters)))
     run()
     while not resp:
       sleep(0.1)
     self.assertEqual(parameters, resp[0]['parameters'])
 
-  def test_method_generator(self):
-    resp = []
-    parameters = {'arg1': 1, 'arg2': 'hello'}
-    @run_loop
-    @coroutine
-    def run():
-      resp.append((yield self.worker.invoke('return_value', parameters, await=True)))
-    run()
-    while not resp:
-      sleep(0.1)
-    self.assertEqual(parameters, resp[0]['parameters'])
-  
   def test_method_alt_invocation(self):
     resp = []
-    def cb(response):
-      resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
     @run_loop
     @coroutine
     def run():
-      yield self.worker.return_value(parameters, callback=cb)
-    run()
-    while not resp:
-      sleep(0.1)
-    self.assertEqual(parameters, resp[0]['parameters'])
-  
-  def test_method_alt_invocation_generator(self):
-    resp = []
-    parameters = {'arg1': 1, 'arg2': 'hello'}
-    @run_loop
-    @coroutine
-    def run():
-      resp.append((yield self.worker.return_value(parameters, await=True)))
+      resp.append((yield self.worker.return_value(parameters)))
     run()
     while not resp:
       sleep(0.1)
@@ -147,7 +110,7 @@ class TestWorker(unittest.TestCase):
     @run_loop
     @coroutine
     def run():
-      yield self.worker.invoke('bad_method', parameters, callback=cb)
+      resp.append((yield self.worker.invoke('bad_method', parameters)))
     run()
     while not resp:
       sleep(0.1)
@@ -156,26 +119,11 @@ class TestWorker(unittest.TestCase):
 
   def test_exception(self):
     resp = []
-    def cb(response):
-      resp.append(response)
     parameters = {'arg1': 1, 'arg2': 'hello'}
     @run_loop
     @coroutine
     def run():
-      yield self.worker.invoke('throw_exception', parameters, callback=cb)
-    run()
-    while not resp:
-      sleep(0.1)
-    self.assertEqual(resp[0]['error']['code'], 1000)
-    self.assertEqual(resp[0]['error']['value'], "Test Exception")
-
-  def test_exception_generator(self):
-    resp = []
-    parameters = {'arg1': 1, 'arg2': 'hello'}
-    @run_loop
-    @coroutine
-    def run():
-      resp.append((yield self.worker.invoke('throw_exception', parameters, await=True)))
+      resp.append((yield self.worker.invoke('throw_exception', parameters)))
     run()
     while not resp:
       sleep(0.1)
@@ -184,26 +132,11 @@ class TestWorker(unittest.TestCase):
 
   def test_toto_exception(self):
     resp = []
-    def cb(response):
-      resp.append(response)
-    parameters = {'arg1': 1, 'arg2': 'hello'}
-    @run_loop
-    @coroutine
-    def run():
-      yield self.worker.invoke('throw_toto_exception', parameters, callback=cb)
-    run()
-    while not resp:
-      sleep(0.1)
-    self.assertEqual(resp[0]['error']['code'], 4242)
-    self.assertEqual(resp[0]['error']['value'], "Test Toto Exception")
-
-  def test_toto_exception_generator(self):
-    resp = []
     @run_loop
     @coroutine
     def run():
       parameters = {'arg1': 1, 'arg2': 'hello'}
-      resp.append((yield self.worker.invoke('throw_toto_exception', parameters, await=True)))
+      resp.append((yield self.worker.invoke('throw_toto_exception', parameters)))
     run()
     while not resp:
       sleep(0.1)
@@ -267,7 +200,7 @@ class TestWorker(unittest.TestCase):
       @run_loop
       @coroutine
       def run():
-        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+        worker_ids.append((yield self.worker.return_pid())['pid'])
       run()
     while len(worker_ids) < 3:
       sleep(0.1)
@@ -279,7 +212,7 @@ class TestWorker(unittest.TestCase):
       @run_loop
       @coroutine
       def run():
-        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+        worker_ids.append((yield self.worker.return_pid())['pid'])
       run()
     while len(worker_ids) < 3:
       sleep(0.1)
@@ -294,7 +227,7 @@ class TestWorker(unittest.TestCase):
       @run_loop
       @coroutine
       def run():
-        yield self.worker.return_pid(callback=lambda response: worker_ids.append(response['pid']))
+        worker_ids.append((yield self.worker.return_pid())['pid'])
       run()
     while len(worker_ids) < 30:
       sleep(0.1)
