@@ -133,7 +133,6 @@ class TotoHandler(RequestHandler):
     elif options.method_select == 'parameter':
       def get_method_path(self, path, body):
         if body and 'method' in body:
-          logging.info(body['method'])
           return body['method']
         else:
           raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
@@ -181,7 +180,6 @@ class TotoHandler(RequestHandler):
     if path:
       return '.'.join(path.split('/'))
     elif body and 'method' in body:
-      logging.info(body['method'])
       return body['method']
     else:
       raise TotoException(ERROR_MISSING_METHOD, "Missing method.")
@@ -210,9 +208,12 @@ class TotoHandler(RequestHandler):
     result = None
     error = None
     method = None
+    async = False
     try:
+      start = time.time()
       method_path = self.__get_method_path(path, request_body)
       method = self.__get_method(method_path)
+      async = hasattr(method.invoke, 'asynchronous')
       if handler:
         self._before_invoke(handler.transaction_id, method_path)
       else:
@@ -224,9 +225,10 @@ class TotoHandler(RequestHandler):
         result = yield output
       else:
         result = output
+      logging.info('call %s %0.4fms' % (method_path, (time.time()-start) * 1000.0))
     except Exception as e:
       error = self.error_info(e)
-    raise Return((result, error, (hasattr(method, 'asynchronous'))))
+    raise Return((result, error, (async)))
 
   def options(self, path=None):
     allowed_headers = set(['x-toto-hmac','x-toto-session-id','origin','content-type'])
